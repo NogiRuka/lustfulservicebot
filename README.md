@@ -41,8 +41,8 @@ A template repository for creating a Telegram bot using [Aiogram](https://docs.a
 
 #### 1. Clone the Repository
 ```bash
-git clone https://github.com/<your-username>/Python-Aiogram-Telegram-Bot-Template.git
-cd Python-Aiogram-Telegram-Bot-Template
+git clone https://github.com/iismoilov7/jessy.git
+cd jessy
 ```
 
 #### 2. Create a `.env` File
