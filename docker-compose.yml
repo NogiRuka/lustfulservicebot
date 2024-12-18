@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: 
+      - .env
+    working_dir: /src
+    volumes:
+      - ./app:/src/app
+      - ./migrations:/src/migrations
+      - ./alembic.ini:/src/alembic.ini
+    depends_on:
+      - db
+    command: >
+      sh -c "alembic upgrade head && python app/runme.py"
+    restart: always
+
+  db:
+    image: postgres:11
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  db_data:
