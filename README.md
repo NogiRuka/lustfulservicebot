@@ -58,12 +58,6 @@ This will:
 - Spin up a PostgreSQL database.
 - Run the Telegram bot.
 
-#### 4. Run Database Migrations
-Once the database is running, apply the migrations:
-```bash
-docker-compose exec bot alembic upgrade head
-```
-
 ---
 
 ## Usage
