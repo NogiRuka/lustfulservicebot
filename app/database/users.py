@@ -1,9 +1,9 @@
-from database.schema import User
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from loguru import logger
-from database.db import get_db
+
+from app.database.db import get_db
+from app.database.schema import User
 
 
 async def add_user(chat_id: int, full_name: str, username: str) -> bool:

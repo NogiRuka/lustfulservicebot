@@ -2,7 +2,7 @@ from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.types import Message
-from database.users import add_user, update_last_acitivity
+from app.database.users import add_user, update_last_acitivity
 
 
 class AddUser(BaseMiddleware):

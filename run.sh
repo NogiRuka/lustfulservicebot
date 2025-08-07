@@ -17,4 +17,4 @@ fi
 # Set PYTHONPATH to the parent directory of app
 export PYTHONPATH=$(pwd)
 
-python app/runme.py
+python app/bot.py

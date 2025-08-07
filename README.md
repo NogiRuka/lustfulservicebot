@@ -86,13 +86,21 @@ If you prefer running the bot locally:
    ```bash
    pip install -r requirements.txt
    ```
+   or
+   ```bash
+   uv sync
+   ```
+   or
+   ```bash
+   uv add -r requirements.txt
+   ```
 3. Apply migrations:
    ```bash
    alembic upgrade head
    ```
 4. Start the bot:
    ```bash
-   python app/runme.py
+   bash run.sh
    ```
 
 ---

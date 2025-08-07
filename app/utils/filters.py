@@ -1,7 +1,7 @@
 from typing import Union
 from aiogram.filters import BaseFilter
 from aiogram.types import Message
-from database.users import get_busy
+from app.database.users import get_busy
 
 
 # Filter to answer type of chats

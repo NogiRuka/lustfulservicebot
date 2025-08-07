@@ -1,16 +1,20 @@
 import sys
 import traceback
+import os
+import asyncio
 
-from aiogram import Bot, Dispatcher, Router
+from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.bot import DefaultBotProperties
 from loguru import logger
 
-
-from middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity
-from database.db import init_db
-from config import BOT_TOKEN
+from app.middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity
+from app.database.db import init_db
+from app.config import BOT_TOKEN, ADMINS_ID
+from app.handlers.users import users_routers
+from app.handlers.admins import admin_routers
+from app.utils.filters import IsAdmin, ChatTypeFilter
 
 # Add a new logger with the desired configuration
 # Set up logging
@@ -18,14 +22,24 @@ storage = MemoryStorage()  # Initializing in-memory storage for the bot's dispat
 dp = Dispatcher(
     storage=storage
 )  # Creating a dispatcher instance with the memory storage
-router = Router()
 
-logger.add("requests.log", enqueue=True, rotation="1 week")
+os.makedirs("./logs", exist_ok=True)
+logger.add("./logs/errors.log", enqueue=True, rotation="1 week", level="ERROR")
+logger.add("./logs/logs.log", enqueue=True, rotation="1 week")
 
 # Initializing the bot instance with the token and default settings
 bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
-dp.include_router(router)
+# Include all admin routers
+for router in admin_routers:
+    router.message.filter(ChatTypeFilter(chat_type=["private"]))
+    router.message.filter(IsAdmin(ADMINS_ID))
+    dp.include_router(router)
+
+# Include all user routers
+for router in users_routers:
+    router.message.filter(ChatTypeFilter(chat_type=["private"]))
+    dp.include_router(router)
 
 
 async def main() -> None:
@@ -41,3 +55,8 @@ async def main() -> None:
         logger.error(f"Error: {e}")
         traceback.format_exc()
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    # Running the main function asynchronously using asyncio
+    asyncio.run(main())

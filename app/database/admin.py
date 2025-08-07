@@ -1,6 +1,7 @@
-from database.schema import User
 from sqlalchemy import select, delete, func
-from database.db import get_db
+
+from app.database.schema import User
+from app.database.db import get_db
 from loguru import logger
 
 
