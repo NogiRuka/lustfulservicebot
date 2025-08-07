@@ -63,7 +63,7 @@ async def get_busy(chat_id: int) -> bool:
         try:
             result = await session.execute(select(User).filter_by(chat_id=chat_id))
             user = result.scalars().first()
-            return user.is_busy
+            return user.is_busy if user else False
         except Exception as e:
             logger.error(f"Error getting busy status: {e}")
             await session.rollback()

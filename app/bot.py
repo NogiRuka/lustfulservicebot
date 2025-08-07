@@ -10,7 +10,6 @@ from aiogram.client.bot import DefaultBotProperties
 from loguru import logger
 
 from app.middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity
-from app.database.db import init_db
 from app.config import BOT_TOKEN, ADMINS_ID
 from app.handlers.users import users_routers
 from app.handlers.admins import admin_routers
@@ -25,7 +24,7 @@ dp = Dispatcher(
 
 os.makedirs("./logs", exist_ok=True)
 logger.add("./logs/errors.log", enqueue=True, rotation="1 week", level="ERROR")
-logger.add("./logs/logs.log", enqueue=True, rotation="1 week")
+logger.add("./logs/all.log", enqueue=True, rotation="1 week")
 
 # Initializing the bot instance with the token and default settings
 bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -46,7 +45,6 @@ async def main() -> None:
     # Starting the long-polling mechanism for the bot with the dispatcher
     try:
         logger.info("Bot started...")
-        await init_db()
         dp.message.middleware(AntiFloodMiddleware())
         dp.message.middleware(AddUser())
         dp.message.middleware(UpdateLastAcivity())

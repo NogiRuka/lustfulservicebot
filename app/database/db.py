@@ -19,12 +19,6 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
-async def init_db():
-    async with engine.begin() as conn:
-        # Create all tables in the database (if they don't exist)
-        await conn.run_sync(Base.metadata.create_all)
-
-
 async def get_db():
     async with AsyncSessionLocal() as session:
         yield session
