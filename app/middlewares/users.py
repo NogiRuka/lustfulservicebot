@@ -7,11 +7,8 @@ from app.database.users import add_user, update_last_acitivity
 
 class AddUser(BaseMiddleware):
     """
-    Initialize the middleware with a time limit.
-
-    Args:
-        time_limit: The time limit in seconds for the same message
-            to be sent to the same chat. Defaults to 1 second.
+    用户入库中间件：
+    - 首次交互时将用户信息写入数据库（幂等）。
     """
 
     async def __call__(
@@ -27,11 +24,8 @@ class AddUser(BaseMiddleware):
 
 class UpdateLastAcivity(BaseMiddleware):
     """
-    Initialize the middleware with a time limit.
-
-    Args:
-        time_limit: The time limit in seconds for the same message
-            to be sent to the same chat. Defaults to 1 second.
+    活跃时间更新中间件：
+    - 每次消息到达时更新用户的最近活跃时间。
     """
 
     async def __call__(

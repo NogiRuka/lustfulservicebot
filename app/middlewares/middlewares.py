@@ -7,11 +7,10 @@ from cachetools import TTLCache
 
 class AntiFloodMiddleware(BaseMiddleware):
     """
-    Initialize the middleware with a time limit.
+    防刷中间件：限制同一会话在短时间内的重复触发。
 
-    Args:
-        time_limit: The time limit in seconds for the same message
-            to be sent to the same chat. Defaults to 1 second.
+    参数：
+        time_limit: 同一会话的最小触发间隔（秒）。默认 1 秒。
     """
 
     def __init__(self, time_limit: int = 1):

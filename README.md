@@ -2,16 +2,15 @@
 
 > A modern, production-ready template for creating Telegram bots using [Aiogram](https://docs.aiogram.dev/) 🚀
 
-This template includes essential setup for Docker 🐳, PostgreSQL 🐘, and Alembic for database migrations, making it easy to bootstrap your next Telegram bot project with best practices and clean architecture.
+This template includes essential setup for SQLite 💾 (default), Alembic for database migrations, and a clean Aiogram v3 architecture to help you learn and iterate quickly without extra infrastructure.
 
 ---
 
 ## ✨ Features
 
 - 🤖 **Aiogram Framework:** A modern and efficient async framework for Telegram bots
-- 🗄️ **Database Integration:** Pre-configured with PostgreSQL and SQLAlchemy ORM
+- 🗄️ **Database Integration:** Pre-configured with SQLite (default) via SQLAlchemy ORM
 - 🔄 **Database Migrations:** Integrated with Alembic for schema migrations
-- 🐳 **Dockerized Setup:** Docker Compose configuration for easy deployment
 - 🔧 **Environment Variables:** Centralized configuration using a `.env` file
 - 📊 **Structured Logging:** Loguru-based logging with file rotation
 - 🛡️ **Anti-Flood Protection:** Built-in middleware to prevent spam
@@ -33,7 +32,7 @@ jessy/
 │   ├── 📝 handlers/         # Message handlers for users and admins
 │   ├── 🔗 middlewares/      # Custom aiogram middlewares
 │   └── 🛠️ utils/            # Filters, states, and utility code
-├── 📂 migrations/           # Alembic migration scripts
+├── (removed) migrations/
 ├── 📂 logs/                 # Log files (created at runtime)
 ├── 📂 docs/                 # Documentation
 │   └── 📄 CODE.md           # Code principles and project structure
@@ -41,8 +40,8 @@ jessy/
 ├── 🐚 run.sh                # Shell script to run the bot
 ├── 📋 requirements.txt      # Python dependencies
 ├── ⚙️ pyproject.toml        # Project metadata and dependencies
-├── 🐳 Dockerfile            # Docker build instructions
-├── 🐙 docker-compose.yml    # Docker Compose setup for bot and DB
+├── (removed) Dockerfile
+├── (removed) docker-compose.yml
 ├── 🔄 alembic.ini           # Alembic configuration
 ├── 📖 README.md             # Main project documentation
 └── 📄 LICENSE               # License file
@@ -52,12 +51,10 @@ jessy/
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (SQLite, no Docker)
 
 ### 📋 Prerequisites
 - 🐍 Python 3.10+
-- 🐳 Docker & Docker Compose
-- 🐘 PostgreSQL (if running locally without Docker)
 
 ### ⚙️ Setup
 
@@ -67,31 +64,22 @@ git clone https://github.com/right-git/jessy.git
 cd jessy
 ```
 
-#### 2️⃣ Create a `.env` File
-Create a `.env` file in the project root with your configuration:
+#### 2️⃣ Create a `.env` File (optional)
+Create a `.env` file in the project root to set your bot token and admins:
 ```bash
 # Bot Configuration
 BOT_TOKEN=your_bot_token_here
 ADMINS_ID=123456789,987654321
 
-# Database Configuration
-DATABASE_URL_ASYNC=postgresql+asyncpg://user:password@localhost:5432/dbname
-DB_USERNAME=your_db_user
-DB_PASSWORD=your_db_password
-DB_NAME=your_db_name
-DB_PORT=5432
+# Database (optional). Defaults to local SQLite file `./jessy.db`
+# DATABASE_URL_ASYNC=sqlite+aiosqlite:///./jessy.db
 ```
 
-#### 3️⃣ Build and Start the Project
-Using Docker Compose (recommended):
+#### 3️⃣ Install dependencies and run
 ```bash
-docker-compose up --build
+pip install -r requirements.txt
+python app/bot.py
 ```
-
-This will:
-- 🏗️ Build the `bot` service
-- 🐘 Spin up a PostgreSQL database
-- 🤖 Run the Telegram bot automatically
 
 ---
 
@@ -113,44 +101,15 @@ docker-compose down
 
 ---
 
-## 💻 Development
-
-### 📦 Install Dependencies
-If you prefer running the bot locally:
-
-1. 🐘 Set up PostgreSQL database and configure `.env` file
-2. 📦 Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-   or using `uv` (faster):
-   ```bash
-   uv sync
-   ```
-   or
-   ```bash
-   uv add -r requirements.txt
-   ```
-3. 🔄 Apply database migrations:
-   ```bash
-   alembic upgrade head
-   ```
-4. 🚀 Start the bot:
-   ```bash
-   bash run.sh
-   ```
+## 💻 Development Tips
+ - Database defaults to `sqlite+aiosqlite:///jessy.db` in project root. Override via `DATABASE_URL_ASYNC`.
+ - Tables are created automatically on startup for learning.
+ - Use `run.sh` on Unix-like systems or run `python app/bot.py` directly.
 
 ---
 
 ## 🌐 Deployment
-
-This template is designed for easy deployment via Docker. You can use platforms like:
-
-- ☁️ [Heroku](https://www.heroku.com/)
-- ☁️ [AWS](https://aws.amazon.com/)
-- ☁️ [DigitalOcean](https://www.digitalocean.com/)
-- ☁️ [Railway](https://railway.app/)
-- ☁️ [Render](https://render.com/)
+For learning, run locally. When ready for production, switch `DATABASE_URL_ASYNC` to a server DB (e.g., Postgres) and deploy to your preferred platform.
 
 ---
 
