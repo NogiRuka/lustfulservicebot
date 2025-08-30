@@ -186,7 +186,7 @@ async def cb_superadmin_my_admins(cb: types.CallbackQuery):
             text += f"   用户名: @{admin.username or '未设置'}\n"
             text += f"   注册时间: {admin.created_at.strftime('%Y-%m-%d')}\n\n"
         
-        text += "💡 使用 /demote <用户ID> 来取消管理员权限"
+        text += "💡 使用 /demote [用户ID] 来取消管理员权限"
         
         await cb.message.edit_caption(
             caption=text,
@@ -230,7 +230,7 @@ async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
         if len(pending_feedbacks) > 5:
             text += f"... 还有 {len(pending_feedbacks) - 5} 条待处理\n\n"
         
-        text += "💡 使用 /reply <反馈ID> <回复内容> 进行回复"
+        text += "💡 使用 /reply [反馈ID] [回复内容] 进行回复"
     
     await cb.message.edit_caption(
         caption=text,
@@ -277,7 +277,7 @@ async def superadmin_demote_admin(msg: types.Message):
     
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/demote <用户ID>")
+        await msg.reply("用法：/demote [用户ID]")
         return
     
     user_id = int(parts[1])

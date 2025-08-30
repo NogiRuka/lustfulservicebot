@@ -18,7 +18,7 @@ async def PromoteToAdmin(msg: types.Message):
 
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.bot.send_message(msg.from_user.id, "用法：/promote <chat_id>")
+        await msg.bot.send_message(msg.from_user.id, "用法：/promote [chat_id]")
         return
     target_id = int(parts[1])
     ok = await set_role(target_id, ROLE_ADMIN)
@@ -37,7 +37,7 @@ async def DemoteFromAdmin(msg: types.Message):
 
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.bot.send_message(msg.from_user.id, "用法：/demote <chat_id>")
+        await msg.bot.send_message(msg.from_user.id, "用法：/demote [chat_id]")
         return
     target_id = int(parts[1])
     ok = await set_role(target_id, ROLE_USER)

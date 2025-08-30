@@ -51,7 +51,7 @@ async def cb_admin_stats(cb: types.CallbackQuery):
 # 面板回调：查询提示
 @admins_router.callback_query(F.data == "admin_query_user")
 async def cb_admin_query_tip(cb: types.CallbackQuery):
-    query_text = "🔎 <b>查询用户</b>\n\n请使用命令：/info <chat_id>\n\n示例：/info 123456789"
+    query_text = "🔎 <b>查询用户</b>\n\n请使用命令：/info [chat_id]\n\n示例：/info 123456789"
     if cb.message.photo:
         await cb.message.edit_caption(caption=query_text, reply_markup=admin_panel_kb)
     else:
@@ -101,7 +101,7 @@ async def GetCountOfUsers(msg: types.Message):
 async def GetUserData(msg: types.Message):
     parts = msg.text.strip().split()
     if len(parts) < 2 or not parts[1].isdigit():
-        await msg.bot.send_message(msg.from_user.id, "用法：/info <chat_id>")
+        await msg.bot.send_message(msg.from_user.id, "用法：/info [chat_id]")
         return
     chat_id = parts[1]
 
@@ -165,7 +165,7 @@ async def PromoteToAdmin(msg: types.Message):
 
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.bot.send_message(msg.from_user.id, "用法：/promote <chat_id>")
+        await msg.bot.send_message(msg.from_user.id, "用法：/promote [chat_id]")
         return
     target_id = int(parts[1])
     ok = await set_role(target_id, ROLE_ADMIN)
@@ -213,7 +213,7 @@ async def cb_admin_feedback_browse(cb: types.CallbackQuery):
         if len(feedbacks) > 15:
             text += f"... 还有 {len(feedbacks) - 15} 条记录\n\n"
         
-        text += "💡 使用 /reply <反馈ID> <回复内容> 来回复反馈"
+        text += "💡 使用 /reply [反馈ID] [回复内容] 来回复反馈"
         
         await cb.message.edit_caption(
             caption=text,
@@ -297,8 +297,8 @@ async def cb_admin_review_movie(cb: types.CallbackQuery):
             review_kb = admin_review_detail_kb
             
         text += "💡 点击按钮进行快速审核，或使用命令:\n"
-        text += "/approve_movie <ID> - 通过求片\n"
-        text += "/reject_movie <ID> - 拒绝求片"
+        text += "/approve_movie [ID] - 通过求片\n"
+        text += "/reject_movie [ID] - 拒绝求片"
         
         await cb.message.edit_caption(
             caption=text,
@@ -447,8 +447,8 @@ async def cb_admin_review_content(cb: types.CallbackQuery):
             review_kb = admin_review_detail_kb
             
         text += "💡 点击按钮进行快速审核，或使用命令:\n"
-        text += "/approve_content <ID> - 通过投稿\n"
-        text += "/reject_content <ID> - 拒绝投稿"
+        text += "/approve_content [ID] - 通过投稿\n"
+        text += "/reject_content [ID] - 拒绝投稿"
         
         await cb.message.edit_caption(
             caption=text,
@@ -553,7 +553,7 @@ async def admin_reply_feedback(msg: types.Message):
     """回复用户反馈"""
     parts = msg.text.strip().split(maxsplit=2)
     if len(parts) < 3:
-        await msg.reply("用法：/reply <反馈ID> <回复内容>")
+        await msg.reply("用法：/reply [反馈ID] [回复内容]")
         return
     
     try:
@@ -577,7 +577,7 @@ async def admin_approve_movie(msg: types.Message):
     """通过求片"""
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/approve_movie <求片ID>")
+        await msg.reply("用法：/approve_movie [求片ID]")
         return
     
     request_id = int(parts[1])
@@ -594,7 +594,7 @@ async def admin_reject_movie(msg: types.Message):
     """拒绝求片"""
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/reject_movie <求片ID>")
+        await msg.reply("用法：/reject_movie [求片ID]")
         return
     
     request_id = int(parts[1])
@@ -612,7 +612,7 @@ async def admin_approve_content(msg: types.Message):
     """通过投稿"""
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/approve_content <投稿ID>")
+        await msg.reply("用法：/approve_content [投稿ID]")
         return
     
     submission_id = int(parts[1])
@@ -629,7 +629,7 @@ async def admin_reject_content(msg: types.Message):
     """拒绝投稿"""
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/reject_content <投稿ID>")
+        await msg.reply("用法：/reject_content [投稿ID]")
         return
     
     submission_id = int(parts[1])
@@ -651,7 +651,7 @@ async def DemoteFromAdmin(msg: types.Message):
 
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.bot.send_message(msg.from_user.id, "用法：/demote <chat_id>")
+        await msg.bot.send_message(msg.from_user.id, "用法：/demote [chat_id]")
         return
     target_id = int(parts[1])
     ok = await set_role(target_id, ROLE_USER)
