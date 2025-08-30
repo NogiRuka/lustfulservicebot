@@ -223,12 +223,28 @@ async def cb_confirm_movie_submit(cb: types.CallbackQuery, state: FSMContext):
     if success:
         desc_text = f"\n📝 描述：{description}" if description else ""
         result_text = f"✅ <b>求片提交成功！</b>\n\n🎬 片名：{title}{desc_text}{file_info}\n\n您的求片请求已提交，等待管理员审核。"
+        
+        # 成功页面按钮
+        success_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="🎬 继续求片", callback_data="movie_request_new"),
+                    types.InlineKeyboardButton(text="📋 我的求片", callback_data="movie_request_my")
+                ],
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回求片中心", callback_data="movie_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                ]
+            ]
+        )
+        reply_markup = success_kb
     else:
         result_text = "❌ 提交失败，请稍后重试。"
+        reply_markup = back_to_main_kb
     
     await cb.message.edit_caption(
         caption=result_text,
-        reply_markup=back_to_main_kb
+        reply_markup=reply_markup
     )
     
     await state.clear()

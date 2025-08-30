@@ -175,12 +175,28 @@ async def cb_confirm_feedback_submit(cb: types.CallbackQuery, state: FSMContext)
     if success:
         content_preview = content[:100] + ('...' if len(content) > 100 else '')
         result_text = f"✅ <b>反馈提交成功！</b>\n\n📝 类型：{feedback_type_names.get(feedback_type, feedback_type)}\n💬 内容：{content_preview}{file_info}\n\n感谢您的反馈，我们会尽快处理。"
+        
+        # 成功页面按钮
+        success_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="💬 继续反馈", callback_data="feedback_center"),
+                    types.InlineKeyboardButton(text="📋 我的反馈", callback_data="feedback_my")
+                ],
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回反馈中心", callback_data="feedback_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                ]
+            ]
+        )
+        reply_markup = success_kb
     else:
         result_text = "❌ 提交失败，请稍后重试。"
+        reply_markup = back_to_main_kb
     
     await cb.message.edit_caption(
         caption=result_text,
-        reply_markup=back_to_main_kb
+        reply_markup=reply_markup
     )
     
     await state.clear()

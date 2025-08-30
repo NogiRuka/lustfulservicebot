@@ -185,12 +185,28 @@ async def cb_confirm_content_submit(cb: types.CallbackQuery, state: FSMContext):
     if success:
         content_preview = content[:50] + ('...' if len(content) > 50 else '')
         result_text = f"✅ <b>投稿提交成功！</b>\n\n📝 标题：{title}\n📄 内容：{content_preview}{file_info}\n\n您的投稿已提交，等待管理员审核。"
+        
+        # 成功页面按钮
+        success_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="📝 继续投稿", callback_data="content_submit_new"),
+                    types.InlineKeyboardButton(text="📋 我的投稿", callback_data="content_submit_my")
+                ],
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回投稿中心", callback_data="content_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                ]
+            ]
+        )
+        reply_markup = success_kb
     else:
         result_text = "❌ 提交失败，请稍后重试。"
+        reply_markup = back_to_main_kb
     
     await cb.message.edit_caption(
         caption=result_text,
-        reply_markup=back_to_main_kb
+        reply_markup=reply_markup
     )
     
     await state.clear()

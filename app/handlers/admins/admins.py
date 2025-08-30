@@ -18,6 +18,7 @@ from app.database.business import (
     get_pending_content_submissions, review_movie_request, review_content_submission
 )
 from app.buttons.users import admin_review_center_kb, back_to_main_kb
+from app.utils.message_utils import safe_edit_message
 
 admins_router = Router()
 
@@ -40,11 +41,13 @@ async def ShowPanel(msg: types.Message):
 @admins_router.callback_query(F.data == "admin_stats")
 async def cb_admin_stats(cb: types.CallbackQuery):
     users_len = await get_count_of_users()
-    # 检查消息是否有图片，如果有则使用edit_caption，否则使用edit_text
-    if cb.message.photo:
-        await cb.message.edit_caption(caption=f"📊 <b>用户统计</b>\n\n当前用户总数：{users_len}\n\n点击下方按钮查看更多功能。", reply_markup=admin_panel_kb)
-    else:
-        await cb.message.edit_text(f"当前用户总数：{users_len}", reply_markup=admin_panel_kb)
+    # 使用安全编辑函数
+    await safe_edit_message(
+        cb.message,
+        caption=f"📊 <b>用户统计</b>\n\n当前用户总数：{users_len}\n\n点击下方按钮查看更多功能。",
+        text=f"当前用户总数：{users_len}",
+        reply_markup=admin_panel_kb
+    )
     await cb.answer()
 
 
@@ -52,10 +55,15 @@ async def cb_admin_stats(cb: types.CallbackQuery):
 @admins_router.callback_query(F.data == "admin_query_user")
 async def cb_admin_query_tip(cb: types.CallbackQuery):
     query_text = "🔎 <b>查询用户</b>\n\n请使用命令：/info [chat_id]\n\n示例：/info 123456789"
-    if cb.message.photo:
-        await cb.message.edit_caption(caption=query_text, reply_markup=admin_panel_kb)
-    else:
-        await cb.message.edit_text(query_text, reply_markup=admin_panel_kb)
+    try:
+        if cb.message.photo:
+            await cb.message.edit_caption(caption=query_text, reply_markup=admin_panel_kb)
+        else:
+            await cb.message.edit_text(query_text, reply_markup=admin_panel_kb)
+    except Exception as e:
+        # 忽略消息未修改的错误
+        if "message is not modified" not in str(e):
+            logger.error(f"编辑消息失败: {e}")
     await cb.answer()
 
 
@@ -63,10 +71,7 @@ async def cb_admin_query_tip(cb: types.CallbackQuery):
 @admins_router.callback_query(F.data == "admin_announce")
 async def cb_admin_announce_tip(cb: types.CallbackQuery, state: FSMContext):
     announce_text = "📢 <b>群发公告</b>\n\n请发送要群发给所有用户的消息（任意类型）\n\n支持文本、图片、视频等各种消息类型。"
-    if cb.message.photo:
-        await cb.message.edit_caption(caption=announce_text, reply_markup=admin_panel_kb)
-    else:
-        await cb.message.edit_text(announce_text, reply_markup=admin_panel_kb)
+    await safe_edit_message(cb.message, caption=announce_text, text=announce_text, reply_markup=admin_panel_kb)
     await state.set_state(Wait.waitAnnounce)
     await cb.answer()
 
@@ -75,10 +80,7 @@ async def cb_admin_announce_tip(cb: types.CallbackQuery, state: FSMContext):
 @admins_router.callback_query(F.data == "admin_cleanup")
 async def cb_admin_cleanup(cb: types.CallbackQuery):
     cleanup_text = "🧹 <b>清理封禁用户</b>\n\n清理功能在群发时自动进行：无法接收的用户会被移除。\n\n这是一个自动化过程，无需手动操作。"
-    if cb.message.photo:
-        await cb.message.edit_caption(caption=cleanup_text, reply_markup=admin_panel_kb)
-    else:
-        await cb.message.edit_text(cleanup_text, reply_markup=admin_panel_kb)
+    await safe_edit_message(cb.message, caption=cleanup_text, text=cleanup_text, reply_markup=admin_panel_kb)
     await cb.answer()
 
 

@@ -254,12 +254,28 @@ async def cb_confirm_promote_admin(cb: types.CallbackQuery, state: FSMContext):
     
     if success:
         result_text = f"✅ <b>提升成功！</b>\n\n用户 {target_user_id} 已被提升为管理员。"
+        
+        # 成功页面按钮
+        success_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="➕ 继续添加", callback_data="superadmin_add_admin"),
+                    types.InlineKeyboardButton(text="👥 我的管理员", callback_data="superadmin_my_admins")
+                ],
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                ]
+            ]
+        )
+        reply_markup = success_kb
     else:
         result_text = "❌ 提升失败，请稍后重试。"
+        reply_markup = back_to_main_kb
     
     await cb.message.edit_caption(
         caption=result_text,
-        reply_markup=back_to_main_kb
+        reply_markup=reply_markup
     )
     
     await state.clear()
