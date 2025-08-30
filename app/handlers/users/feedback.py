@@ -91,9 +91,9 @@ async def process_feedback_content(msg: types.Message, state: FSMContext):
     confirm_kb = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="✅ 确认提交", callback_data="confirm_feedback_submit"),
-                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="feedback_center")
-            ],
+                 types.InlineKeyboardButton(text="✅ 确认提交", callback_data="confirm_feedback_submit"),
+                 types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="edit_feedback_content")
+             ],
             [
                 types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center"),
                 types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
@@ -110,6 +110,48 @@ async def process_feedback_content(msg: types.Message, state: FSMContext):
         )
     except Exception as e:
         logger.error(f"编辑消息失败: {e}")
+
+
+@feedback_router.callback_query(F.data == "edit_feedback_content")
+async def cb_edit_feedback_content(cb: types.CallbackQuery, state: FSMContext):
+    """重新编辑反馈内容"""
+    data = await state.get_data()
+    feedback_type = data.get('feedback_type', 'other')
+    current_content = data.get('content', '')
+    current_file_info = data.get('file_info', '')
+    
+    feedback_type_names = {
+        "bug": "🐛 Bug反馈",
+        "suggestion": "💡 建议反馈",
+        "complaint": "😤 投诉反馈",
+        "other": "❓ 其他反馈"
+    }
+    
+    # 显示当前信息和编辑提示
+    edit_text = (
+        f"✏️ <b>重新编辑反馈内容</b>\n\n"
+        f"📝 类型：{feedback_type_names.get(feedback_type, feedback_type)}\n"
+    )
+    
+    if current_content:
+        content_preview = current_content[:100] + ('...' if len(current_content) > 100 else '')
+        edit_text += f"💬 当前内容：{content_preview}{current_file_info}\n\n"
+    else:
+        edit_text += f"💬 当前内容：无\n\n"
+    
+    edit_text += "请输入新的反馈内容或发送相关图片："
+    
+    await cb.message.edit_caption(
+        caption=edit_text,
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center")],
+                [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+            ]
+        )
+    )
+    await state.set_state(Wait.waitFeedbackContent)
+    await cb.answer()
 
 
 @feedback_router.callback_query(F.data == "confirm_feedback_submit")

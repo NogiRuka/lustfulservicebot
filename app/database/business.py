@@ -76,14 +76,15 @@ async def get_admin_list() -> List[User]:
 
 # ==================== 求片中心 ====================
 
-async def create_movie_request(user_id: int, title: str, description: str = None) -> bool:
+async def create_movie_request(user_id: int, title: str, description: str = None, file_id: str = None) -> bool:
     """创建求片请求"""
     async for session in get_db():
         try:
             request = MovieRequest(
                 user_id=user_id,
                 title=title,
-                description=description
+                description=description,
+                file_id=file_id
             )
             session.add(request)
             await session.commit()

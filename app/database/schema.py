@@ -33,6 +33,7 @@ class MovieRequest(Base):
     user_id = Column(BigInteger, ForeignKey('users.chat_id'), nullable=False)
     title = Column(String, nullable=False)  # 片名
     description = Column(Text, nullable=True)  # 描述
+    file_id = Column(String, nullable=True)  # Telegram文件ID
     status = Column(String, nullable=False, server_default="pending")  # pending/approved/rejected
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     reviewed_at = Column(DateTime, nullable=True)

@@ -74,6 +74,9 @@ async def cb_skip_description(cb: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     title = data.get('title', '')
     
+    # 保存跳过描述的状态
+    await state.update_data(description=None, file_info="")
+    
     # 显示确认页面
     confirm_text = (
         f"📋 <b>确认求片信息</b>\n\n"
@@ -86,7 +89,7 @@ async def cb_skip_description(cb: types.CallbackQuery, state: FSMContext):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(text="✅ 确认提交", callback_data="confirm_movie_submit"),
-                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="movie_request_new")
+                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="edit_movie_description")
             ],
             [
                 types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center"),
@@ -111,16 +114,23 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
     
     # 处理不同类型的输入
     description = None
+    file_id = None
     file_info = ""
     
     if msg.text:
         description = msg.text if msg.text.lower() != '跳过' else None
     elif msg.photo:
         description = msg.caption or "[图片描述]"
+        file_id = msg.photo[-1].file_id
         file_info = "\n📷 包含图片"
     elif msg.document:
         description = msg.caption or "[文件描述]"
+        file_id = msg.document.file_id
         file_info = "\n📎 包含文件"
+    elif msg.video:
+        description = msg.caption or "[视频描述]"
+        file_id = msg.video.file_id
+        file_info = "\n🎥 包含视频"
     
     # 删除用户消息
     try:
@@ -129,7 +139,7 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
         pass
     
     # 保存描述信息到状态
-    await state.update_data(description=description, file_info=file_info)
+    await state.update_data(description=description, file_id=file_id, file_info=file_info)
     
     # 显示确认页面
     desc_text = f"📝 描述：{description}" if description else "📝 描述：无"
@@ -144,7 +154,7 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(text="✅ 确认提交", callback_data="confirm_movie_submit"),
-                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="movie_request_new")
+                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="edit_movie_description")
             ],
             [
                 types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center"),
@@ -164,15 +174,50 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
         logger.error(f"编辑消息失败: {e}")
 
 
+@movie_router.callback_query(F.data == "edit_movie_description")
+async def cb_edit_movie_description(cb: types.CallbackQuery, state: FSMContext):
+    """重新编辑描述"""
+    data = await state.get_data()
+    title = data.get('title', '')
+    current_description = data.get('description')
+    
+    # 显示当前信息和编辑提示
+    edit_text = (
+        f"✏️ <b>重新编辑描述</b>\n\n"
+        f"🎬 片名：{title}\n"
+    )
+    
+    if current_description:
+        edit_text += f"📝 当前描述：{current_description}\n\n"
+    else:
+        edit_text += f"📝 当前描述：无\n\n"
+    
+    edit_text += "请输入新的描述（可选）或发送图片："
+    
+    await cb.message.edit_caption(
+        caption=edit_text,
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="跳过描述", callback_data="skip_description")],
+                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center")],
+                [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+            ]
+        )
+    )
+    await state.set_state(Wait.waitMovieDescription)
+    await cb.answer()
+
+
 @movie_router.callback_query(F.data == "confirm_movie_submit")
 async def cb_confirm_movie_submit(cb: types.CallbackQuery, state: FSMContext):
     """确认提交求片"""
     data = await state.get_data()
     title = data.get('title', '')
     description = data.get('description')
+    file_id = data.get('file_id')
     file_info = data.get('file_info', '')
     
-    success = await create_movie_request(cb.from_user.id, title, description)
+    success = await create_movie_request(cb.from_user.id, title, description, file_id)
     
     # 显示最终结果
     if success:

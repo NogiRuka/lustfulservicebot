@@ -115,7 +115,7 @@ async def process_content_body(msg: types.Message, state: FSMContext):
         inline_keyboard=[
             [
                 types.InlineKeyboardButton(text="✅ 确认提交", callback_data="confirm_content_submit"),
-                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="content_submit_new")
+                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="edit_content_body")
             ],
             [
                 types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),
@@ -133,6 +133,41 @@ async def process_content_body(msg: types.Message, state: FSMContext):
         )
     except Exception as e:
         logger.error(f"编辑消息失败: {e}")
+
+
+@content_router.callback_query(F.data == "edit_content_body")
+async def cb_edit_content_body(cb: types.CallbackQuery, state: FSMContext):
+    """重新编辑投稿内容"""
+    data = await state.get_data()
+    title = data.get('title', '')
+    current_content = data.get('content', '')
+    current_file_info = data.get('file_info', '')
+    
+    # 显示当前信息和编辑提示
+    edit_text = (
+        f"✏️ <b>重新编辑投稿内容</b>\n\n"
+        f"📝 标题：{title}\n"
+    )
+    
+    if current_content:
+        content_preview = current_content[:100] + ('...' if len(current_content) > 100 else '')
+        edit_text += f"📄 当前内容：{content_preview}{current_file_info}\n\n"
+    else:
+        edit_text += f"📄 当前内容：无\n\n"
+    
+    edit_text += "请输入新的投稿内容或发送图片/文件："
+    
+    await cb.message.edit_caption(
+        caption=edit_text,
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
+                [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+            ]
+        )
+    )
+    await state.set_state(Wait.waitContentBody)
+    await cb.answer()
 
 
 @content_router.callback_query(F.data == "confirm_content_submit")
