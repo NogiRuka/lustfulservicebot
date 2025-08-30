@@ -68,8 +68,14 @@ class GroupVerificationMiddleware(BaseMiddleware):
         except Exception as e:
             logger.error(f"群组验证中间件错误: {e}")
             # 发生错误时，为了安全起见，拒绝访问
-            await event.answer(
-                "❌ 验证失败，请稍后重试。",
-                show_alert=True
-            )
-            return
+            # 但如果是编辑消息的错误，可能是正常的API限制，继续处理
+            if "no caption" in str(e) or "no text" in str(e):
+                # 这是消息编辑的正常错误，继续处理
+                return await handler(event, data)
+            else:
+                # 其他错误，拒绝访问
+                await event.answer(
+                    "❌ 验证失败，请稍后重试。",
+                    show_alert=True
+                )
+                return

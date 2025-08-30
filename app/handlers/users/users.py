@@ -9,7 +9,9 @@ from app.database.users import get_busy, set_busy, get_user
 from app.database.users import get_role
 from app.buttons.users import (
     get_main_menu_by_role, movie_center_kb, content_center_kb, 
-    feedback_center_kb, other_functions_kb, back_to_main_kb
+    feedback_center_kb, other_functions_kb, back_to_main_kb,
+    movie_input_kb, content_input_kb, feedback_input_kb,
+    admin_review_detail_kb, superadmin_action_kb
 )
 from app.buttons.panels import get_panel_for_role
 from app.database.business import get_server_stats
@@ -17,6 +19,16 @@ from app.utils.group_utils import get_group_member_count
 from app.utils.commands_catalog import build_commands_help
 from app.config.config import GROUP
 from app.utils.group_utils import user_in_group_filter
+from app.utils.states import Wait
+from app.database.business import (
+    create_movie_request, get_user_movie_requests, create_content_submission,
+    get_user_content_submissions, create_user_feedback, get_user_feedback_list,
+    promote_user_to_admin, demote_admin_to_user, get_admin_list
+)
+from app.buttons.users import superadmin_manage_center_kb
+from app.utils.roles import ROLE_ADMIN, ROLE_SUPERADMIN
+from aiogram.fsm.context import FSMContext
+from aiogram.filters import StateFilter
 
 
 users_router = Router()
@@ -172,11 +184,29 @@ async def cb_back_to_main(cb: types.CallbackQuery):
     title, kb = get_panel_for_role(role)
     
     welcome_text = f"🎉 欢迎使用机器人！\n\n👤 用户角色：{role}\n\n{title}"
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
     
-    await cb.message.edit_caption(
-        caption=welcome_text,
-        reply_markup=kb
-    )
+    # 检查当前消息是否有图片
+    if cb.message.photo:
+        # 如果有图片，编辑caption
+        await cb.message.edit_caption(
+            caption=welcome_text,
+            reply_markup=kb
+        )
+    else:
+        # 如果没有图片，删除当前消息并发送新的带图片消息
+        try:
+            await cb.message.delete()
+        except:
+            pass  # 忽略删除失败的错误
+        
+        await cb.bot.send_photo(
+            chat_id=cb.from_user.id,
+            photo=welcome_photo,
+            caption=welcome_text,
+            reply_markup=kb
+        )
+    
     await cb.answer()
 
 
@@ -311,6 +341,640 @@ async def cb_other_functions(cb: types.CallbackQuery):
         reply_markup=other_functions_kb
     )
     await cb.answer()
+
+
+# ==================== 求片中心功能 ====================
+
+@users_router.callback_query(F.data == "movie_request_new")
+async def cb_movie_request_new(cb: types.CallbackQuery, state: FSMContext):
+    """开始求片"""
+    await cb.message.edit_caption(
+        caption="🎬 <b>开始求片</b>\n\n请输入您想要的片名：",
+        reply_markup=movie_input_kb
+    )
+    await state.set_state(Wait.waitMovieTitle)
+    await cb.answer()
+
+
+@users_router.message(StateFilter(Wait.waitMovieTitle))
+async def process_movie_title(msg: types.Message, state: FSMContext):
+    """处理片名输入"""
+    title = msg.text
+    await state.update_data(title=title)
+    
+    # 删除用户消息
+    try:
+        await msg.delete()
+    except:
+        pass
+    
+    # 编辑主菜单消息显示输入的片名和下一步提示
+    role = await get_role(msg.from_user.id)
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    
+    # 查找最近的机器人消息进行编辑
+    try:
+        # 这里我们需要通过其他方式获取要编辑的消息，暂时发送新消息
+        await msg.bot.send_photo(
+            chat_id=msg.from_user.id,
+            photo=welcome_photo,
+            caption=f"🎬 <b>开始求片</b>\n\n✅ 片名：{title}\n\n📝 请输入详细描述（可选）或发送图片：",
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton(text="跳过描述", callback_data="skip_description")],
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center")],
+                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                ]
+            )
+        )
+    except Exception as e:
+        logger.error(f"发送消息失败: {e}")
+    
+    await state.set_state(Wait.waitMovieDescription)
+
+
+@users_router.callback_query(F.data == "skip_description")
+async def cb_skip_description(cb: types.CallbackQuery, state: FSMContext):
+    """跳过描述"""
+    data = await state.get_data()
+    title = data.get('title', '')
+    
+    success = await create_movie_request(cb.from_user.id, title)
+    
+    if success:
+        await cb.message.edit_caption(
+            caption=f"✅ <b>求片提交成功！</b>\n\n片名：{title}\n\n您的求片请求已提交，等待管理员审核。",
+            reply_markup=back_to_main_kb
+        )
+    else:
+        await cb.message.edit_caption(
+            caption="❌ 提交失败，请稍后重试。",
+            reply_markup=back_to_main_kb
+        )
+    
+    await state.clear()
+    await cb.answer()
+
+
+@users_router.message(StateFilter(Wait.waitMovieDescription))
+async def process_movie_description(msg: types.Message, state: FSMContext):
+    """处理描述输入（支持文本和图片）"""
+    data = await state.get_data()
+    title = data.get('title', '')
+    
+    # 处理不同类型的输入
+    description = None
+    file_info = ""
+    
+    if msg.text:
+        description = msg.text if msg.text.lower() != '跳过' else None
+    elif msg.photo:
+        description = msg.caption or "[图片描述]"
+        file_info = "\n📷 包含图片"
+    elif msg.document:
+        description = msg.caption or "[文件描述]"
+        file_info = "\n📎 包含文件"
+    
+    # 删除用户消息
+    try:
+        await msg.delete()
+    except:
+        pass
+    
+    success = await create_movie_request(msg.from_user.id, title, description)
+    
+    # 发送结果消息
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    
+    if success:
+        desc_text = f"\n📝 描述：{description}" if description else ""
+        result_text = f"✅ <b>求片提交成功！</b>\n\n🎬 片名：{title}{desc_text}{file_info}\n\n您的求片请求已提交，等待管理员审核。"
+    else:
+        result_text = "❌ 提交失败，请稍后重试。"
+    
+    await msg.bot.send_photo(
+        chat_id=msg.from_user.id,
+        photo=welcome_photo,
+        caption=result_text,
+        reply_markup=back_to_main_kb
+    )
+    
+    await state.clear()
+
+
+@users_router.callback_query(F.data == "movie_request_my")
+async def cb_movie_request_my(cb: types.CallbackQuery):
+    """我的求片"""
+    requests = await get_user_movie_requests(cb.from_user.id)
+    
+    if not requests:
+        await cb.message.edit_caption(
+            caption="📋 <b>我的求片</b>\n\n您还没有提交过求片请求。",
+            reply_markup=back_to_main_kb
+        )
+    else:
+        text = "📋 <b>我的求片</b>\n\n"
+        for i, req in enumerate(requests[:10], 1):  # 最多显示10条
+            status_emoji = {
+                "pending": "⏳",
+                "approved": "✅", 
+                "rejected": "❌"
+            }.get(req.status, "❓")
+            
+            text += f"{i}. {status_emoji} {req.title}\n"
+            text += f"   状态：{req.status} | {req.created_at.strftime('%m-%d %H:%M')}\n\n"
+        
+        if len(requests) > 10:
+            text += f"... 还有 {len(requests) - 10} 条记录\n\n"
+        
+        text += "如需返回主菜单，请点击下方按钮。"
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=back_to_main_kb
+        )
+    
+    await cb.answer()
+
+
+# ==================== 内容投稿功能 ====================
+
+@users_router.callback_query(F.data == "content_submit_new")
+async def cb_content_submit_new(cb: types.CallbackQuery, state: FSMContext):
+    """开始投稿"""
+    await cb.message.edit_caption(
+        caption="📝 <b>开始投稿</b>\n\n请输入投稿标题：",
+        reply_markup=content_input_kb
+    )
+    await state.set_state(Wait.waitContentTitle)
+    await cb.answer()
+
+
+@users_router.message(StateFilter(Wait.waitContentTitle))
+async def process_content_title(msg: types.Message, state: FSMContext):
+    """处理投稿标题"""
+    title = msg.text
+    await state.update_data(title=title)
+    
+    # 删除用户消息
+    try:
+        await msg.delete()
+    except:
+        pass
+    
+    # 发送新的带图片消息显示输入的标题
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    
+    await msg.bot.send_photo(
+        chat_id=msg.from_user.id,
+        photo=welcome_photo,
+        caption=f"📝 <b>开始投稿</b>\n\n✅ 标题：{title}\n\n📄 请输入投稿内容或发送图片/文件：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
+                [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+            ]
+        )
+    )
+    await state.set_state(Wait.waitContentBody)
+
+
+@users_router.message(StateFilter(Wait.waitContentBody))
+async def process_content_body(msg: types.Message, state: FSMContext):
+    """处理投稿内容（支持文本、图片、文件）"""
+    data = await state.get_data()
+    title = data.get('title', '')
+    content = ""
+    file_id = None
+    file_info = ""
+    
+    # 处理不同类型的输入
+    if msg.text:
+        content = msg.text
+    elif msg.photo:
+        content = msg.caption or "[图片内容]"
+        file_id = msg.photo[-1].file_id
+        file_info = "\n📷 包含图片"
+    elif msg.document:
+        content = msg.caption or "[文件内容]"
+        file_id = msg.document.file_id
+        file_info = "\n📎 包含文件"
+    elif msg.video:
+        content = msg.caption or "[视频内容]"
+        file_id = msg.video.file_id
+        file_info = "\n🎥 包含视频"
+    
+    # 删除用户消息
+    try:
+        await msg.delete()
+    except:
+        pass
+    
+    success = await create_content_submission(msg.from_user.id, title, content, file_id)
+    
+    # 发送结果消息
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    
+    if success:
+        content_preview = content[:50] + ('...' if len(content) > 50 else '')
+        result_text = f"✅ <b>投稿提交成功！</b>\n\n📝 标题：{title}\n📄 内容：{content_preview}{file_info}\n\n您的投稿已提交，等待管理员审核。"
+    else:
+        result_text = "❌ 提交失败，请稍后重试。"
+    
+    await msg.bot.send_photo(
+        chat_id=msg.from_user.id,
+        photo=welcome_photo,
+        caption=result_text,
+        reply_markup=back_to_main_kb
+    )
+    
+    await state.clear()
+
+
+@users_router.callback_query(F.data == "content_submit_my")
+async def cb_content_submit_my(cb: types.CallbackQuery):
+    """我的投稿"""
+    submissions = await get_user_content_submissions(cb.from_user.id)
+    
+    if not submissions:
+        await cb.message.edit_caption(
+            caption="📋 <b>我的投稿</b>\n\n您还没有提交过投稿。",
+            reply_markup=back_to_main_kb
+        )
+    else:
+        text = "📋 <b>我的投稿</b>\n\n"
+        for i, sub in enumerate(submissions[:10], 1):  # 最多显示10条
+            status_emoji = {
+                "pending": "⏳",
+                "approved": "✅", 
+                "rejected": "❌"
+            }.get(sub.status, "❓")
+            
+            text += f"{i}. {status_emoji} {sub.title}\n"
+            text += f"   状态：{sub.status} | {sub.created_at.strftime('%m-%d %H:%M')}\n\n"
+        
+        if len(submissions) > 10:
+            text += f"... 还有 {len(submissions) - 10} 条记录\n\n"
+        
+        text += "如需返回主菜单，请点击下方按钮。"
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=back_to_main_kb
+        )
+    
+    await cb.answer()
+
+
+# ==================== 用户反馈功能 ====================
+
+@users_router.callback_query(F.data.in_(["feedback_bug", "feedback_suggestion", "feedback_complaint", "feedback_other"]))
+async def cb_feedback_start(cb: types.CallbackQuery, state: FSMContext):
+    """开始反馈"""
+    feedback_types = {
+        "feedback_bug": "🐛 Bug反馈",
+        "feedback_suggestion": "💡 建议反馈", 
+        "feedback_complaint": "😤 投诉反馈",
+        "feedback_other": "❓ 其他反馈"
+    }
+    
+    feedback_type = cb.data.replace("feedback_", "")
+    feedback_name = feedback_types.get(cb.data, "其他反馈")
+    
+    await state.update_data(feedback_type=feedback_type)
+    
+    await cb.message.edit_caption(
+        caption=f"{feedback_name}\n\n请详细描述您的反馈内容或发送相关图片：",
+        reply_markup=feedback_input_kb
+    )
+    await state.set_state(Wait.waitFeedbackContent)
+    await cb.answer()
+
+
+@users_router.message(StateFilter(Wait.waitFeedbackContent))
+async def process_feedback_content(msg: types.Message, state: FSMContext):
+    """处理反馈内容（支持文本和图片）"""
+    data = await state.get_data()
+    feedback_type = data.get('feedback_type', 'other')
+    
+    # 处理不同类型的输入
+    content = ""
+    file_info = ""
+    
+    if msg.text:
+        content = msg.text
+    elif msg.photo:
+        content = msg.caption or "[图片反馈]"
+        file_info = "\n📷 包含图片"
+    elif msg.document:
+        content = msg.caption or "[文件反馈]"
+        file_info = "\n📎 包含文件"
+    
+    # 删除用户消息
+    try:
+        await msg.delete()
+    except:
+        pass
+    
+    success = await create_user_feedback(msg.from_user.id, feedback_type, content)
+    
+    # 发送结果消息
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    
+    feedback_type_names = {
+        "bug": "🐛 Bug反馈",
+        "suggestion": "💡 建议反馈",
+        "complaint": "😤 投诉反馈",
+        "other": "❓ 其他反馈"
+    }
+    
+    if success:
+        content_preview = content[:100] + ('...' if len(content) > 100 else '')
+        result_text = f"✅ <b>反馈提交成功！</b>\n\n📝 类型：{feedback_type_names.get(feedback_type, feedback_type)}\n💬 内容：{content_preview}{file_info}\n\n感谢您的反馈，我们会尽快处理。"
+    else:
+        result_text = "❌ 提交失败，请稍后重试。"
+    
+    await msg.bot.send_photo(
+        chat_id=msg.from_user.id,
+        photo=welcome_photo,
+        caption=result_text,
+        reply_markup=back_to_main_kb
+    )
+    
+    await state.clear()
+
+
+@users_router.callback_query(F.data == "feedback_my")
+async def cb_feedback_my(cb: types.CallbackQuery):
+    """我的反馈"""
+    feedbacks = await get_user_feedback_list(cb.from_user.id)
+    
+    if not feedbacks:
+        await cb.message.edit_caption(
+            caption="📋 <b>我的反馈</b>\n\n您还没有提交过反馈。",
+            reply_markup=back_to_main_kb
+        )
+    else:
+        text = "📋 <b>我的反馈</b>\n\n"
+        for i, feedback in enumerate(feedbacks[:10], 1):  # 最多显示10条
+            status_emoji = {
+                "pending": "⏳",
+                "processing": "🔄", 
+                "resolved": "✅"
+            }.get(feedback.status, "❓")
+            
+            type_emoji = {
+                "bug": "🐛",
+                "suggestion": "💡",
+                "complaint": "😤",
+                "other": "❓"
+            }.get(feedback.feedback_type, "❓")
+            
+            text += f"{i}. {type_emoji} {status_emoji} {feedback.content[:30]}{'...' if len(feedback.content) > 30 else ''}\n"
+            text += f"   状态：{feedback.status} | {feedback.created_at.strftime('%m-%d %H:%M')}\n"
+            
+            if feedback.reply_content:
+                text += f"   💬 回复：{feedback.reply_content[:50]}{'...' if len(feedback.reply_content) > 50 else ''}\n"
+            
+            text += "\n"
+        
+        if len(feedbacks) > 10:
+            text += f"... 还有 {len(feedbacks) - 10} 条记录\n\n"
+        
+        text += "如需返回主菜单，请点击下方按钮。"
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=back_to_main_kb
+        )
+    
+    await cb.answer()
+
+
+# ==================== 超管专用功能 ====================
+
+@users_router.callback_query(F.data == "superadmin_manage_center")
+async def cb_superadmin_manage_center(cb: types.CallbackQuery):
+    """管理中心"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    admins = await get_admin_list()
+    admin_count = len([a for a in admins if a.role == ROLE_ADMIN])
+    
+    text = "🛡️ <b>管理中心</b>\n\n"
+    text += f"👮 当前管理员数量：{admin_count}\n\n"
+    text += "请选择管理操作："
+    
+    await cb.message.edit_caption(
+        caption=text,
+        reply_markup=superadmin_manage_center_kb
+    )
+    await cb.answer()
+
+
+@users_router.callback_query(F.data == "superadmin_add_admin")
+async def cb_superadmin_add_admin(cb: types.CallbackQuery, state: FSMContext):
+    """添加管理员"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    await cb.message.edit_caption(
+        caption="➕ <b>添加管理员</b>\n\n请输入要提升为管理员的用户ID：",
+        reply_markup=superadmin_action_kb
+    )
+    await state.set_state(Wait.waitAdminUserId)
+    await cb.answer()
+
+
+@users_router.message(StateFilter(Wait.waitAdminUserId))
+async def process_admin_user_id(msg: types.Message, state: FSMContext):
+    """处理管理员用户ID输入"""
+    try:
+        user_id = int(msg.text.strip())
+    except ValueError:
+        # 删除用户消息
+        try:
+            await msg.delete()
+        except:
+            pass
+        
+        welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+        await msg.bot.send_photo(
+            chat_id=msg.from_user.id,
+            photo=welcome_photo,
+            caption="❌ 用户ID必须是数字，请重新输入：",
+            reply_markup=superadmin_action_kb
+        )
+        return
+    
+    # 删除用户消息
+    try:
+        await msg.delete()
+    except:
+        pass
+    
+    # 检查用户是否存在
+    user = await get_user(user_id)
+    if not user:
+        welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+        await msg.bot.send_photo(
+            chat_id=msg.from_user.id,
+            photo=welcome_photo,
+            caption="❌ 用户不存在，请检查用户ID是否正确：",
+            reply_markup=superadmin_action_kb
+        )
+        return
+    
+    # 检查用户当前角色
+    current_role = await get_role(user_id)
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    
+    if current_role == ROLE_ADMIN:
+        await msg.bot.send_photo(
+            chat_id=msg.from_user.id,
+            photo=welcome_photo,
+            caption="❌ 该用户已经是管理员了。",
+            reply_markup=back_to_main_kb
+        )
+        await state.clear()
+        return
+    elif current_role == ROLE_SUPERADMIN:
+        await msg.bot.send_photo(
+            chat_id=msg.from_user.id,
+            photo=welcome_photo,
+            caption="❌ 该用户是超管，无需提升。",
+            reply_markup=back_to_main_kb
+        )
+        await state.clear()
+        return
+    
+    # 提升为管理员
+    success = await promote_user_to_admin(msg.from_user.id, user_id)
+    
+    if success:
+        result_text = f"✅ <b>提升成功！</b>\n\n用户 {user_id} 已被提升为管理员。"
+    else:
+        result_text = "❌ 提升失败，请稍后重试。"
+    
+    await msg.bot.send_photo(
+        chat_id=msg.from_user.id,
+        photo=welcome_photo,
+        caption=result_text,
+        reply_markup=back_to_main_kb
+    )
+    
+    await state.clear()
+
+
+@users_router.callback_query(F.data == "superadmin_my_admins")
+async def cb_superadmin_my_admins(cb: types.CallbackQuery):
+    """我的管理员"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    admins = await get_admin_list()
+    admin_users = [a for a in admins if a.role == ROLE_ADMIN]
+    
+    if not admin_users:
+        await cb.message.edit_caption(
+            caption="👥 <b>我的管理员</b>\n\n暂无管理员。",
+            reply_markup=superadmin_action_kb
+        )
+    else:
+        text = "👥 <b>我的管理员</b>\n\n"
+        for i, admin in enumerate(admin_users, 1):
+            text += f"{i}. {admin.full_name} (ID: {admin.chat_id})\n"
+            text += f"   用户名: @{admin.username or '未设置'}\n"
+            text += f"   注册时间: {admin.created_at.strftime('%Y-%m-%d')}\n\n"
+        
+        text += "💡 使用 /demote <用户ID> 来取消管理员权限"
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=superadmin_action_kb
+        )
+    
+    await cb.answer()
+
+
+@users_router.callback_query(F.data == "superadmin_manual_reply")
+async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
+    """人工回复"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    # 获取待处理的反馈
+    feedbacks = await get_all_feedback_list()
+    pending_feedbacks = [f for f in feedbacks if f.status == "pending"]
+    
+    text = "🤖 <b>人工回复</b>\n\n"
+    
+    if not pending_feedbacks:
+        text += "暂无待处理的反馈。"
+    else:
+        text += f"📊 共有 {len(pending_feedbacks)} 条待处理反馈\n\n"
+        
+        for i, feedback in enumerate(pending_feedbacks[:5], 1):  # 显示前5条
+            type_emoji = {
+                "bug": "🐛",
+                "suggestion": "💡",
+                "complaint": "😤",
+                "other": "❓"
+            }.get(feedback.feedback_type, "❓")
+            
+            text += f"{i}. {type_emoji} ID:{feedback.id}\n"
+            text += f"   用户:{feedback.user_id}\n"
+            text += f"   内容:{feedback.content[:60]}{'...' if len(feedback.content) > 60 else ''}\n\n"
+        
+        if len(pending_feedbacks) > 5:
+            text += f"... 还有 {len(pending_feedbacks) - 5} 条待处理\n\n"
+        
+        text += "💡 使用 /reply <反馈ID> <回复内容> 进行回复"
+    
+    await cb.message.edit_caption(
+        caption=text,
+        reply_markup=superadmin_action_kb
+    )
+    await cb.answer()
+
+
+# 超管命令：取消管理员
+@users_router.message(Command("demote"))
+async def superadmin_demote_admin(msg: types.Message):
+    """取消管理员权限"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可执行此操作")
+        return
+    
+    parts = msg.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await msg.reply("用法：/demote <用户ID>")
+        return
+    
+    user_id = int(parts[1])
+    
+    # 检查目标用户角色
+    target_role = await get_role(user_id)
+    if target_role != ROLE_ADMIN:
+        await msg.reply("❌ 该用户不是管理员")
+        return
+    
+    success = await demote_admin_to_user(msg.from_user.id, user_id)
+    
+    if success:
+        await msg.reply(f"✅ 已取消用户 {user_id} 的管理员权限")
+    else:
+        await msg.reply("❌ 操作失败，请稍后重试")
 
 
 # 普通文本消息：防并发回显

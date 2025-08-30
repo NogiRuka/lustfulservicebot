@@ -101,6 +101,16 @@ movie_center_kb = InlineKeyboardMarkup(
     ]
 )
 
+# 求片输入菜单（带返回上一级）
+movie_input_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center"),
+            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+        ],
+    ]
+)
+
 
 # 内容投稿菜单
 content_center_kb = InlineKeyboardMarkup(
@@ -110,6 +120,16 @@ content_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="📋 我的投稿", callback_data="content_submit_my"),
         ],
         [
+            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+        ],
+    ]
+)
+
+# 内容投稿输入菜单（带返回上一级）
+content_input_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),
             InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
         ],
     ]
@@ -136,6 +156,16 @@ feedback_center_kb = InlineKeyboardMarkup(
     ]
 )
 
+# 反馈输入菜单（带返回上一级）
+feedback_input_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center"),
+            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+        ],
+    ]
+)
+
 
 # 管理员审核中心菜单
 admin_review_center_kb = InlineKeyboardMarkup(
@@ -150,6 +180,16 @@ admin_review_center_kb = InlineKeyboardMarkup(
     ]
 )
 
+# 审核详情菜单（带返回上一级）
+admin_review_detail_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
+            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+        ],
+    ]
+)
+
 
 # 超管管理中心菜单
 superadmin_manage_center_kb = InlineKeyboardMarkup(
@@ -159,6 +199,16 @@ superadmin_manage_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="👥 我的管理", callback_data="superadmin_my_admins"),
         ],
         [
+            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+        ],
+    ]
+)
+
+# 超管操作菜单（带返回上一级）
+superadmin_action_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="superadmin_manage_center"),
             InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
         ],
     ]

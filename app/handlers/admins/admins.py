@@ -13,6 +13,11 @@ from app.utils.states import Wait
 from app.database.users import set_role, get_role
 from app.utils.roles import ROLE_ADMIN, ROLE_SUPERADMIN, ROLE_USER
 from app.utils.commands_catalog import build_commands_help
+from app.database.business import (
+    get_all_feedback_list, reply_user_feedback, get_pending_movie_requests,
+    get_pending_content_submissions, review_movie_request, review_content_submission
+)
+from app.buttons.users import admin_review_center_kb, back_to_main_kb
 
 admins_router = Router()
 
@@ -168,6 +173,235 @@ async def PromoteToAdmin(msg: types.Message):
         await msg.bot.send_message(msg.from_user.id, f"已将 {target_id} 设为管理员。")
     else:
         await msg.bot.send_message(msg.from_user.id, "操作失败，请稍后重试。")
+
+
+# ==================== 管理员专用功能 ====================
+
+@admins_router.callback_query(F.data == "admin_feedback_browse")
+async def cb_admin_feedback_browse(cb: types.CallbackQuery):
+    """反馈浏览"""
+    feedbacks = await get_all_feedback_list()
+    
+    if not feedbacks:
+        await cb.message.edit_caption(
+            caption="👀 <b>反馈浏览</b>\n\n暂无用户反馈。",
+            reply_markup=back_to_main_kb
+        )
+    else:
+        text = "👀 <b>反馈浏览</b>\n\n"
+        pending_count = sum(1 for f in feedbacks if f.status == "pending")
+        text += f"📊 总计 {len(feedbacks)} 条反馈，{pending_count} 条待处理\n\n"
+        
+        for i, feedback in enumerate(feedbacks[:15], 1):  # 最多显示15条
+            status_emoji = {
+                "pending": "⏳",
+                "processing": "🔄", 
+                "resolved": "✅"
+            }.get(feedback.status, "❓")
+            
+            type_emoji = {
+                "bug": "🐛",
+                "suggestion": "💡",
+                "complaint": "😤",
+                "other": "❓"
+            }.get(feedback.feedback_type, "❓")
+            
+            text += f"{i}. {type_emoji} {status_emoji} ID:{feedback.id}\n"
+            text += f"   用户:{feedback.user_id} | {feedback.created_at.strftime('%m-%d %H:%M')}\n"
+            text += f"   内容:{feedback.content[:40]}{'...' if len(feedback.content) > 40 else ''}\n\n"
+        
+        if len(feedbacks) > 15:
+            text += f"... 还有 {len(feedbacks) - 15} 条记录\n\n"
+        
+        text += "💡 使用 /reply <反馈ID> <回复内容> 来回复反馈"
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=back_to_main_kb
+        )
+    
+    await cb.answer()
+
+
+@admins_router.callback_query(F.data == "admin_review_center")
+async def cb_admin_review_center(cb: types.CallbackQuery):
+    """审核中心"""
+    movie_requests = await get_pending_movie_requests()
+    content_submissions = await get_pending_content_submissions()
+    
+    text = "✅ <b>审核中心</b>\n\n"
+    text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
+    text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
+    text += "请选择要审核的类型："
+    
+    await cb.message.edit_caption(
+        caption=text,
+        reply_markup=admin_review_center_kb
+    )
+    await cb.answer()
+
+
+@admins_router.callback_query(F.data == "admin_review_movie")
+async def cb_admin_review_movie(cb: types.CallbackQuery):
+    """求片审核"""
+    requests = await get_pending_movie_requests()
+    
+    if not requests:
+        await cb.message.edit_caption(
+            caption="🎬 <b>求片审核</b>\n\n暂无待审核的求片请求。",
+            reply_markup=admin_review_detail_kb
+        )
+    else:
+        text = "🎬 <b>求片审核</b>\n\n"
+        for i, req in enumerate(requests[:10], 1):  # 最多显示10条
+            text += f"{i}. ID:{req.id} - {req.title}\n"
+            text += f"   用户:{req.user_id} | {req.created_at.strftime('%m-%d %H:%M')}\n"
+            if req.description:
+                text += f"   描述:{req.description[:50]}{'...' if len(req.description) > 50 else ''}\n"
+            text += "\n"
+        
+        if len(requests) > 10:
+            text += f"... 还有 {len(requests) - 10} 条记录\n\n"
+        
+        text += "💡 使用以下命令进行审核:\n"
+        text += "/approve_movie <ID> - 通过求片\n"
+        text += "/reject_movie <ID> - 拒绝求片"
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=admin_review_detail_kb
+        )
+    
+    await cb.answer()
+
+
+@admins_router.callback_query(F.data == "admin_review_content")
+async def cb_admin_review_content(cb: types.CallbackQuery):
+    """投稿审核"""
+    submissions = await get_pending_content_submissions()
+    
+    if not submissions:
+        await cb.message.edit_caption(
+            caption="📝 <b>投稿审核</b>\n\n暂无待审核的投稿。",
+            reply_markup=admin_review_detail_kb
+        )
+    else:
+        text = "📝 <b>投稿审核</b>\n\n"
+        for i, sub in enumerate(submissions[:10], 1):  # 最多显示10条
+            text += f"{i}. ID:{sub.id} - {sub.title}\n"
+            text += f"   用户:{sub.user_id} | {sub.created_at.strftime('%m-%d %H:%M')}\n"
+            text += f"   内容:{sub.content[:50]}{'...' if len(sub.content) > 50 else ''}\n"
+            if sub.file_id:
+                text += "   📎 包含附件\n"
+            text += "\n"
+        
+        if len(submissions) > 10:
+            text += f"... 还有 {len(submissions) - 10} 条记录\n\n"
+        
+        text += "💡 使用以下命令进行审核:\n"
+        text += "/approve_content <ID> - 通过投稿\n"
+        text += "/reject_content <ID> - 拒绝投稿"
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=admin_review_detail_kb
+        )
+    
+    await cb.answer()
+
+
+# 管理员命令：回复反馈
+@admins_router.message(Command("reply"))
+async def admin_reply_feedback(msg: types.Message):
+    """回复用户反馈"""
+    parts = msg.text.strip().split(maxsplit=2)
+    if len(parts) < 3:
+        await msg.reply("用法：/reply <反馈ID> <回复内容>")
+        return
+    
+    try:
+        feedback_id = int(parts[1])
+        reply_content = parts[2]
+    except ValueError:
+        await msg.reply("反馈ID必须是数字")
+        return
+    
+    success = await reply_user_feedback(feedback_id, msg.from_user.id, reply_content)
+    
+    if success:
+        await msg.reply(f"✅ 已回复反馈 {feedback_id}")
+    else:
+        await msg.reply("❌ 回复失败，请检查反馈ID是否正确")
+
+
+# 管理员命令：审核求片
+@admins_router.message(Command("approve_movie"))
+async def admin_approve_movie(msg: types.Message):
+    """通过求片"""
+    parts = msg.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await msg.reply("用法：/approve_movie <求片ID>")
+        return
+    
+    request_id = int(parts[1])
+    success = await review_movie_request(request_id, msg.from_user.id, "approved")
+    
+    if success:
+        await msg.reply(f"✅ 已通过求片 {request_id}")
+    else:
+        await msg.reply("❌ 操作失败，请检查求片ID是否正确")
+
+
+@admins_router.message(Command("reject_movie"))
+async def admin_reject_movie(msg: types.Message):
+    """拒绝求片"""
+    parts = msg.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await msg.reply("用法：/reject_movie <求片ID>")
+        return
+    
+    request_id = int(parts[1])
+    success = await review_movie_request(request_id, msg.from_user.id, "rejected")
+    
+    if success:
+        await msg.reply(f"❌ 已拒绝求片 {request_id}")
+    else:
+        await msg.reply("❌ 操作失败，请检查求片ID是否正确")
+
+
+# 管理员命令：审核投稿
+@admins_router.message(Command("approve_content"))
+async def admin_approve_content(msg: types.Message):
+    """通过投稿"""
+    parts = msg.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await msg.reply("用法：/approve_content <投稿ID>")
+        return
+    
+    submission_id = int(parts[1])
+    success = await review_content_submission(submission_id, msg.from_user.id, "approved")
+    
+    if success:
+        await msg.reply(f"✅ 已通过投稿 {submission_id}")
+    else:
+        await msg.reply("❌ 操作失败，请检查投稿ID是否正确")
+
+
+@admins_router.message(Command("reject_content"))
+async def admin_reject_content(msg: types.Message):
+    """拒绝投稿"""
+    parts = msg.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await msg.reply("用法：/reject_content <投稿ID>")
+        return
+    
+    submission_id = int(parts[1])
+    success = await review_content_submission(submission_id, msg.from_user.id, "rejected")
+    
+    if success:
+        await msg.reply(f"❌ 已拒绝投稿 {submission_id}")
+    else:
+        await msg.reply("❌ 操作失败，请检查投稿ID是否正确")
 
 
 # 仅超管：取消管理员
