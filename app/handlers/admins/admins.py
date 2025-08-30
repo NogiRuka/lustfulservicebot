@@ -19,28 +19,49 @@ admins_router = Router()
 
 @admins_router.message(Command("panel"))
 async def ShowPanel(msg: types.Message):
-    await msg.bot.send_message(msg.from_user.id, "管理员面板：", reply_markup=admin_panel_kb)
+    role = await get_role(msg.from_user.id)
+    admin_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    admin_text = f"🛡️ 管理员面板\n\n👤 用户角色：{role}\n\n欢迎使用管理员功能，请选择下方按钮进行操作。"
+    
+    await msg.bot.send_photo(
+        chat_id=msg.from_user.id,
+        photo=admin_photo,
+        caption=admin_text,
+        reply_markup=admin_panel_kb
+    )
 
 
 # 面板回调：统计
 @admins_router.callback_query(F.data == "admin_stats")
 async def cb_admin_stats(cb: types.CallbackQuery):
     users_len = await get_count_of_users()
-    await cb.message.edit_text(f"当前用户总数：{users_len}", reply_markup=admin_panel_kb)
+    # 检查消息是否有图片，如果有则使用edit_caption，否则使用edit_text
+    if cb.message.photo:
+        await cb.message.edit_caption(caption=f"📊 <b>用户统计</b>\n\n当前用户总数：{users_len}\n\n点击下方按钮查看更多功能。", reply_markup=admin_panel_kb)
+    else:
+        await cb.message.edit_text(f"当前用户总数：{users_len}", reply_markup=admin_panel_kb)
     await cb.answer()
 
 
 # 面板回调：查询提示
 @admins_router.callback_query(F.data == "admin_query_user")
 async def cb_admin_query_tip(cb: types.CallbackQuery):
-    await cb.message.edit_text("请使用命令：/info <chat_id>", reply_markup=admin_panel_kb)
+    query_text = "🔎 <b>查询用户</b>\n\n请使用命令：/info <chat_id>\n\n示例：/info 123456789"
+    if cb.message.photo:
+        await cb.message.edit_caption(caption=query_text, reply_markup=admin_panel_kb)
+    else:
+        await cb.message.edit_text(query_text, reply_markup=admin_panel_kb)
     await cb.answer()
 
 
 # 面板回调：群发公告指引
 @admins_router.callback_query(F.data == "admin_announce")
 async def cb_admin_announce_tip(cb: types.CallbackQuery, state: FSMContext):
-    await cb.message.edit_text("请发送要群发给所有用户的消息（任意类型）", reply_markup=admin_panel_kb)
+    announce_text = "📢 <b>群发公告</b>\n\n请发送要群发给所有用户的消息（任意类型）\n\n支持文本、图片、视频等各种消息类型。"
+    if cb.message.photo:
+        await cb.message.edit_caption(caption=announce_text, reply_markup=admin_panel_kb)
+    else:
+        await cb.message.edit_text(announce_text, reply_markup=admin_panel_kb)
     await state.set_state(Wait.waitAnnounce)
     await cb.answer()
 
@@ -48,7 +69,11 @@ async def cb_admin_announce_tip(cb: types.CallbackQuery, state: FSMContext):
 # 面板回调：清理封禁用户（懒方式：实际在群发时自动移除）
 @admins_router.callback_query(F.data == "admin_cleanup")
 async def cb_admin_cleanup(cb: types.CallbackQuery):
-    await cb.message.edit_text("清理功能在群发时自动进行：无法接收的用户会被移除。", reply_markup=admin_panel_kb)
+    cleanup_text = "🧹 <b>清理封禁用户</b>\n\n清理功能在群发时自动进行：无法接收的用户会被移除。\n\n这是一个自动化过程，无需手动操作。"
+    if cb.message.photo:
+        await cb.message.edit_caption(caption=cleanup_text, reply_markup=admin_panel_kb)
+    else:
+        await cb.message.edit_text(cleanup_text, reply_markup=admin_panel_kb)
     await cb.answer()
 
 

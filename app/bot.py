@@ -32,7 +32,7 @@ logger.add("./logs/all.log", enqueue=True, rotation="1 week")
 # ===== 机器人实例 =====
 bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 
-# ===== 路由：管理员（含超管） =====
+# ===== 路由：管理（含超管） =====
 for router in admin_routers:
     router.message.filter(ChatTypeFilter(chat_type=["private"]))
     router.message.filter(
@@ -48,9 +48,10 @@ for router in superadmin_routers:
     )
     dp.include_router(router)
 
-# ===== 路由：用户 =====
+# ===== 路由：用户（通用） =====
 for router in users_routers:
-    router.message.filter(ChatTypeFilter(chat_type=["private"]))
+    # 移除私聊限制，允许在群组中响应某些命令（如/start）
+    # router.message.filter(ChatTypeFilter(chat_type=["private"]))
     dp.include_router(router)
 
 

@@ -25,6 +25,9 @@ ADMINS_ID = (
 _superadmin_raw = os.getenv("SUPERADMIN_ID", "").strip()
 SUPERADMIN_ID = int(_superadmin_raw) if _superadmin_raw.isdigit() else None
 
+# 群组设置：从环境变量读取允许的群组
+GROUP = os.getenv("GROUP", "").strip()
+
 # Default to local SQLite (async) if not provided
 # 默认使用相对路径的 SQLite 数据库（相对于当前运行目录）
 _default_sqlite_url = "sqlite+aiosqlite:///./jessy.db"
