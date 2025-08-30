@@ -1,3 +1,4 @@
+import asyncio
 from aiogram import types, F, Router
 from aiogram.filters import CommandStart, Command
 from loguru import logger
