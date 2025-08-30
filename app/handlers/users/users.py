@@ -352,6 +352,8 @@ async def cb_movie_request_new(cb: types.CallbackQuery, state: FSMContext):
         caption="🎬 <b>开始求片</b>\n\n请输入您想要的片名：",
         reply_markup=movie_input_kb
     )
+    # 保存消息ID用于后续编辑
+    await state.update_data(message_id=cb.message.message_id)
     await state.set_state(Wait.waitMovieTitle)
     await cb.answer()
 
@@ -368,16 +370,14 @@ async def process_movie_title(msg: types.Message, state: FSMContext):
     except:
         pass
     
-    # 编辑主菜单消息显示输入的片名和下一步提示
-    role = await get_role(msg.from_user.id)
-    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    # 获取保存的消息ID并编辑原消息
+    data = await state.get_data()
+    message_id = data.get('message_id')
     
-    # 查找最近的机器人消息进行编辑
     try:
-        # 这里我们需要通过其他方式获取要编辑的消息，暂时发送新消息
-        await msg.bot.send_photo(
+        await msg.bot.edit_message_caption(
             chat_id=msg.from_user.id,
-            photo=welcome_photo,
+            message_id=message_id,
             caption=f"🎬 <b>开始求片</b>\n\n✅ 片名：{title}\n\n📝 请输入详细描述（可选）或发送图片：",
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[
@@ -388,7 +388,7 @@ async def process_movie_title(msg: types.Message, state: FSMContext):
             )
         )
     except Exception as e:
-        logger.error(f"发送消息失败: {e}")
+        logger.error(f"编辑消息失败: {e}")
     
     await state.set_state(Wait.waitMovieDescription)
 
@@ -421,6 +421,7 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
     """处理描述输入（支持文本和图片）"""
     data = await state.get_data()
     title = data.get('title', '')
+    message_id = data.get('message_id')
     
     # 处理不同类型的输入
     description = None
@@ -443,21 +444,22 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
     
     success = await create_movie_request(msg.from_user.id, title, description)
     
-    # 发送结果消息
-    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
-    
+    # 编辑原消息显示结果
     if success:
         desc_text = f"\n📝 描述：{description}" if description else ""
         result_text = f"✅ <b>求片提交成功！</b>\n\n🎬 片名：{title}{desc_text}{file_info}\n\n您的求片请求已提交，等待管理员审核。"
     else:
         result_text = "❌ 提交失败，请稍后重试。"
     
-    await msg.bot.send_photo(
-        chat_id=msg.from_user.id,
-        photo=welcome_photo,
-        caption=result_text,
-        reply_markup=back_to_main_kb
-    )
+    try:
+        await msg.bot.edit_message_caption(
+            chat_id=msg.from_user.id,
+            message_id=message_id,
+            caption=result_text,
+            reply_markup=back_to_main_kb
+        )
+    except Exception as e:
+        logger.error(f"编辑消息失败: {e}")
     
     await state.clear()
 
@@ -470,7 +472,12 @@ async def cb_movie_request_my(cb: types.CallbackQuery):
     if not requests:
         await cb.message.edit_caption(
             caption="📋 <b>我的求片</b>\n\n您还没有提交过求片请求。",
-            reply_markup=back_to_main_kb
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center")],
+                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                ]
+            )
         )
     else:
         text = "📋 <b>我的求片</b>\n\n"
@@ -487,11 +494,16 @@ async def cb_movie_request_my(cb: types.CallbackQuery):
         if len(requests) > 10:
             text += f"... 还有 {len(requests) - 10} 条记录\n\n"
         
-        text += "如需返回主菜单，请点击下方按钮。"
+        text += "如需返回上一级或主菜单，请点击下方按钮。"
         
         await cb.message.edit_caption(
             caption=text,
-            reply_markup=back_to_main_kb
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center")],
+                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                ]
+            )
         )
     
     await cb.answer()
@@ -506,6 +518,8 @@ async def cb_content_submit_new(cb: types.CallbackQuery, state: FSMContext):
         caption="📝 <b>开始投稿</b>\n\n请输入投稿标题：",
         reply_markup=content_input_kb
     )
+    # 保存消息ID用于后续编辑
+    await state.update_data(message_id=cb.message.message_id)
     await state.set_state(Wait.waitContentTitle)
     await cb.answer()
 
@@ -522,20 +536,25 @@ async def process_content_title(msg: types.Message, state: FSMContext):
     except:
         pass
     
-    # 发送新的带图片消息显示输入的标题
-    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    # 获取保存的消息ID并编辑原消息
+    data = await state.get_data()
+    message_id = data.get('message_id')
     
-    await msg.bot.send_photo(
-        chat_id=msg.from_user.id,
-        photo=welcome_photo,
-        caption=f"📝 <b>开始投稿</b>\n\n✅ 标题：{title}\n\n📄 请输入投稿内容或发送图片/文件：",
-        reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
-                [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
-            ]
+    try:
+        await msg.bot.edit_message_caption(
+            chat_id=msg.from_user.id,
+            message_id=message_id,
+            caption=f"📝 <b>开始投稿</b>\n\n✅ 标题：{title}\n\n📄 请输入投稿内容或发送图片/文件：",
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
+                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                ]
+            )
         )
-    )
+    except Exception as e:
+        logger.error(f"编辑消息失败: {e}")
+    
     await state.set_state(Wait.waitContentBody)
 
 
@@ -544,6 +563,7 @@ async def process_content_body(msg: types.Message, state: FSMContext):
     """处理投稿内容（支持文本、图片、文件）"""
     data = await state.get_data()
     title = data.get('title', '')
+    message_id = data.get('message_id')
     content = ""
     file_id = None
     file_info = ""
@@ -572,21 +592,22 @@ async def process_content_body(msg: types.Message, state: FSMContext):
     
     success = await create_content_submission(msg.from_user.id, title, content, file_id)
     
-    # 发送结果消息
-    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
-    
+    # 编辑原消息显示结果
     if success:
         content_preview = content[:50] + ('...' if len(content) > 50 else '')
         result_text = f"✅ <b>投稿提交成功！</b>\n\n📝 标题：{title}\n📄 内容：{content_preview}{file_info}\n\n您的投稿已提交，等待管理员审核。"
     else:
         result_text = "❌ 提交失败，请稍后重试。"
     
-    await msg.bot.send_photo(
-        chat_id=msg.from_user.id,
-        photo=welcome_photo,
-        caption=result_text,
-        reply_markup=back_to_main_kb
-    )
+    try:
+        await msg.bot.edit_message_caption(
+            chat_id=msg.from_user.id,
+            message_id=message_id,
+            caption=result_text,
+            reply_markup=back_to_main_kb
+        )
+    except Exception as e:
+        logger.error(f"编辑消息失败: {e}")
     
     await state.clear()
 
@@ -599,7 +620,12 @@ async def cb_content_submit_my(cb: types.CallbackQuery):
     if not submissions:
         await cb.message.edit_caption(
             caption="📋 <b>我的投稿</b>\n\n您还没有提交过投稿。",
-            reply_markup=back_to_main_kb
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
+                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                ]
+            )
         )
     else:
         text = "📋 <b>我的投稿</b>\n\n"
@@ -616,11 +642,16 @@ async def cb_content_submit_my(cb: types.CallbackQuery):
         if len(submissions) > 10:
             text += f"... 还有 {len(submissions) - 10} 条记录\n\n"
         
-        text += "如需返回主菜单，请点击下方按钮。"
+        text += "如需返回上一级或主菜单，请点击下方按钮。"
         
         await cb.message.edit_caption(
             caption=text,
-            reply_markup=back_to_main_kb
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
+                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                ]
+            )
         )
     
     await cb.answer()
@@ -641,7 +672,7 @@ async def cb_feedback_start(cb: types.CallbackQuery, state: FSMContext):
     feedback_type = cb.data.replace("feedback_", "")
     feedback_name = feedback_types.get(cb.data, "其他反馈")
     
-    await state.update_data(feedback_type=feedback_type)
+    await state.update_data(feedback_type=feedback_type, message_id=cb.message.message_id)
     
     await cb.message.edit_caption(
         caption=f"{feedback_name}\n\n请详细描述您的反馈内容或发送相关图片：",
@@ -656,6 +687,7 @@ async def process_feedback_content(msg: types.Message, state: FSMContext):
     """处理反馈内容（支持文本和图片）"""
     data = await state.get_data()
     feedback_type = data.get('feedback_type', 'other')
+    message_id = data.get('message_id')
     
     # 处理不同类型的输入
     content = ""
@@ -678,9 +710,7 @@ async def process_feedback_content(msg: types.Message, state: FSMContext):
     
     success = await create_user_feedback(msg.from_user.id, feedback_type, content)
     
-    # 发送结果消息
-    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
-    
+    # 编辑原消息显示结果
     feedback_type_names = {
         "bug": "🐛 Bug反馈",
         "suggestion": "💡 建议反馈",
@@ -694,12 +724,15 @@ async def process_feedback_content(msg: types.Message, state: FSMContext):
     else:
         result_text = "❌ 提交失败，请稍后重试。"
     
-    await msg.bot.send_photo(
-        chat_id=msg.from_user.id,
-        photo=welcome_photo,
-        caption=result_text,
-        reply_markup=back_to_main_kb
-    )
+    try:
+        await msg.bot.edit_message_caption(
+            chat_id=msg.from_user.id,
+            message_id=message_id,
+            caption=result_text,
+            reply_markup=back_to_main_kb
+        )
+    except Exception as e:
+        logger.error(f"编辑消息失败: {e}")
     
     await state.clear()
 
@@ -712,7 +745,12 @@ async def cb_feedback_my(cb: types.CallbackQuery):
     if not feedbacks:
         await cb.message.edit_caption(
             caption="📋 <b>我的反馈</b>\n\n您还没有提交过反馈。",
-            reply_markup=back_to_main_kb
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center")],
+                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                ]
+            )
         )
     else:
         text = "📋 <b>我的反馈</b>\n\n"
@@ -741,11 +779,16 @@ async def cb_feedback_my(cb: types.CallbackQuery):
         if len(feedbacks) > 10:
             text += f"... 还有 {len(feedbacks) - 10} 条记录\n\n"
         
-        text += "如需返回主菜单，请点击下方按钮。"
+        text += "如需返回上一级或主菜单，请点击下方按钮。"
         
         await cb.message.edit_caption(
             caption=text,
-            reply_markup=back_to_main_kb
+            reply_markup=types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center")],
+                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                ]
+            )
         )
     
     await cb.answer()
@@ -787,6 +830,8 @@ async def cb_superadmin_add_admin(cb: types.CallbackQuery, state: FSMContext):
         caption="➕ <b>添加管理员</b>\n\n请输入要提升为管理员的用户ID：",
         reply_markup=superadmin_action_kb
     )
+    # 保存消息ID用于后续编辑
+    await state.update_data(message_id=cb.message.message_id)
     await state.set_state(Wait.waitAdminUserId)
     await cb.answer()
 
@@ -794,6 +839,9 @@ async def cb_superadmin_add_admin(cb: types.CallbackQuery, state: FSMContext):
 @users_router.message(StateFilter(Wait.waitAdminUserId))
 async def process_admin_user_id(msg: types.Message, state: FSMContext):
     """处理管理员用户ID输入"""
+    data = await state.get_data()
+    message_id = data.get('message_id')
+    
     try:
         user_id = int(msg.text.strip())
     except ValueError:
@@ -803,13 +851,15 @@ async def process_admin_user_id(msg: types.Message, state: FSMContext):
         except:
             pass
         
-        welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
-        await msg.bot.send_photo(
-            chat_id=msg.from_user.id,
-            photo=welcome_photo,
-            caption="❌ 用户ID必须是数字，请重新输入：",
-            reply_markup=superadmin_action_kb
-        )
+        try:
+            await msg.bot.edit_message_caption(
+                chat_id=msg.from_user.id,
+                message_id=message_id,
+                caption="❌ 用户ID必须是数字，请重新输入：",
+                reply_markup=superadmin_action_kb
+            )
+        except Exception as e:
+            logger.error(f"编辑消息失败: {e}")
         return
     
     # 删除用户消息
@@ -821,35 +871,42 @@ async def process_admin_user_id(msg: types.Message, state: FSMContext):
     # 检查用户是否存在
     user = await get_user(user_id)
     if not user:
-        welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
-        await msg.bot.send_photo(
-            chat_id=msg.from_user.id,
-            photo=welcome_photo,
-            caption="❌ 用户不存在，请检查用户ID是否正确：",
-            reply_markup=superadmin_action_kb
-        )
+        try:
+            await msg.bot.edit_message_caption(
+                chat_id=msg.from_user.id,
+                message_id=message_id,
+                caption="❌ 用户不存在，请检查用户ID是否正确：",
+                reply_markup=superadmin_action_kb
+            )
+        except Exception as e:
+            logger.error(f"编辑消息失败: {e}")
         return
     
     # 检查用户当前角色
     current_role = await get_role(user_id)
-    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
     
     if current_role == ROLE_ADMIN:
-        await msg.bot.send_photo(
-            chat_id=msg.from_user.id,
-            photo=welcome_photo,
-            caption="❌ 该用户已经是管理员了。",
-            reply_markup=back_to_main_kb
-        )
+        try:
+            await msg.bot.edit_message_caption(
+                chat_id=msg.from_user.id,
+                message_id=message_id,
+                caption="❌ 该用户已经是管理员了。",
+                reply_markup=back_to_main_kb
+            )
+        except Exception as e:
+            logger.error(f"编辑消息失败: {e}")
         await state.clear()
         return
     elif current_role == ROLE_SUPERADMIN:
-        await msg.bot.send_photo(
-            chat_id=msg.from_user.id,
-            photo=welcome_photo,
-            caption="❌ 该用户是超管，无需提升。",
-            reply_markup=back_to_main_kb
-        )
+        try:
+            await msg.bot.edit_message_caption(
+                chat_id=msg.from_user.id,
+                message_id=message_id,
+                caption="❌ 该用户是超管，无需提升。",
+                reply_markup=back_to_main_kb
+            )
+        except Exception as e:
+            logger.error(f"编辑消息失败: {e}")
         await state.clear()
         return
     
@@ -861,12 +918,15 @@ async def process_admin_user_id(msg: types.Message, state: FSMContext):
     else:
         result_text = "❌ 提升失败，请稍后重试。"
     
-    await msg.bot.send_photo(
-        chat_id=msg.from_user.id,
-        photo=welcome_photo,
-        caption=result_text,
-        reply_markup=back_to_main_kb
-    )
+    try:
+        await msg.bot.edit_message_caption(
+            chat_id=msg.from_user.id,
+            message_id=message_id,
+            caption=result_text,
+            reply_markup=back_to_main_kb
+        )
+    except Exception as e:
+        logger.error(f"编辑消息失败: {e}")
     
     await state.clear()
 
