@@ -9,7 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.bot import DefaultBotProperties
 from loguru import logger
 
-from app.middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity
+from app.middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity, GroupVerificationMiddleware
 from app.config import BOT_TOKEN, ADMINS_ID, SUPERADMIN_ID
 from app.handlers.users import users_routers
 from app.handlers.admins import admin_routers
@@ -68,6 +68,8 @@ async def main() -> None:
         dp.message.middleware(AntiFloodMiddleware())
         dp.message.middleware(AddUser())
         dp.message.middleware(UpdateLastAcivity())
+        # 为回调查询添加群组验证中间件
+        dp.callback_query.middleware(GroupVerificationMiddleware())
         await dp.start_polling(bot)
     except Exception as e:
         logger.error(f"错误：{e}")
