@@ -1,0 +1,260 @@
+from aiogram import types, F, Router
+from aiogram.filters import CommandStart, Command
+from loguru import logger
+
+from app.utils.filters import IsBusyFilter, IsCommand
+from app.database.users import get_busy, set_busy, get_user, get_role
+from app.buttons.users import (
+    get_main_menu_by_role, other_functions_kb, back_to_main_kb
+)
+from app.buttons.panels import get_panel_for_role
+from app.database.business import get_server_stats
+from app.utils.group_utils import get_group_member_count, user_in_group_filter
+from app.utils.commands_catalog import build_commands_help
+from app.config.config import GROUP
+
+basic_router = Router()
+
+
+# /start：欢迎与菜单
+@basic_router.message(CommandStart())
+async def start(msg: types.Message):
+    # 第一步：检查是否是私聊
+    if msg.chat.type != 'private':
+        # 在群组中给出更明确的提示
+        bot_username = (await msg.bot.get_me()).username
+        await msg.reply(
+            f"👋 你好！请点击 @{bot_username} 或直接私聊我来使用完整功能。\n\n"
+            "🔒 为了保护隐私，主要功能仅在私聊中提供。"
+        )
+        return
+    
+    # 第二步：检查是否在设置的群组里（如果设置了GROUP）
+    if GROUP:
+        is_in_group = await user_in_group_filter(msg.bot, msg.from_user.id)
+        if not is_in_group:
+            await msg.reply(
+                f"❌ 您需要先加入群组 @{GROUP} 才能使用此机器人。\n\n"
+                "请加入群组后再次尝试。"
+            )
+            return
+    
+    # 第三步：获取用户角色并显示对应面板
+    role = await get_role(msg.from_user.id)
+    title, kb = get_panel_for_role(role)
+    
+    welcome_text = f"🎉 欢迎使用机器人！\n\n👤 用户角色：{role}\n\n{title}"
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    
+    await msg.bot.send_photo(
+        chat_id=msg.from_user.id,
+        photo=welcome_photo,
+        caption=welcome_text,
+        reply_markup=kb
+    )
+
+
+@basic_router.message(Command("menu"))
+async def show_menu(msg: types.Message):
+    role = await get_role(msg.from_user.id)
+    title, kb = get_panel_for_role(role)
+    welcome_text = f"🎉 欢迎使用机器人！\n\n👤 用户角色：{role}\n\n{title}"
+    await msg.reply(welcome_text, reply_markup=kb)
+
+
+@basic_router.message(Command("commands"))
+async def show_commands(msg: types.Message):
+    role = await get_role(msg.from_user.id)
+    commands_text = build_commands_help(role)
+    await msg.reply(commands_text)
+
+
+@basic_router.message(Command("role"))
+async def show_role(msg: types.Message):
+    role = await get_role(msg.from_user.id)
+    await msg.reply(f"👤 您的角色：{role}")
+
+
+@basic_router.message(Command("id"))
+async def show_id(msg: types.Message):
+    await msg.reply(f"🆔 您的用户ID：{msg.from_user.id}")
+
+
+@basic_router.callback_query(F.data == "user_help")
+async def cb_user_help(cb: types.CallbackQuery):
+    """帮助信息"""
+    role = await get_role(cb.from_user.id)
+    commands_text = build_commands_help(role)
+    
+    help_text = (
+        f"📖 <b>帮助信息</b>\n\n"
+        f"👤 您的角色：{role}\n\n"
+        f"{commands_text}\n\n"
+        "如需返回主菜单，请点击下方按钮。"
+    )
+    
+    await cb.message.edit_caption(
+        caption=help_text,
+        reply_markup=back_to_main_kb
+    )
+    await cb.answer()
+
+
+@basic_router.callback_query(F.data == "user_profile")
+async def cb_user_profile(cb: types.CallbackQuery):
+    """用户资料"""
+    user = await get_user(cb.from_user.id)
+    role = await get_role(cb.from_user.id)
+    
+    profile_text = (
+        f"👤 <b>用户资料</b>\n\n"
+        f"🆔 用户ID：{cb.from_user.id}\n"
+        f"👤 用户名：{cb.from_user.username or '未设置'}\n"
+        f"📝 昵称：{cb.from_user.full_name}\n"
+        f"🎭 角色：{role}\n"
+        f"📅 注册时间：{user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user else '未知'}\n"
+        f"⏰ 最后活跃：{user.last_activity_at.strftime('%Y-%m-%d %H:%M:%S') if user and user.last_activity_at else '未知'}\n\n"
+        "如需返回主菜单，请点击下方按钮。"
+    )
+    
+    await cb.message.edit_caption(
+        caption=profile_text,
+        reply_markup=back_to_main_kb
+    )
+    await cb.answer()
+
+
+@basic_router.callback_query(F.data == "user_toggle_busy")
+async def cb_user_toggle_busy(cb: types.CallbackQuery):
+    """切换忙碌状态"""
+    current_busy = await get_busy(cb.from_user.id)
+    new_busy = not current_busy
+    await set_busy(cb.from_user.id, new_busy)
+    
+    status_text = "忙碌" if new_busy else "空闲"
+    toggle_text = (
+        f"🔁 <b>状态切换</b>\n\n"
+        f"当前状态：{status_text}\n\n"
+        "如需返回主菜单，请点击下方按钮。"
+    )
+    
+    back_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+        ]
+    )
+    
+    await cb.message.edit_caption(
+        caption=toggle_text,
+        reply_markup=back_kb
+    )
+    await cb.answer(f"状态已切换为: {status_text}")
+
+
+@basic_router.callback_query(F.data == "back_to_main")
+async def cb_back_to_main(cb: types.CallbackQuery):
+    role = await get_role(cb.from_user.id)
+    title, kb = get_panel_for_role(role)
+    
+    welcome_text = f"🎉 欢迎使用机器人！\n\n👤 用户角色：{role}\n\n{title}"
+    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    
+    # 检查当前消息是否有图片
+    if cb.message.photo:
+        # 如果有图片，编辑caption
+        await cb.message.edit_caption(
+            caption=welcome_text,
+            reply_markup=kb
+        )
+    else:
+        # 如果没有图片，删除当前消息并发送新的带图片消息
+        try:
+            await cb.message.delete()
+        except:
+            pass  # 忽略删除失败的错误
+        
+        await cb.bot.send_photo(
+            chat_id=cb.from_user.id,
+            photo=welcome_photo,
+            caption=welcome_text,
+            reply_markup=kb
+        )
+    
+    await cb.answer()
+
+
+@basic_router.callback_query(F.data == "common_my_info")
+async def cb_common_my_info(cb: types.CallbackQuery):
+    """我的信息"""
+    user = await get_user(cb.from_user.id)
+    role = await get_role(cb.from_user.id)
+    
+    info_text = (
+        f"🙋 <b>我的信息</b>\n\n"
+        f"👤 用户名: {cb.from_user.username or '未设置'}\n"
+        f"📝 昵称: {cb.from_user.full_name}\n"
+        f"🆔 用户ID: {cb.from_user.id}\n"
+        f"🎭 角色: {role}\n"
+        f"📅 注册时间: {user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user else '未知'}\n"
+        f"⏰ 最后活跃: {user.last_activity_at.strftime('%Y-%m-%d %H:%M:%S') if user and user.last_activity_at else '未知'}\n\n"
+        "如需返回主菜单，请点击下方按钮。"
+    )
+    
+    await cb.message.edit_caption(
+        caption=info_text,
+        reply_markup=back_to_main_kb
+    )
+    await cb.answer()
+
+
+@basic_router.callback_query(F.data == "common_server_info")
+async def cb_common_server_info(cb: types.CallbackQuery):
+    """服务器信息"""
+    try:
+        stats = await get_server_stats()
+        member_count = await get_group_member_count(cb.bot)
+        
+        info_text = (
+            f"🖥️ <b>服务器信息</b>\n\n"
+            f"👥 注册用户: {stats['total_users']}\n"
+            f"🎬 求片请求: {stats['total_movie_requests']}\n"
+            f"📝 内容投稿: {stats['total_content_submissions']}\n"
+            f"💬 用户反馈: {stats['total_user_feedback']}\n"
+            f"👮 管理员数: {stats['total_admins']}\n"
+            f"📊 群组成员: {member_count}\n\n"
+            "如需返回主菜单，请点击下方按钮。"
+        )
+    except Exception as e:
+        logger.error(f"获取服务器信息失败: {e}")
+        info_text = (
+            f"🖥️ <b>服务器信息</b>\n\n"
+            "❌ 暂时无法获取服务器信息，请稍后重试。\n\n"
+            "如需返回主菜单，请点击下方按钮。"
+        )
+    
+    await cb.message.edit_caption(
+        caption=info_text,
+        reply_markup=back_to_main_kb
+    )
+    await cb.answer()
+
+
+@basic_router.callback_query(F.data == "other_functions")
+async def cb_other_functions(cb: types.CallbackQuery):
+    """其他功能"""
+    await cb.message.edit_caption(
+        caption="⚙️ <b>其他功能</b>\n\n请选择您需要的功能：",
+        reply_markup=other_functions_kb
+    )
+    await cb.answer()
+
+
+# 普通文本消息：防并发回显
+@basic_router.message(F.text, IsCommand(), IsBusyFilter())
+async def message(msg: types.Message):
+    """处理普通文本消息"""
+    await asyncio.sleep(1)
+    await msg.reply(
+        f"📝 您发送的消息：{msg.text}\n\n"
+        "💡 提示：使用 /menu 查看功能菜单"
+    )
