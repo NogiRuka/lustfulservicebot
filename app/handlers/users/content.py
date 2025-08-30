@@ -99,26 +99,67 @@ async def process_content_body(msg: types.Message, state: FSMContext):
     except:
         pass
     
-    success = await create_content_submission(msg.from_user.id, title, content, file_id)
+    # 保存内容信息到状态
+    await state.update_data(content=content, file_id=file_id, file_info=file_info)
     
-    # 编辑原消息显示结果
+    # 显示确认页面
+    content_preview = content[:100] + ('...' if len(content) > 100 else '')
+    confirm_text = (
+        f"📋 <b>确认投稿信息</b>\n\n"
+        f"📝 标题：{title}\n"
+        f"📄 内容：{content_preview}{file_info}\n\n"
+        f"请确认以上信息是否正确？"
+    )
+    
+    confirm_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="✅ 确认提交", callback_data="confirm_content_submit"),
+                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="content_submit_new")
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            ]
+        ]
+    )
+    
+    try:
+        await msg.bot.edit_message_caption(
+            chat_id=msg.from_user.id,
+            message_id=message_id,
+            caption=confirm_text,
+            reply_markup=confirm_kb
+        )
+    except Exception as e:
+        logger.error(f"编辑消息失败: {e}")
+
+
+@content_router.callback_query(F.data == "confirm_content_submit")
+async def cb_confirm_content_submit(cb: types.CallbackQuery, state: FSMContext):
+    """确认提交投稿"""
+    data = await state.get_data()
+    title = data.get('title', '')
+    content = data.get('content', '')
+    file_id = data.get('file_id')
+    file_info = data.get('file_info', '')
+    
+    success = await create_content_submission(cb.from_user.id, title, content, file_id)
+    
+    # 显示最终结果
     if success:
         content_preview = content[:50] + ('...' if len(content) > 50 else '')
         result_text = f"✅ <b>投稿提交成功！</b>\n\n📝 标题：{title}\n📄 内容：{content_preview}{file_info}\n\n您的投稿已提交，等待管理员审核。"
     else:
         result_text = "❌ 提交失败，请稍后重试。"
     
-    try:
-        await msg.bot.edit_message_caption(
-            chat_id=msg.from_user.id,
-            message_id=message_id,
-            caption=result_text,
-            reply_markup=back_to_main_kb
-        )
-    except Exception as e:
-        logger.error(f"编辑消息失败: {e}")
+    await cb.message.edit_caption(
+        caption=result_text,
+        reply_markup=back_to_main_kb
+    )
     
     await state.clear()
+    await cb.answer()
 
 
 @content_router.callback_query(F.data == "content_submit_my")

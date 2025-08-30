@@ -128,25 +128,39 @@ async def process_admin_user_id(msg: types.Message, state: FSMContext):
         await state.clear()
         return
     
-    # 提升为管理员
-    success = await promote_user_to_admin(msg.from_user.id, user_id)
+    # 保存用户ID到状态并显示确认页面
+    await state.update_data(target_user_id=user_id)
     
-    if success:
-        result_text = f"✅ <b>提升成功！</b>\n\n用户 {user_id} 已被提升为管理员。"
-    else:
-        result_text = "❌ 提升失败，请稍后重试。"
+    user_info = f"用户名: @{user.username or '未设置'}\n昵称: {user.full_name}"
+    confirm_text = (
+        f"👮 <b>确认提升管理员</b>\n\n"
+        f"🆔 用户ID：{user_id}\n"
+        f"{user_info}\n\n"
+        f"确认要将此用户提升为管理员吗？"
+    )
+    
+    confirm_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="✅ 确认提升", callback_data="confirm_promote_admin"),
+                types.InlineKeyboardButton(text="❌ 取消操作", callback_data="superadmin_manage_center")
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="superadmin_manage_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            ]
+        ]
+    )
     
     try:
         await msg.bot.edit_message_caption(
             chat_id=msg.from_user.id,
             message_id=message_id,
-            caption=result_text,
-            reply_markup=back_to_main_kb
+            caption=confirm_text,
+            reply_markup=confirm_kb
         )
     except Exception as e:
         logger.error(f"编辑消息失败: {e}")
-    
-    await state.clear()
 
 
 @superadmin_router.callback_query(F.data == "superadmin_my_admins")
@@ -222,6 +236,33 @@ async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
         caption=text,
         reply_markup=superadmin_action_kb
     )
+    await cb.answer()
+
+
+@superadmin_router.callback_query(F.data == "confirm_promote_admin")
+async def cb_confirm_promote_admin(cb: types.CallbackQuery, state: FSMContext):
+    """确认提升管理员"""
+    data = await state.get_data()
+    target_user_id = data.get('target_user_id')
+    
+    if not target_user_id:
+        await cb.answer("❌ 操作失败，请重新尝试", show_alert=True)
+        return
+    
+    # 提升为管理员
+    success = await promote_user_to_admin(cb.from_user.id, target_user_id)
+    
+    if success:
+        result_text = f"✅ <b>提升成功！</b>\n\n用户 {target_user_id} 已被提升为管理员。"
+    else:
+        result_text = "❌ 提升失败，请稍后重试。"
+    
+    await cb.message.edit_caption(
+        caption=result_text,
+        reply_markup=back_to_main_kb
+    )
+    
+    await state.clear()
     await cb.answer()
 
 

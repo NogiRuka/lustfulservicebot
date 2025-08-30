@@ -69,9 +69,60 @@ async def process_feedback_content(msg: types.Message, state: FSMContext):
     except:
         pass
     
-    success = await create_user_feedback(msg.from_user.id, feedback_type, content)
+    # 保存反馈信息到状态
+    await state.update_data(content=content, file_info=file_info)
     
-    # 编辑原消息显示结果
+    # 显示确认页面
+    feedback_type_names = {
+        "bug": "🐛 Bug反馈",
+        "suggestion": "💡 建议反馈",
+        "complaint": "😤 投诉反馈",
+        "other": "❓ 其他反馈"
+    }
+    
+    content_preview = content[:100] + ('...' if len(content) > 100 else '')
+    confirm_text = (
+        f"📋 <b>确认反馈信息</b>\n\n"
+        f"📝 类型：{feedback_type_names.get(feedback_type, feedback_type)}\n"
+        f"💬 内容：{content_preview}{file_info}\n\n"
+        f"请确认以上信息是否正确？"
+    )
+    
+    confirm_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="✅ 确认提交", callback_data="confirm_feedback_submit"),
+                types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="feedback_center")
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            ]
+        ]
+    )
+    
+    try:
+        await msg.bot.edit_message_caption(
+            chat_id=msg.from_user.id,
+            message_id=message_id,
+            caption=confirm_text,
+            reply_markup=confirm_kb
+        )
+    except Exception as e:
+        logger.error(f"编辑消息失败: {e}")
+
+
+@feedback_router.callback_query(F.data == "confirm_feedback_submit")
+async def cb_confirm_feedback_submit(cb: types.CallbackQuery, state: FSMContext):
+    """确认提交反馈"""
+    data = await state.get_data()
+    feedback_type = data.get('feedback_type', 'other')
+    content = data.get('content', '')
+    file_info = data.get('file_info', '')
+    
+    success = await create_user_feedback(cb.from_user.id, feedback_type, content)
+    
+    # 显示最终结果
     feedback_type_names = {
         "bug": "🐛 Bug反馈",
         "suggestion": "💡 建议反馈",
@@ -85,17 +136,13 @@ async def process_feedback_content(msg: types.Message, state: FSMContext):
     else:
         result_text = "❌ 提交失败，请稍后重试。"
     
-    try:
-        await msg.bot.edit_message_caption(
-            chat_id=msg.from_user.id,
-            message_id=message_id,
-            caption=result_text,
-            reply_markup=back_to_main_kb
-        )
-    except Exception as e:
-        logger.error(f"编辑消息失败: {e}")
+    await cb.message.edit_caption(
+        caption=result_text,
+        reply_markup=back_to_main_kb
+    )
     
     await state.clear()
+    await cb.answer()
 
 
 @feedback_router.callback_query(F.data == "feedback_my")
