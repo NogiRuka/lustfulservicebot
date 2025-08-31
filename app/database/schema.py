@@ -56,6 +56,7 @@ class MovieRequest(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     reviewed_at = Column(DateTime, nullable=True)
     reviewed_by = Column(BigInteger, nullable=True)  # 审核人ID
+    review_note = Column(Text, nullable=True)  # 审核备注
     
     # 关系
     category = relationship("MovieCategory")
@@ -79,6 +80,7 @@ class ContentSubmission(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     reviewed_at = Column(DateTime, nullable=True)
     reviewed_by = Column(BigInteger, nullable=True)  # 审核人ID
+    review_note = Column(Text, nullable=True)  # 审核备注
     
     # 关系
     category = relationship("MovieCategory")

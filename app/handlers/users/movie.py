@@ -7,6 +7,7 @@ from app.utils.states import Wait
 from app.database.business import create_movie_request, get_user_movie_requests, get_all_movie_categories, is_feature_enabled
 from app.buttons.users import movie_center_kb, movie_input_kb, back_to_main_kb
 from app.utils.time_utils import humanize_time, get_status_text
+from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
 
 movie_router = Router()
 
@@ -338,6 +339,16 @@ async def cb_confirm_movie_submit(cb: types.CallbackQuery, state: FSMContext):
 @movie_router.callback_query(F.data == "movie_request_my")
 async def cb_movie_request_my(cb: types.CallbackQuery):
     """我的求片"""
+    await cb_movie_request_my_page(cb, 1)
+
+
+@movie_router.callback_query(F.data.startswith("my_movie_page_"))
+async def cb_movie_request_my_page(cb: types.CallbackQuery, page: int = None):
+    """我的求片分页"""
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "my_movie")
+    
     requests = await get_user_movie_requests(cb.from_user.id)
     
     if not requests:
@@ -350,35 +361,55 @@ async def cb_movie_request_my(cb: types.CallbackQuery):
                 ]
             )
         )
-    else:
-        text = "📋 <b>我的求片</b>\n\n"
-        for i, req in enumerate(requests[:10], 1):  # 最多显示10条
-            status_emoji = {
-                "pending": "⏳",
-                "approved": "✅", 
-                "rejected": "❌"
-            }.get(req.status, "❓")
-            
-            # 使用中文状态和人性化时间
-            status_text = get_status_text(req.status)
-            time_text = humanize_time(req.created_at)
-            
-            text += f"{i}. {status_emoji} {req.title}\n"
-            text += f"   状态：{status_text} | {time_text}\n\n"
-        
-        if len(requests) > 10:
-            text += f"... 还有 {len(requests) - 10} 条记录\n\n"
-        
-        text += "如需返回上一级或主菜单，请点击下方按钮。"
-        
-        await cb.message.edit_caption(
-            caption=text,
-            reply_markup=types.InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center")],
-                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
-                ]
-            )
-        )
+        await cb.answer()
+        return
     
+    paginator = Paginator(requests, page_size=5)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
+    
+    # 构建页面内容
+    text = format_page_header("📋 <b>我的求片</b>", page_info)
+    
+    start_num = (page - 1) * paginator.page_size + 1
+    for i, req in enumerate(page_items, start_num):
+        status_emoji = {
+            "pending": "⏳",
+            "approved": "✅", 
+            "rejected": "❌"
+        }.get(req.status, "❓")
+        
+        # 使用中文状态和人性化时间
+        status_text = get_status_text(req.status)
+        time_text = humanize_time(req.created_at)
+        
+        text += f"{i}. {status_emoji} {req.title}\n"
+        text += f"   状态：{status_text} | {time_text}\n"
+        
+        # 显示审核备注（如果有）
+        if hasattr(req, 'review_note') and req.review_note:
+            text += f"   💬 备注：{req.review_note}\n"
+        
+        text += "\n"
+    
+    # 创建分页键盘
+    extra_buttons = [
+        [
+            types.InlineKeyboardButton(text="🎬 继续求片", callback_data="movie_request_new"),
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data=f"my_movie_page_{page}")
+        ],
+        [
+            types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        ]
+    ]
+    
+    keyboard = paginator.create_pagination_keyboard(
+        page, "my_movie", extra_buttons
+    )
+    
+    await cb.message.edit_caption(
+        caption=text,
+        reply_markup=keyboard
+    )
     await cb.answer()

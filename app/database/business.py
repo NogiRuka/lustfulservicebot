@@ -129,7 +129,7 @@ async def get_pending_movie_requests() -> List[MovieRequest]:
             return []
 
 
-async def review_movie_request(request_id: int, reviewer_id: int, status: str) -> bool:
+async def review_movie_request(request_id: int, reviewer_id: int, status: str, review_note: str = None) -> bool:
     """审核求片请求"""
     async for session in get_db():
         try:
@@ -139,16 +139,18 @@ async def review_movie_request(request_id: int, reviewer_id: int, status: str) -
                 .values(
                     status=status,
                     reviewed_at=datetime.now(),
-                    reviewed_by=reviewer_id
+                    reviewed_by=reviewer_id,
+                    review_note=review_note
                 )
             )
             
             # 记录管理员操作
+            note_text = f"，备注：{review_note}" if review_note else ""
             action = AdminAction(
                 admin_id=reviewer_id,
                 action_type="review",
                 target_id=request_id,
-                description=f"审核求片请求 {request_id}，结果：{status}"
+                description=f"审核求片请求 {request_id}，结果：{status}{note_text}"
             )
             session.add(action)
             
@@ -215,7 +217,7 @@ async def get_pending_content_submissions() -> List[ContentSubmission]:
             return []
 
 
-async def review_content_submission(submission_id: int, reviewer_id: int, status: str) -> bool:
+async def review_content_submission(submission_id: int, reviewer_id: int, status: str, review_note: str = None) -> bool:
     """审核内容投稿"""
     async for session in get_db():
         try:
@@ -225,16 +227,18 @@ async def review_content_submission(submission_id: int, reviewer_id: int, status
                 .values(
                     status=status,
                     reviewed_at=datetime.now(),
-                    reviewed_by=reviewer_id
+                    reviewed_by=reviewer_id,
+                    review_note=review_note
                 )
             )
             
             # 记录管理员操作
+            note_text = f"，备注：{review_note}" if review_note else ""
             action = AdminAction(
                 admin_id=reviewer_id,
                 action_type="review",
                 target_id=submission_id,
-                description=f"审核内容投稿 {submission_id}，结果：{status}"
+                description=f"审核内容投稿 {submission_id}，结果：{status}{note_text}"
             )
             session.add(action)
             

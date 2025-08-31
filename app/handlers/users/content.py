@@ -7,6 +7,7 @@ from app.utils.states import Wait
 from app.database.business import create_content_submission, get_user_content_submissions, is_feature_enabled, get_all_movie_categories
 from app.buttons.users import content_center_kb, content_input_kb, back_to_main_kb
 from app.utils.time_utils import humanize_time, get_status_text
+from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
 
 content_router = Router()
 
@@ -307,6 +308,16 @@ async def cb_confirm_content_submit(cb: types.CallbackQuery, state: FSMContext):
 @content_router.callback_query(F.data == "content_submit_my")
 async def cb_content_submit_my(cb: types.CallbackQuery):
     """我的投稿"""
+    await cb_content_submit_my_page(cb, 1)
+
+
+@content_router.callback_query(F.data.startswith("my_content_page_"))
+async def cb_content_submit_my_page(cb: types.CallbackQuery, page: int = None):
+    """我的投稿分页"""
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "my_content")
+    
     submissions = await get_user_content_submissions(cb.from_user.id)
     
     if not submissions:
@@ -319,35 +330,55 @@ async def cb_content_submit_my(cb: types.CallbackQuery):
                 ]
             )
         )
-    else:
-        text = "📋 <b>我的投稿</b>\n\n"
-        for i, sub in enumerate(submissions[:10], 1):  # 最多显示10条
-            status_emoji = {
-                "pending": "⏳",
-                "approved": "✅", 
-                "rejected": "❌"
-            }.get(sub.status, "❓")
-            
-            # 使用中文状态和人性化时间
-            status_text = get_status_text(sub.status)
-            time_text = humanize_time(sub.created_at)
-            
-            text += f"{i}. {status_emoji} {sub.title}\n"
-            text += f"   状态：{status_text} | {time_text}\n\n"
-        
-        if len(submissions) > 10:
-            text += f"... 还有 {len(submissions) - 10} 条记录\n\n"
-        
-        text += "如需返回上一级或主菜单，请点击下方按钮。"
-        
-        await cb.message.edit_caption(
-            caption=text,
-            reply_markup=types.InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
-                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
-                ]
-            )
-        )
+        await cb.answer()
+        return
     
+    paginator = Paginator(submissions, page_size=5)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
+    
+    # 构建页面内容
+    text = format_page_header("📋 <b>我的投稿</b>", page_info)
+    
+    start_num = (page - 1) * paginator.page_size + 1
+    for i, sub in enumerate(page_items, start_num):
+        status_emoji = {
+            "pending": "⏳",
+            "approved": "✅", 
+            "rejected": "❌"
+        }.get(sub.status, "❓")
+        
+        # 使用中文状态和人性化时间
+        status_text = get_status_text(sub.status)
+        time_text = humanize_time(sub.created_at)
+        
+        text += f"{i}. {status_emoji} {sub.title}\n"
+        text += f"   状态：{status_text} | {time_text}\n"
+        
+        # 显示审核备注（如果有）
+        if hasattr(sub, 'review_note') and sub.review_note:
+            text += f"   💬 备注：{sub.review_note}\n"
+        
+        text += "\n"
+    
+    # 创建分页键盘
+    extra_buttons = [
+        [
+            types.InlineKeyboardButton(text="📝 继续投稿", callback_data="content_submit_new"),
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data=f"my_content_page_{page}")
+        ],
+        [
+            types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        ]
+    ]
+    
+    keyboard = paginator.create_pagination_keyboard(
+        page, "my_content", extra_buttons
+    )
+    
+    await cb.message.edit_caption(
+        caption=text,
+        reply_markup=keyboard
+    )
     await cb.answer()
