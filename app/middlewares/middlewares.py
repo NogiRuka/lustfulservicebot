@@ -45,7 +45,18 @@ class BotStatusMiddleware(BaseMiddleware):
     ) -> Any:
         # 检查机器人是否启用
         if not await is_feature_enabled("bot_enabled"):
-            # 如果是消息事件，发送维护提示
+            # 检查是否为超管，超管在维护模式下仍可使用
+            user_id = None
+            if hasattr(event, 'from_user') and event.from_user:
+                user_id = event.from_user.id
+            
+            # 如果是超管，允许继续使用
+            if user_id:
+                from app.config import SUPERADMIN_ID
+                if user_id == SUPERADMIN_ID:
+                    return await handler(event, data)
+            
+            # 非超管用户，发送维护提示
             if hasattr(event, 'answer'):
                 try:
                     await event.answer(
@@ -61,7 +72,8 @@ class BotStatusMiddleware(BaseMiddleware):
                         "🔧 <b>机器人维护中</b>\n\n"
                         "系统正在进行维护升级，暂时无法提供服务。\n\n"
                         "📅 预计恢复时间：请关注公告\n"
-                        "💬 如有紧急问题，请联系管理员",
+                        "💬 如有紧急问题，请联系管理员\n\n"
+                        "💡 <i>超管仍可正常使用所有功能</i>",
                         parse_mode="HTML"
                     )
                 except:
