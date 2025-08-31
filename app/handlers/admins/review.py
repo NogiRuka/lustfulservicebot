@@ -110,16 +110,15 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
             media_keyboard = types.InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
-                        types.InlineKeyboardButton(text=f"✅ 通过 #{req.id}", callback_data=f"approve_movie_{req.id}"),
-                        types.InlineKeyboardButton(text=f"❌ 拒绝 #{req.id}", callback_data=f"reject_movie_{req.id}")
+                        types.InlineKeyboardButton(text=f"✅ 通过 #{req.id}", callback_data=f"approve_movie_media_{req.id}"),
+                        types.InlineKeyboardButton(text=f"❌ 拒绝 #{req.id}", callback_data=f"reject_movie_media_{req.id}")
                     ],
                     [
-                        types.InlineKeyboardButton(text=f"💬 留言通过 #{req.id}", callback_data=f"approve_movie_note_{req.id}"),
-                        types.InlineKeyboardButton(text=f"💬 留言拒绝 #{req.id}", callback_data=f"reject_movie_note_{req.id}")
+                        types.InlineKeyboardButton(text=f"💬 留言通过 #{req.id}", callback_data=f"approve_movie_note_media_{req.id}"),
+                        types.InlineKeyboardButton(text=f"💬 留言拒绝 #{req.id}", callback_data=f"reject_movie_note_media_{req.id}")
                     ],
                     [
-                        types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_movie_detail_{req.id}"),
-                        types.InlineKeyboardButton(text="🔙 返回列表", callback_data="admin_review_movie")
+                        types.InlineKeyboardButton(text="🗑️ 关闭消息", callback_data=f"delete_media_message_{req.id}")
                     ]
                 ]
             )
@@ -449,8 +448,131 @@ async def cb_reject_content(cb: types.CallbackQuery):
     success = await review_content_submission(submission_id, cb.from_user.id, "rejected")
     
     if success:
-        await cb.answer(f"❌ 已拒绝投稿 {submission_id}")
+        await cb.answer(f"❌ 已拒绝投稿 {submission_id}", show_alert=True)
         # 刷新审核列表
         await cb_admin_review_content(cb)
     else:
-        await cb.answer("❌ 操作失败，请检查投稿ID是否正确")
+        await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
+
+
+# ==================== 媒体消息审核操作 ====================
+
+@review_router.callback_query(F.data.startswith("approve_movie_media_"))
+async def cb_approve_movie_media(cb: types.CallbackQuery):
+    """媒体消息快速通过求片"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    success = await review_movie_request(request_id, cb.from_user.id, "approved")
+    
+    if success:
+        await cb.answer(f"✅ 已通过求片 {request_id}", show_alert=True)
+        # 删除媒体消息
+        try:
+            await cb.message.delete()
+        except Exception as e:
+            logger.warning(f"删除媒体消息失败: {e}")
+    else:
+        await cb.answer("❌ 操作失败，请检查求片ID是否正确", show_alert=True)
+
+
+@review_router.callback_query(F.data.startswith("reject_movie_media_"))
+async def cb_reject_movie_media(cb: types.CallbackQuery):
+    """媒体消息快速拒绝求片"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    success = await review_movie_request(request_id, cb.from_user.id, "rejected")
+    
+    if success:
+        await cb.answer(f"❌ 已拒绝求片 {request_id}", show_alert=True)
+        # 删除媒体消息
+        try:
+            await cb.message.delete()
+        except Exception as e:
+            logger.warning(f"删除媒体消息失败: {e}")
+    else:
+        await cb.answer("❌ 操作失败，请检查求片ID是否正确", show_alert=True)
+
+
+@review_router.callback_query(F.data.startswith("approve_movie_note_media_"))
+async def cb_approve_movie_note_media(cb: types.CallbackQuery, state: FSMContext):
+    """媒体消息留言通过求片"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    # 保存审核信息到状态
+    await state.update_data({
+        'review_type': 'movie',
+        'review_id': request_id,
+        'review_action': 'approved',
+        'message_id': cb.message.message_id,
+        'is_media_message': True
+    })
+    
+    await state.set_state(Wait.waitReviewNote)
+    
+    # 更新媒体消息为留言输入状态
+    note_keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="⏭️ 跳过留言", callback_data="skip_review_note"),
+                types.InlineKeyboardButton(text="🗑️ 关闭消息", callback_data=f"delete_media_message_{request_id}")
+            ]
+        ]
+    )
+    
+    try:
+        await cb.message.edit_caption(
+            caption=f"💬 <b>审核留言</b>\n\n请输入通过求片 #{request_id} 的留言（可选）：",
+            reply_markup=note_keyboard
+        )
+    except Exception as e:
+        logger.warning(f"编辑媒体消息失败: {e}")
+    
+    await cb.answer()
+
+
+@review_router.callback_query(F.data.startswith("reject_movie_note_media_"))
+async def cb_reject_movie_note_media(cb: types.CallbackQuery, state: FSMContext):
+    """媒体消息留言拒绝求片"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    # 保存审核信息到状态
+    await state.update_data({
+        'review_type': 'movie',
+        'review_id': request_id,
+        'review_action': 'rejected',
+        'message_id': cb.message.message_id,
+        'is_media_message': True
+    })
+    
+    await state.set_state(Wait.waitReviewNote)
+    
+    # 更新媒体消息为留言输入状态
+    note_keyboard = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="⏭️ 跳过留言", callback_data="skip_review_note"),
+                types.InlineKeyboardButton(text="🗑️ 关闭消息", callback_data=f"delete_media_message_{request_id}")
+            ]
+        ]
+    )
+    
+    try:
+        await cb.message.edit_caption(
+            caption=f"💬 <b>审核留言</b>\n\n请输入拒绝求片 #{request_id} 的留言（可选）：",
+            reply_markup=note_keyboard
+        )
+    except Exception as e:
+        logger.warning(f"编辑媒体消息失败: {e}")
+    
+    await cb.answer()
+
+
+@review_router.callback_query(F.data.startswith("delete_media_message_"))
+async def cb_delete_media_message(cb: types.CallbackQuery, state: FSMContext):
+    """删除媒体消息"""
+    try:
+        await cb.message.delete()
+        await state.clear()  # 清除状态
+    except Exception as e:
+        logger.warning(f"删除媒体消息失败: {e}")
+        await cb.answer("❌ 删除消息失败", show_alert=True)

@@ -216,22 +216,34 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
     
     if success:
         action_text = "通过" if review_action == "approved" else "拒绝"
-        result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{item_type} #{review_id}\n💬 留言：无\n\n审核结果已保存。"
         
-        # 显示结果页面
-        result_kb = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content"),
-                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        # 检查是否为媒体消息
+        is_media_message = data.get('is_media_message', False)
+        
+        if is_media_message:
+            # 媒体消息直接删除
+            await cb.answer(f"✅ 已{action_text}{item_type} {review_id}（无留言）", show_alert=True)
+            try:
+                await cb.message.delete()
+            except Exception as e:
+                logger.warning(f"删除媒体消息失败: {e}")
+        else:
+            # 普通消息显示结果页面
+            result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{item_type} #{review_id}\n💬 留言：无\n\n审核结果已保存。"
+            
+            result_kb = types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content"),
+                        types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                    ]
                 ]
-            ]
-        )
-        
-        await cb.message.edit_caption(
-            caption=result_text,
-            reply_markup=result_kb
-        )
+            )
+            
+            await cb.message.edit_caption(
+                caption=result_text,
+                reply_markup=result_kb
+            )
     else:
         await cb.answer("❌ 审核失败，请重试", show_alert=True)
     
@@ -262,22 +274,35 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
     
     if success:
         action_text = "通过" if review_action == "approved" else "拒绝"
-        result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{item_type} #{review_id}\n💬 留言：{review_note}\n\n审核结果已保存，用户将看到您的留言。"
         
-        # 显示结果页面
-        result_kb = types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content"),
-                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        # 检查是否为媒体消息
+        is_media_message = data.get('is_media_message', False)
+        
+        if is_media_message:
+            # 媒体消息直接删除
+            note_preview = review_note[:30] + ('...' if len(review_note) > 30 else '') if review_note else "无留言"
+            await cb.answer(f"✅ 已{action_text}{item_type} {review_id}（{note_preview}）", show_alert=True)
+            try:
+                await cb.message.delete()
+            except Exception as e:
+                logger.warning(f"删除媒体消息失败: {e}")
+        else:
+            # 普通消息显示结果页面
+            result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{item_type} #{review_id}\n💬 留言：{review_note}\n\n审核结果已保存，用户将看到您的留言。"
+            
+            result_kb = types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content"),
+                        types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                    ]
                 ]
-            ]
-        )
-        
-        await cb.message.edit_caption(
-            caption=result_text,
-            reply_markup=result_kb
-        )
+            )
+            
+            await cb.message.edit_caption(
+                caption=result_text,
+                reply_markup=result_kb
+            )
     else:
         await cb.answer("❌ 审核失败，请重试", show_alert=True)
     
