@@ -624,7 +624,7 @@ async def cb_admin_all_movies(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_router.callback_query(F.data.startswith("all_movie_page_"))
-async def cb_admin_all_movies_page(cb: types.CallbackQuery, page: int = None, state: FSMContext = None):
+async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, page: int = None):
     """所有求片分页"""
     # 提取页码
     if page is None:
@@ -756,7 +756,7 @@ async def cb_admin_all_content(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_router.callback_query(F.data.startswith("all_content_page_"))
-async def cb_admin_all_content_page(cb: types.CallbackQuery, page: int = None, state: FSMContext = None):
+async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext, page: int = None):
     """所有投稿分页"""
     # 提取页码
     if page is None:
