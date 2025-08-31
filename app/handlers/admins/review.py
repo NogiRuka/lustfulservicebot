@@ -233,7 +233,35 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
         
         # 媒体链接
         if sub.file_id:
-            text += f"└ 📎 [查看附件](https://t.me/c/{sub.file_id})\n"
+            # 美化的媒体消息发送
+            media_caption = (
+                f"📝 <b>【{category_name}】{sub.title}</b>\n\n"
+                f"🆔 <b>投稿ID</b>：<code>{sub.id}</code>\n"
+                f"👤 <b>用户</b>：{sub.user_id}\n"
+                f"⏰ <b>时间</b>：{humanize_time(sub.created_at)}\n"
+                f"🏷️ <b>状态</b>：<code>{status_text}</code>\n\n"
+            )
+            
+            content_preview = sub.content[:200] + ('...' if len(sub.content) > 200 else '')
+            media_caption += f"📄 <b>内容</b>：\n{content_preview}\n\n"
+            
+            # 显示审核备注（如果有）
+            if hasattr(sub, 'review_note') and sub.review_note:
+                media_caption += f"💬 <b>审核备注</b>：\n{sub.review_note}\n\n"
+            
+            media_caption += "📎 <b>附件预览</b> ⬆️"
+            
+            try:
+                await cb.message.bot.send_photo(
+                    chat_id=cb.from_user.id, 
+                    photo=sub.file_id, 
+                    caption=media_caption,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"发送媒体消息失败: {e}")
+            
+            text += f"└ 📎 <b>附件已发送</b> ✅\n"
         else:
             text += f"└─────────────────\n"
         
@@ -633,17 +661,49 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, page: int = None):
             desc_preview = req.description[:60] + ('...' if len(req.description) > 60 else '')
             text += f"├ 📝 描述：{desc_preview}\n"
         
-        # 显示审核备注（如果有）
-        if hasattr(req, 'review_note') and req.review_note:
-            note_preview = req.review_note[:60] + ('...' if len(req.review_note) > 60 else '')
-            text += f"└ 💬 <b>审核备注</b>：<blockquote>{note_preview}</blockquote>\n"
+        # 媒体链接
+        if hasattr(req, 'file_id') and req.file_id:
+            # 美化的媒体消息发送
+            media_caption = (
+                f"🎬 <b>【{category_name}】{req.title}</b>\n\n"
+                f"🆔 <b>求片ID</b>：<code>{req.id}</code>\n"
+                f"👤 <b>用户</b>：{req.user_id}\n"
+                f"⏰ <b>时间</b>：{humanize_time(req.created_at)}\n"
+                f"🏷️ <b>状态</b>：<code>{status_text}</code>\n\n"
+            )
+            
+            if req.description:
+                media_caption += f"📝 <b>描述</b>：\n{req.description}\n\n"
+            
+            # 显示审核备注（如果有）
+            if hasattr(req, 'review_note') and req.review_note:
+                media_caption += f"💬 <b>审核备注</b>：\n{req.review_note}\n\n"
+            
+            media_caption += "📎 <b>附件预览</b> ⬆️"
+            
+            try:
+                await cb.message.bot.send_photo(
+                    chat_id=cb.from_user.id, 
+                    photo=req.file_id, 
+                    caption=media_caption,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"发送媒体消息失败: {e}")
+            
+            text += f"└ 📎 <b>附件已发送</b> ✅\n"
         else:
-            text += f"└─────────────────\n"
+            # 显示审核备注（如果有）
+            if hasattr(req, 'review_note') and req.review_note:
+                note_preview = req.review_note[:60] + ('...' if len(req.review_note) > 60 else '')
+                text += f"└ 💬 <b>审核备注</b>：<blockquote>{note_preview}</blockquote>\n"
+            else:
+                text += f"└─────────────────\n"
         
         text += "\n"
     
     # 创建分页键盘
-    keyboard = paginator.get_keyboard(
+    keyboard = paginator.create_pagination_keyboard(
         page, 
         "all_movie_page",
         extra_buttons=[
@@ -712,17 +772,49 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, page: int = None):
         content_preview = sub.content[:60] + ('...' if len(sub.content) > 60 else '')
         text += f"├ 📄 内容：{content_preview}\n"
         
-        # 显示审核备注（如果有）
-        if hasattr(sub, 'review_note') and sub.review_note:
-            note_preview = sub.review_note[:60] + ('...' if len(sub.review_note) > 60 else '')
-            text += f"└ 💬 <b>审核备注</b>：<blockquote>{note_preview}</blockquote>\n"
+        # 媒体链接
+        if hasattr(sub, 'file_id') and sub.file_id:
+            # 美化的媒体消息发送
+            media_caption = (
+                f"📝 <b>【{category_name}】{sub.title}</b>\n\n"
+                f"🆔 <b>投稿ID</b>：<code>{sub.id}</code>\n"
+                f"👤 <b>用户</b>：{sub.user_id}\n"
+                f"⏰ <b>时间</b>：{humanize_time(sub.created_at)}\n"
+                f"🏷️ <b>状态</b>：<code>{status_text}</code>\n\n"
+            )
+            
+            content_full = sub.content[:200] + ('...' if len(sub.content) > 200 else '')
+            media_caption += f"📄 <b>内容</b>：\n{content_full}\n\n"
+            
+            # 显示审核备注（如果有）
+            if hasattr(sub, 'review_note') and sub.review_note:
+                media_caption += f"💬 <b>审核备注</b>：\n{sub.review_note}\n\n"
+            
+            media_caption += "📎 <b>附件预览</b> ⬆️"
+            
+            try:
+                await cb.message.bot.send_photo(
+                    chat_id=cb.from_user.id, 
+                    photo=sub.file_id, 
+                    caption=media_caption,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"发送媒体消息失败: {e}")
+            
+            text += f"└ 📎 <b>附件已发送</b> ✅\n"
         else:
-            text += f"└─────────────────\n"
+            # 显示审核备注（如果有）
+            if hasattr(sub, 'review_note') and sub.review_note:
+                note_preview = sub.review_note[:60] + ('...' if len(sub.review_note) > 60 else '')
+                text += f"└ 💬 <b>审核备注</b>：<blockquote>{note_preview}</blockquote>\n"
+            else:
+                text += f"└─────────────────\n"
         
         text += "\n"
     
     # 创建分页键盘
-    keyboard = paginator.get_keyboard(
+    keyboard = paginator.create_pagination_keyboard(
         page, 
         "all_content_page",
         extra_buttons=[
