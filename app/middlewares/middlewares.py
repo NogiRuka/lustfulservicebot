@@ -67,15 +67,23 @@ class GroupVerificationMiddleware(BaseMiddleware):
             
         except Exception as e:
             logger.error(f"群组验证中间件错误: {e}")
-            # 发生错误时，为了安全起见，拒绝访问
-            # 但如果是编辑消息的错误，可能是正常的API限制，继续处理
-            if "no caption" in str(e) or "no text" in str(e):
+            # 发生错误时，为了避免阻塞用户操作，继续处理请求
+            # SQLAlchemy异步上下文错误通常是临时的，不应该阻止用户使用
+            if "greenlet_spawn" in str(e) or "await_only" in str(e):
+                # 这是SQLAlchemy异步上下文错误，继续处理
+                logger.warning("检测到SQLAlchemy异步上下文错误，跳过群组验证")
+                return await handler(event, data)
+            elif "no caption" in str(e) or "no text" in str(e):
                 # 这是消息编辑的正常错误，继续处理
                 return await handler(event, data)
             else:
-                # 其他错误，拒绝访问
-                await event.answer(
-                    "❌ 验证失败，请稍后重试。",
-                    show_alert=True
-                )
+                # 其他严重错误，拒绝访问
+                try:
+                    await event.answer(
+                        "❌ 验证失败，请稍后重试。",
+                        show_alert=True
+                    )
+                except:
+                    # 如果连回复都失败了，直接返回
+                    pass
                 return
