@@ -631,7 +631,7 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, p
         page = extract_page_from_callback(cb.data, "all_movie")
     
     # 删除之前发送的媒体消息
-    if state:
+    try:
         data = await state.get_data()
         sent_media_ids = data.get('sent_media_ids', [])
         for message_id in sent_media_ids:
@@ -640,6 +640,10 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, p
             except Exception as e:
                 logger.warning(f"删除媒体消息失败: {e}")
         # 清空已发送的媒体消息ID列表
+        await state.update_data(sent_media_ids=[])
+    except Exception as e:
+        logger.warning(f"状态处理失败: {e}")
+        # 如果状态处理失败，初始化一个空的媒体消息列表
         await state.update_data(sent_media_ids=[])
     
     requests = await get_all_movie_requests()
@@ -709,11 +713,13 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, p
                     parse_mode="HTML"
                 )
                 # 记录发送的媒体消息ID
-                if state:
+                try:
                     data = await state.get_data()
                     sent_media_ids = data.get('sent_media_ids', [])
                     sent_media_ids.append(sent_message.message_id)
                     await state.update_data(sent_media_ids=sent_media_ids)
+                except Exception as e:
+                    logger.warning(f"记录媒体消息ID失败: {e}")
             except Exception as e:
                 logger.warning(f"发送媒体消息失败: {e}")
             
@@ -763,7 +769,7 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext, 
         page = extract_page_from_callback(cb.data, "all_content")
     
     # 删除之前发送的媒体消息
-    if state:
+    try:
         data = await state.get_data()
         sent_media_ids = data.get('sent_media_ids', [])
         for message_id in sent_media_ids:
@@ -772,6 +778,10 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext, 
             except Exception as e:
                 logger.warning(f"删除媒体消息失败: {e}")
         # 清空已发送的媒体消息ID列表
+        await state.update_data(sent_media_ids=[])
+    except Exception as e:
+        logger.warning(f"状态处理失败: {e}")
+        # 如果状态处理失败，初始化一个空的媒体消息列表
         await state.update_data(sent_media_ids=[])
     
     submissions = await get_all_content_submissions()
@@ -840,11 +850,13 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext, 
                     parse_mode="HTML"
                 )
                 # 记录发送的媒体消息ID
-                if state:
+                try:
                     data = await state.get_data()
                     sent_media_ids = data.get('sent_media_ids', [])
                     sent_media_ids.append(sent_message.message_id)
                     await state.update_data(sent_media_ids=sent_media_ids)
+                except Exception as e:
+                    logger.warning(f"记录媒体消息ID失败: {e}")
             except Exception as e:
                 logger.warning(f"发送媒体消息失败: {e}")
             
