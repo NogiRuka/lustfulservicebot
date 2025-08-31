@@ -187,6 +187,12 @@ async def cb_other_functions(cb: types.CallbackQuery):
     await cb.answer()
 
 
+@basic_router.callback_query(F.data == "user_help")
+async def cb_user_help(cb: types.CallbackQuery):
+    """帮助信息"""
+    await cb.answer("📖 暂无帮助信息", show_alert=True)
+
+
 # 普通文本消息：防并发回显
 @basic_router.message(F.text, IsCommand(), IsBusyFilter())
 async def message(msg: types.Message, state: FSMContext):
@@ -197,8 +203,3 @@ async def message(msg: types.Message, state: FSMContext):
         logger.debug(f"用户 {msg.from_user.id} 处于状态 {current_state}，跳过通用消息处理")
         return
     
-    await asyncio.sleep(1)
-    await msg.reply(
-        f"📝 您发送的消息：{msg.text}\n\n"
-        "💡 提示：使用 /menu 查看功能菜单"
-    )
