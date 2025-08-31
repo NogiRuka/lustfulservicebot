@@ -10,7 +10,8 @@ from app.database.users import get_user, get_role
 from app.database.business import (
     promote_user_to_admin, demote_admin_to_user, get_admin_list, get_all_feedback_list,
     get_all_movie_categories, create_movie_category, update_movie_category, delete_movie_category,
-    get_all_system_settings, set_system_setting, is_feature_enabled
+    get_all_system_settings, set_system_setting, is_feature_enabled,
+    get_all_dev_changelogs, create_dev_changelog, get_dev_changelog_by_id, update_dev_changelog, delete_dev_changelog
 )
 from app.buttons.users import superadmin_manage_center_kb, superadmin_action_kb, back_to_main_kb
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
@@ -49,6 +50,218 @@ async def cb_superadmin_manage_center(cb: types.CallbackQuery):
         reply_markup=superadmin_manage_center_kb
     )
     await cb.answer()
+
+
+# ==================== 开发日志管理 ====================
+
+@superadmin_router.callback_query(F.data == "dev_changelog_view")
+async def cb_dev_changelog_view(cb: types.CallbackQuery):
+    """查看开发日志"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    changelogs = await get_all_dev_changelogs()
+    
+    if not changelogs:
+        text = "📋 <b>开发日志</b>\n\n暂无开发日志记录。\n\n💡 使用 /add_changelog 添加新的开发日志"
+    else:
+        text = "📋 <b>开发日志</b>\n\n"
+        text += f"📊 共有 {len(changelogs)} 条记录\n\n"
+        
+        for i, log in enumerate(changelogs[:10], 1):  # 显示最新10条
+            type_emoji = {
+                "update": "🔄",
+                "bugfix": "🐛",
+                "feature": "✨",
+                "hotfix": "🚨"
+            }.get(log.changelog_type, "📝")
+            
+            type_text = {
+                "update": "更新",
+                "bugfix": "修复",
+                "feature": "新功能",
+                "hotfix": "热修复"
+            }.get(log.changelog_type, "其他")
+            
+            from app.utils.time_utils import humanize_time
+            
+            text += f"┌─ {i}. {type_emoji} <b>v{log.version}</b>\n"
+            text += f"├ 📝 标题：{log.title}\n"
+            text += f"├ 🏷️ 类型：{type_text}\n"
+            text += f"└ ⏰ 时间：<i>{humanize_time(log.created_at)}</i>\n\n"
+        
+        if len(changelogs) > 10:
+            text += f"... 还有 {len(changelogs) - 10} 条记录\n\n"
+        
+        text += "💡 管理命令：\n"
+        text += "├ /add_changelog - 添加开发日志\n"
+        text += "├ /edit_changelog [ID] - 编辑日志\n"
+        text += "└ /del_changelog [ID] - 删除日志"
+    
+    changelog_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="dev_changelog_view"),
+                types.InlineKeyboardButton(text="➕ 添加日志", callback_data="dev_changelog_add")
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回其他功能", callback_data="other_functions"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            ]
+        ]
+    )
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=changelog_kb
+    )
+    await cb.answer()
+
+
+@superadmin_router.callback_query(F.data == "dev_changelog_add")
+async def cb_dev_changelog_add(cb: types.CallbackQuery, state: FSMContext):
+    """添加开发日志提示"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    text = (
+        "➕ <b>添加开发日志</b>\n\n"
+        "请使用以下命令格式添加开发日志：\n\n"
+        "<code>/add_changelog [版本] [类型] [标题] [内容]</code>\n\n"
+        "📋 <b>参数说明</b>：\n"
+        "├ 版本：如 1.0.0, 1.2.3\n"
+        "├ 类型：update/bugfix/feature/hotfix\n"
+        "├ 标题：简短描述\n"
+        "└ 内容：详细说明\n\n"
+        "💡 <b>示例</b>：\n"
+        "<code>/add_changelog 1.0.1 bugfix 修复登录问题 修复了用户登录时的验证错误</code>"
+    )
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回日志列表", callback_data="dev_changelog_view"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                ]
+            ]
+        )
+    )
+    await cb.answer()
+
+
+@superadmin_router.message(Command("add_changelog"))
+async def superadmin_add_changelog_cmd(msg: types.Message):
+    """添加开发日志命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=4)
+    if len(parts) < 5:
+        await msg.reply(
+            "用法：/add_changelog [版本] [类型] [标题] [内容]\n\n"
+            "类型支持：update/bugfix/feature/hotfix\n"
+            "示例：/add_changelog 1.0.1 bugfix 修复登录问题 修复了用户登录时的验证错误"
+        )
+        return
+    
+    version = parts[1]
+    changelog_type = parts[2].lower()
+    title = parts[3]
+    content = parts[4]
+    
+    if changelog_type not in ["update", "bugfix", "feature", "hotfix"]:
+        await msg.reply("❌ 类型必须是：update/bugfix/feature/hotfix")
+        return
+    
+    success = await create_dev_changelog(version, title, content, changelog_type, msg.from_user.id)
+    
+    if success:
+        await msg.reply(f"✅ 开发日志已添加\n\n📋 版本：{version}\n🏷️ 类型：{changelog_type}\n📝 标题：{title}")
+    else:
+        await msg.reply("❌ 添加开发日志失败")
+
+
+@superadmin_router.message(Command("edit_changelog"))
+async def superadmin_edit_changelog_cmd(msg: types.Message):
+    """编辑开发日志命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=5)
+    if len(parts) < 6:
+        await msg.reply(
+            "用法：/edit_changelog [ID] [版本] [类型] [标题] [内容]\n\n"
+            "类型支持：update/bugfix/feature/hotfix\n"
+            "示例：/edit_changelog 1 1.0.2 bugfix 修复登录问题 修复了用户登录时的验证错误"
+        )
+        return
+    
+    try:
+        changelog_id = int(parts[1])
+    except ValueError:
+        await msg.reply("❌ ID必须是数字")
+        return
+    
+    version = parts[2]
+    changelog_type = parts[3].lower()
+    title = parts[4]
+    content = parts[5]
+    
+    if changelog_type not in ["update", "bugfix", "feature", "hotfix"]:
+        await msg.reply("❌ 类型必须是：update/bugfix/feature/hotfix")
+        return
+    
+    success = await update_dev_changelog(changelog_id, version, title, content, changelog_type)
+    
+    if success:
+        await msg.reply(f"✅ 开发日志已更新\n\n🆔 ID：{changelog_id}\n📋 版本：{version}\n🏷️ 类型：{changelog_type}\n📝 标题：{title}")
+    else:
+        await msg.reply("❌ 更新开发日志失败，请检查ID是否正确")
+
+
+@superadmin_router.message(Command("del_changelog"))
+async def superadmin_delete_changelog_cmd(msg: types.Message):
+    """删除开发日志命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split()
+    if len(parts) != 2:
+        await msg.reply("用法：/del_changelog [ID]\n\n示例：/del_changelog 1")
+        return
+    
+    try:
+        changelog_id = int(parts[1])
+    except ValueError:
+        await msg.reply("❌ ID必须是数字")
+        return
+    
+    # 先获取日志信息用于确认
+    changelog = await get_dev_changelog_by_id(changelog_id)
+    if not changelog:
+        await msg.reply("❌ 找不到指定的开发日志")
+        return
+    
+    success = await delete_dev_changelog(changelog_id)
+    
+    if success:
+        await msg.reply(f"✅ 开发日志已删除\n\n🆔 ID：{changelog_id}\n📋 版本：{changelog.version}\n📝 标题：{changelog.title}")
+    else:
+        await msg.reply("❌ 删除开发日志失败")
 
 
 @superadmin_router.callback_query(F.data == "superadmin_add_admin")
@@ -248,7 +461,7 @@ async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
         if len(pending_feedbacks) > 5:
             text += f"... 还有 {len(pending_feedbacks) - 5} 条待处理\n\n"
         
-        text += "💡 使用 /reply [反馈ID] [回复内容] 进行回复"
+        text += "💡 使用 /rp [反馈ID] [回复内容] 进行回复"
     
     await safe_edit_message(
         cb.message,
@@ -687,25 +900,31 @@ async def cb_superadmin_system_settings(cb: types.CallbackQuery):
     
     settings = await get_all_system_settings()
     
-    text = "⚙️ <b>系统设置</b>\n\n"
-    text += f"📊 当前设置数量：{len(settings)}\n\n"
+    text = "⚙️ <b>系统设置中心</b> ⚙️\n\n"
+    text += f"📊 <b>设置概览</b>：共 {len(settings)} 项配置\n\n"
     
     if settings:
-        text += "📋 主要设置：\n"
-        important_keys = [
-            "system_enabled", "movie_request_enabled", "content_submit_enabled", 
-            "feedback_enabled", "admin_panel_enabled", "superadmin_panel_enabled"
-        ]
+        text += "🔧 <b>核心功能开关</b>\n"
+        important_keys = {
+            "bot_enabled": "🤖 机器人总开关",
+            "system_enabled": "🌐 系统总开关", 
+            "movie_request_enabled": "🎬 求片功能", 
+            "content_submit_enabled": "📝 投稿功能",
+            "feedback_enabled": "💬 反馈功能", 
+            "admin_panel_enabled": "👮 管理面板", 
+            "superadmin_panel_enabled": "🛡️ 超管面板"
+        }
         
         for setting in settings:
             if setting.setting_key in important_keys:
-                status = "✅" if setting.setting_value.lower() in ["true", "1", "yes", "on"] else "❌"
-                text += f"{status} {setting.setting_key}: {setting.setting_value}\n"
+                status = "✅ 启用" if setting.setting_value.lower() in ["true", "1", "yes", "on"] else "❌ 禁用"
+                name = important_keys[setting.setting_key]
+                text += f"├ {name}：{status}\n"
         
-        text += "\n💡 使用命令进行管理：\n"
-        text += "/set_setting [键名] [值] - 设置功能开关\n"
-        text += "/toggle_feature [功能名] - 快速切换功能\n"
-        text += "/view_settings - 查看所有设置"
+        text += "\n💡 <b>管理命令</b>：\n"
+        text += "├ /set_setting [键名] [值] - 设置功能开关\n"
+        text += "├ /toggle_feature [功能名] - 快速切换功能\n"
+        text += "└ /view_settings - 查看所有设置"
     else:
         text += "暂无设置\n\n"
         text += "💡 系统将使用默认设置"

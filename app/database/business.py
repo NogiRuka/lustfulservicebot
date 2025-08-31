@@ -1,6 +1,6 @@
 from sqlalchemy import select, delete, func, update
 from sqlalchemy.orm import selectinload
-from app.database.schema import User, MovieRequest, ContentSubmission, UserFeedback, AdminAction, MovieCategory, SystemSettings
+from app.database.schema import User, MovieRequest, ContentSubmission, UserFeedback, AdminAction, MovieCategory, SystemSettings, DevChangelog
 from app.database.db import get_db
 from loguru import logger
 from typing import List, Optional
@@ -575,5 +575,97 @@ async def get_all_system_settings() -> List[SystemSettings]:
 
 async def is_feature_enabled(feature_key: str) -> bool:
     """检查功能是否启用"""
-    setting_value = await get_system_setting(feature_key, "true")
+    setting_value = await get_system_setting(feature_key, "false")
     return setting_value.lower() in ["true", "1", "yes", "on"]
+
+
+# ==================== 开发日志 ====================
+
+async def create_dev_changelog(version: str, title: str, content: str, changelog_type: str, creator_id: int) -> bool:
+    """创建开发日志"""
+    async for session in get_db():
+        try:
+            changelog = DevChangelog(
+                version=version,
+                title=title,
+                content=content,
+                changelog_type=changelog_type,
+                created_by=creator_id
+            )
+            session.add(changelog)
+            await session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"创建开发日志失败: {e}")
+            await session.rollback()
+            return False
+
+
+async def get_all_dev_changelogs() -> List[DevChangelog]:
+    """获取所有开发日志"""
+    async for session in get_db():
+        try:
+            result = await session.execute(
+                select(DevChangelog).order_by(DevChangelog.created_at.desc())
+            )
+            return result.scalars().all()
+        except Exception as e:
+            logger.error(f"获取开发日志失败: {e}")
+            return []
+
+
+async def get_dev_changelog_by_id(changelog_id: int) -> DevChangelog:
+    """根据ID获取开发日志"""
+    async for session in get_db():
+        try:
+            result = await session.execute(
+                select(DevChangelog).where(DevChangelog.id == changelog_id)
+            )
+            return result.scalar_one_or_none()
+        except Exception as e:
+            logger.error(f"获取开发日志失败: {e}")
+            return None
+
+
+async def update_dev_changelog(changelog_id: int, version: str = None, title: str = None, content: str = None, changelog_type: str = None) -> bool:
+    """更新开发日志"""
+    async for session in get_db():
+        try:
+            update_data = {}
+            if version is not None:
+                update_data[DevChangelog.version] = version
+            if title is not None:
+                update_data[DevChangelog.title] = title
+            if content is not None:
+                update_data[DevChangelog.content] = content
+            if changelog_type is not None:
+                update_data[DevChangelog.changelog_type] = changelog_type
+            
+            if update_data:
+                result = await session.execute(
+                    update(DevChangelog)
+                    .where(DevChangelog.id == changelog_id)
+                    .values(**update_data)
+                )
+                await session.commit()
+                return result.rowcount > 0
+            return False
+        except Exception as e:
+            logger.error(f"更新开发日志失败: {e}")
+            await session.rollback()
+            return False
+
+
+async def delete_dev_changelog(changelog_id: int) -> bool:
+    """删除开发日志"""
+    async for session in get_db():
+        try:
+            result = await session.execute(
+                delete(DevChangelog).where(DevChangelog.id == changelog_id)
+            )
+            await session.commit()
+            return result.rowcount > 0
+        except Exception as e:
+            logger.error(f"删除开发日志失败: {e}")
+            await session.rollback()
+            return False

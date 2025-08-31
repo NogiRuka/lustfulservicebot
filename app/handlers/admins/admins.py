@@ -19,7 +19,7 @@ from app.database.business import (
 )
 from app.buttons.users import back_to_main_kb
 from app.database.business import is_feature_enabled
-from app.utils.panel_utils import get_user_display_link, send_feedback_reply_notification
+from app.utils.panel_utils import get_user_display_link, send_feedback_reply_notification, send_admin_message_notification
 from app.utils.time_utils import humanize_time
 import re
 
@@ -228,7 +228,7 @@ async def cb_admin_feedback_browse(cb: types.CallbackQuery):
         if len(feedbacks) > 15:
             text += f"... 还有 {len(feedbacks) - 15} 条记录\n\n"
         
-        text += "💡 使用 /reply [反馈ID] [回复内容] 来回复反馈"
+        text += "💡 使用 /rp [反馈ID] [回复内容] 来回复反馈"
         
         await cb.message.edit_caption(
             caption=text,
@@ -239,12 +239,13 @@ async def cb_admin_feedback_browse(cb: types.CallbackQuery):
 
 # 管理员命令：回复反馈
 @admins_router.message(Command("reply"))
+@admins_router.message(Command("rp"))
 async def admin_reply_feedback(msg: types.Message):
     """回复用户反馈"""
     parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
-        await msg.reply("用法：/reply [反馈ID] [回复内容]")
-        return
+         await msg.reply("用法：/rp [反馈ID] [回复内容]\n别名：/reply")
+         return
     
     try:
         feedback_id = int(parts[1])
@@ -287,19 +288,20 @@ async def admin_reply_feedback(msg: types.Message):
 
 # 管理员命令：向用户发送消息
 @admins_router.message(Command("message"))
+@admins_router.message(Command("msg"))
 async def admin_message_user(msg: types.Message):
     """向特定项目的用户发送消息"""
     parts = msg.text.split(maxsplit=3)
     if len(parts) < 4:
-        await msg.reply(
-            "用法：/message [类型] [ID] [消息内容]\n\n"
-            "类型支持：\n"
-            "• movie - 求片\n"
-            "• content - 投稿\n"
-            "• feedback - 反馈\n\n"
-            "示例：/message movie 123 您的求片已处理完成"
-        )
-        return
+         await msg.reply(
+             "用法：/msg [类型] [ID] [消息内容]\n别名：/message\n\n"
+             "类型支持：\n"
+             "• movie - 求片\n"
+             "• content - 投稿\n"
+             "• feedback - 反馈\n\n"
+             "示例：/msg movie 123 您的求片已处理完成"
+         )
+         return
     
     item_type = parts[1].lower()
     try:
@@ -345,18 +347,8 @@ async def admin_message_user(msg: types.Message):
     
     # 发送消息给用户
     try:
-        notification_text = (
-            f"📨 <b>管理员消息</b> 📨\n\n"
-            f"📋 <b>关于</b>：{type_name} - {item_title}\n"
-            f"🆔 <b>ID</b>：{item_id}\n\n"
-            f"💬 <b>消息内容</b>：\n{message_content}\n\n"
-            f"📝 如有疑问，请联系管理员。"
-        )
-        
-        await msg.bot.send_message(
-            chat_id=user_id,
-            text=notification_text,
-            parse_mode="HTML"
+        await send_admin_message_notification(
+            msg.bot, user_id, item_type, item_title, item_id, message_content
         )
         
         # 发送成功消息给管理员

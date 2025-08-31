@@ -31,3 +31,31 @@ async def init_db() -> None:
     """Create all tables if they do not exist (for SQLite learning mode)."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    # 初始化默认系统设置
+    await init_default_settings()
+
+
+async def init_default_settings() -> None:
+    """初始化默认系统设置"""
+    from app.database.business import get_system_setting, set_system_setting
+    
+    default_settings = {
+        "system_enabled": "true",
+        "bot_enabled": "true",
+        "movie_request_enabled": "true",
+        "content_submit_enabled": "true",
+        "feedback_enabled": "true",
+        "admin_panel_enabled": "true",
+        "superadmin_panel_enabled": "true"
+    }
+    
+    for key, value in default_settings.items():
+        # 只有当设置不存在时才创建默认值
+        existing_value = await get_system_setting(key)
+        if existing_value is None:
+            await set_system_setting(
+                key, value, "boolean", 
+                f"系统默认设置 - {key}", 
+                updater_id=None
+            )

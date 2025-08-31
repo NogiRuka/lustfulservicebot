@@ -180,9 +180,36 @@ async def cb_common_server_info(cb: types.CallbackQuery):
 @basic_router.callback_query(F.data == "other_functions")
 async def cb_other_functions(cb: types.CallbackQuery):
     """其他功能"""
+    from app.database.users import get_role
+    from app.utils.roles import ROLE_SUPERADMIN
+    
+    role = await get_role(cb.from_user.id)
+    
+    # 根据角色显示不同的功能
+    if role == ROLE_SUPERADMIN:
+        # 超管可以看到开发日志
+        kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="🔁 切换忙碌状态", callback_data="user_toggle_busy"),
+                    types.InlineKeyboardButton(text="📖 帮助信息", callback_data="user_help"),
+                ],
+                [
+                    types.InlineKeyboardButton(text="🗑️ 清空记录", callback_data="clear_chat_history"),
+                    types.InlineKeyboardButton(text="📋 开发日志", callback_data="dev_changelog_view"),
+                ],
+                [
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+                ],
+            ]
+        )
+    else:
+        # 普通用户和管理员使用原有菜单
+        kb = other_functions_kb
+    
     await cb.message.edit_caption(
         caption="⚙️ <b>其他功能</b>\n\n请选择您需要的功能：",
-        reply_markup=other_functions_kb
+        reply_markup=kb
     )
     await cb.answer()
 

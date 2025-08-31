@@ -9,7 +9,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.bot import DefaultBotProperties
 from loguru import logger
 
-from app.middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity, GroupVerificationMiddleware
+from app.middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity, GroupVerificationMiddleware, BotStatusMiddleware
 from app.config import BOT_TOKEN, ADMINS_ID, SUPERADMIN_ID, BOT_NICKNAME
 from app.handlers.users import users_routers
 from app.handlers.admins import admin_routers
@@ -66,6 +66,10 @@ async def main() -> None:
         # logger.info(f"环境超管ID：{SUPERADMIN_ID}")
         # 确保数据库表存在（学习模式下自动创建）
         await init_db()
+        # 机器人状态检查中间件（最高优先级）
+        dp.message.middleware(BotStatusMiddleware())
+        dp.callback_query.middleware(BotStatusMiddleware())
+        
         dp.message.middleware(AntiFloodMiddleware())
         dp.message.middleware(AddUser())
         dp.message.middleware(UpdateLastAcivity())

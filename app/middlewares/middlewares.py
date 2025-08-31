@@ -1,10 +1,11 @@
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, TelegramObject
 from cachetools import TTLCache
 from app.config.config import GROUP
 from app.utils.group_utils import user_in_group_filter
+from app.database.business import is_feature_enabled
 from loguru import logger
 
 
@@ -30,6 +31,43 @@ class AntiFloodMiddleware(BaseMiddleware):
         else:
             self.limit[event.chat.id] = None
 
+        return await handler(event, data)
+
+
+class BotStatusMiddleware(BaseMiddleware):
+    """机器人状态检查中间件"""
+    
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any]
+    ) -> Any:
+        # 检查机器人是否启用
+        if not await is_feature_enabled("bot_enabled"):
+            # 如果是消息事件，发送维护提示
+            if hasattr(event, 'answer'):
+                try:
+                    await event.answer(
+                        "🔧 机器人正在维护中，请稍后再试。\n\n"
+                        "如有紧急问题，请联系管理员。",
+                        show_alert=True
+                    )
+                except:
+                    pass
+            elif hasattr(event, 'reply'):
+                try:
+                    await event.reply(
+                        "🔧 <b>机器人维护中</b>\n\n"
+                        "系统正在进行维护升级，暂时无法提供服务。\n\n"
+                        "📅 预计恢复时间：请关注公告\n"
+                        "💬 如有紧急问题，请联系管理员",
+                        parse_mode="HTML"
+                    )
+                except:
+                    pass
+            return  # 不继续处理
+        
         return await handler(event, data)
 
 

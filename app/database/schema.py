@@ -141,3 +141,20 @@ class SystemSettings(Base):
     
     def __repr__(self):
         return f"<SystemSettings(id={self.id}, key={self.setting_key}, value={self.setting_value})>"
+
+
+class DevChangelog(Base):
+    """开发日志表。"""
+    
+    __tablename__ = "dev_changelog"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    version = Column(String, nullable=False)  # 版本号
+    title = Column(String, nullable=False)  # 更新标题
+    content = Column(Text, nullable=False)  # 更新内容
+    changelog_type = Column(String, nullable=False, server_default="update")  # update/bugfix/feature/hotfix
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_by = Column(BigInteger, ForeignKey('users.chat_id'), nullable=False)  # 创建者ID（超管）
+    
+    def __repr__(self):
+        return f"<DevChangelog(id={self.id}, version={self.version}, title={self.title})>"

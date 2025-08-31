@@ -233,6 +233,7 @@ async def send_feedback_reply_notification(bot, user_id: int, feedback_id: int, 
             f"💬 <b>反馈回复通知</b> 💬\n\n"
             f"🆔 <b>反馈ID</b>：{feedback_id}\n"
             f"👨‍💼 <b>管理员回复</b>：\n{reply_content}\n\n"
+            f"💡 <b>如需回复</b>：请直接回复此消息，您的回复将转达给管理员\n"
             f"📝 感谢您的反馈，如有其他问题请继续联系我们。"
         )
         
@@ -245,6 +246,45 @@ async def send_feedback_reply_notification(bot, user_id: int, feedback_id: int, 
     except Exception as e:
         from loguru import logger
         logger.error(f"发送反馈回复通知失败: {e}")
+
+
+async def send_admin_message_notification(bot, user_id: int, item_type: str, item_title: str, item_id: int, message_content: str):
+    """
+    发送管理员消息通知给用户
+    
+    Args:
+        bot: 机器人实例
+        user_id: 用户ID
+        item_type: 项目类型 ('movie', 'content', 'feedback')
+        item_title: 项目标题
+        item_id: 项目ID
+        message_content: 消息内容
+    """
+    try:
+        type_name = {
+            'movie': '求片',
+            'content': '投稿',
+            'feedback': '反馈'
+        }.get(item_type, '项目')
+        
+        notification_text = (
+            f"📨 <b>管理员消息</b> 📨\n\n"
+            f"📋 <b>关于</b>：{type_name} - {item_title}\n"
+            f"🆔 <b>ID</b>：{item_id}\n\n"
+            f"💬 <b>消息内容</b>：\n{message_content}\n\n"
+            f"💡 <b>如需回复</b>：请直接回复此消息，您的回复将转达给管理员\n"
+            f"📝 如有其他疑问，请联系管理员。"
+        )
+        
+        await bot.send_message(
+            chat_id=user_id,
+            text=notification_text,
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"发送管理员消息通知失败: {e}")
 
 
 # 默认的欢迎图片URL

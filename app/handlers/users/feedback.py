@@ -5,6 +5,7 @@ from loguru import logger
 
 from app.utils.states import Wait
 from app.database.business import create_user_feedback, get_user_feedback_list, is_feature_enabled
+from app.utils.time_utils import humanize_time
 from app.buttons.users import feedback_center_kb, feedback_input_kb, back_to_main_kb
 
 feedback_router = Router()
@@ -236,6 +237,12 @@ async def cb_feedback_my(cb: types.CallbackQuery):
                 "resolved": "✅"
             }.get(feedback.status, "❓")
             
+            status_text = {
+                "pending": "待处理",
+                "processing": "处理中", 
+                "resolved": "已解决"
+            }.get(feedback.status, "未知")
+            
             type_emoji = {
                 "bug": "🐛",
                 "suggestion": "💡",
@@ -243,12 +250,20 @@ async def cb_feedback_my(cb: types.CallbackQuery):
                 "other": "❓"
             }.get(feedback.feedback_type, "❓")
             
+            type_text = {
+                "bug": "Bug反馈",
+                "suggestion": "建议反馈",
+                "complaint": "投诉反馈",
+                "other": "其他反馈"
+            }.get(feedback.feedback_type, "未知类型")
+            
             # 美化的卡片式布局
             content_preview = feedback.content[:30] + ('...' if len(feedback.content) > 30 else '')
-            text += f"┌─ {i}. {type_emoji} {status_emoji} <b>{content_preview}</b>\n"
-            text += f"├ 🏷️ 状态：<code>{feedback.status}</code>\n"
-            text += f"├ ⏰ 时间：<i>{feedback.created_at.strftime('%m-%d %H:%M')}</i>\n"
-            text += f"├ 📂 类型：{type_emoji} {feedback.feedback_type}\n"
+            text += f"┌─ {i}. {type_emoji} {status_emoji} <b>ID:{feedback.id}</b>\n"
+            text += f"├ 📄 内容：{content_preview}\n"
+            text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
+            text += f"├ ⏰ 时间：<i>{humanize_time(feedback.created_at)}</i>\n"
+            text += f"├ 📂 类型：{type_emoji} {type_text}\n"
             
             if feedback.reply_content:
                 reply_preview = feedback.reply_content[:50] + ('...' if len(feedback.reply_content) > 50 else '')
