@@ -366,8 +366,8 @@ async def cb_review_movie_detail(cb: types.CallbackQuery):
         f"🆔 ID：{request.id}\n"
         f"🎭 片名：{request.title}\n"
         f"👤 用户ID：{request.user_id}\n"
-        f"📅 提交时间：{request.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
-        f"📝 状态：{request.status}\n\n"
+        f"📅 提交时间：{humanize_time(request.created_at)}\n"
+        f"📝 状态：{get_status_text(request.status)}\n\n"
     )
     
     if request.description:
@@ -545,8 +545,8 @@ async def cb_review_content_detail(cb: types.CallbackQuery):
         f"🆔 ID：{submission.id}\n"
         f"📝 标题：{submission.title}\n"
         f"👤 用户ID：{submission.user_id}\n"
-        f"📅 提交时间：{submission.created_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
-        f"📊 状态：{submission.status}\n\n"
+        f"📅 提交时间：{humanize_time(submission.created_at)}\n"
+        f"📊 状态：{get_status_text(submission.status)}\n\n"
     )
     
     # 显示内容（限制长度）

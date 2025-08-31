@@ -6,6 +6,7 @@ from loguru import logger
 from app.utils.states import Wait
 from app.database.business import create_movie_request, get_user_movie_requests, get_all_movie_categories, is_feature_enabled
 from app.buttons.users import movie_center_kb, movie_input_kb, back_to_main_kb
+from app.utils.time_utils import humanize_time, get_status_text
 
 movie_router = Router()
 
@@ -358,8 +359,12 @@ async def cb_movie_request_my(cb: types.CallbackQuery):
                 "rejected": "❌"
             }.get(req.status, "❓")
             
+            # 使用中文状态和人性化时间
+            status_text = get_status_text(req.status)
+            time_text = humanize_time(req.created_at)
+            
             text += f"{i}. {status_emoji} {req.title}\n"
-            text += f"   状态：{req.status} | {req.created_at.strftime('%m-%d %H:%M')}\n\n"
+            text += f"   状态：{status_text} | {time_text}\n\n"
         
         if len(requests) > 10:
             text += f"... 还有 {len(requests) - 10} 条记录\n\n"

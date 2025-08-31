@@ -6,6 +6,7 @@ from loguru import logger
 from app.utils.states import Wait
 from app.database.business import create_content_submission, get_user_content_submissions, is_feature_enabled, get_all_movie_categories
 from app.buttons.users import content_center_kb, content_input_kb, back_to_main_kb
+from app.utils.time_utils import humanize_time, get_status_text
 
 content_router = Router()
 
@@ -327,8 +328,12 @@ async def cb_content_submit_my(cb: types.CallbackQuery):
                 "rejected": "❌"
             }.get(sub.status, "❓")
             
+            # 使用中文状态和人性化时间
+            status_text = get_status_text(sub.status)
+            time_text = humanize_time(sub.created_at)
+            
             text += f"{i}. {status_emoji} {sub.title}\n"
-            text += f"   状态：{sub.status} | {sub.created_at.strftime('%m-%d %H:%M')}\n\n"
+            text += f"   状态：{status_text} | {time_text}\n\n"
         
         if len(submissions) > 10:
             text += f"... 还有 {len(submissions) - 10} 条记录\n\n"
