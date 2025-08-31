@@ -14,6 +14,7 @@ from app.database.business import get_server_stats
 from app.utils.group_utils import get_group_member_count, user_in_group_filter
 from app.utils.commands_catalog import build_commands_help
 from app.config.config import GROUP, BOT_NICKNAME
+from app.utils.panel_utils import create_welcome_panel_text, create_info_panel_text, DEFAULT_WELCOME_PHOTO
 
 basic_router = Router()
 
@@ -45,14 +46,9 @@ async def start(msg: types.Message):
     role = await get_role(msg.from_user.id)
     title, kb = get_panel_for_role(role)
     
-    # 美化的欢迎界面
-    welcome_text = (
-        f"🌟 **欢迎来到 {BOT_NICKNAME}** 🌟\n\n"
-        f"✨ **专属功能面板** ✨\n"
-        f"{title}\n\n"
-        f"💫 **开始您的精彩体验吧！** 💫"
-    )
-    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    # 使用复用的面板样式函数
+    welcome_text = create_welcome_panel_text(title, role)
+    welcome_photo = DEFAULT_WELCOME_PHOTO
     
     await msg.bot.send_photo(
         chat_id=msg.from_user.id,
@@ -61,30 +57,6 @@ async def start(msg: types.Message):
         reply_markup=kb,
         parse_mode="Markdown"
     )
-
-
-@basic_router.callback_query(F.data == "user_profile")
-async def cb_user_profile(cb: types.CallbackQuery):
-    """用户资料"""
-    user = await get_user(cb.from_user.id)
-    role = await get_role(cb.from_user.id)
-    
-    profile_text = (
-        f"👤 <b>用户资料</b>\n\n"
-        f"🆔 用户ID：{cb.from_user.id}\n"
-        f"👤 用户名：{cb.from_user.username or '未设置'}\n"
-        f"📝 昵称：{cb.from_user.full_name}\n"
-        f"🎭 角色：{role}\n"
-        f"📅 开始时间：{user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user else '未知'}\n"
-        f"⏰ 最后活跃：{user.last_activity_at.strftime('%Y-%m-%d %H:%M:%S') if user and user.last_activity_at else '未知'}\n\n"
-        "如需返回主菜单，请点击下方按钮。"
-    )
-    
-    await cb.message.edit_caption(
-        caption=profile_text,
-        reply_markup=back_to_main_kb
-    )
-    await cb.answer()
 
 
 @basic_router.callback_query(F.data == "user_toggle_busy")
@@ -152,24 +124,16 @@ async def cb_common_my_info(cb: types.CallbackQuery):
     user = await get_user(cb.from_user.id)
     role = await get_role(cb.from_user.id)
     
-    # 美化的个人信息界面
-    info_text = (
-        f"🌟 **个人档案** 🌟\n\n"
-        f"┌─────────────────────┐\n"
-        f"│ 👤 **基本信息**\n"
-        f"├─────────────────────┤\n"
-        f"│ 🏷️ **用户名**: `{cb.from_user.username or '未设置'}`\n"
-        f"│ 📝 **昵称**: {cb.from_user.full_name}\n"
-        f"│ 🆔 **用户ID**: `{cb.from_user.id}`\n"
-        f"│ 🎭 **身份角色**: **{role}**\n"
-        f"├─────────────────────┤\n"
-        f"│ ⏰ **时间记录**\n"
-        f"├─────────────────────┤\n"
-        f"│ 📅 **注册时间**: {user.created_at.strftime('%Y年%m月%d日 %H:%M') if user else '未知'}\n"
-        f"│ 🕐 **最后活跃**: {user.last_activity_at.strftime('%Y年%m月%d日 %H:%M') if user and user.last_activity_at else '未知'}\n"
-        f"└─────────────────────┘\n\n"
-        f"💫 **感谢您使用我们的服务！** 💫"
-    )
+    # 使用复用的面板样式函数
+    user_info = {
+        'username': cb.from_user.username,
+        'full_name': cb.from_user.full_name,
+        'user_id': cb.from_user.id,
+        'role': role,
+        'created_at': user.created_at.strftime('%Y年%m月%d日 %H:%M') if user else '未知',
+        'last_activity_at': user.last_activity_at.strftime('%Y年%m月%d日 %H:%M') if user and user.last_activity_at else '未知'
+    }
+    info_text = create_info_panel_text(user_info)
     
     await cb.message.edit_caption(
         caption=info_text,
