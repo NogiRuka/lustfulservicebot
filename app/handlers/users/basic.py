@@ -1,6 +1,7 @@
 import asyncio
 from aiogram import types, F, Router
 from aiogram.filters import CommandStart, Command
+from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from app.utils.filters import IsBusyFilter, IsCommand
@@ -206,8 +207,14 @@ async def cb_other_functions(cb: types.CallbackQuery):
 
 # 普通文本消息：防并发回显
 @basic_router.message(F.text, IsCommand(), IsBusyFilter())
-async def message(msg: types.Message):
+async def message(msg: types.Message, state: FSMContext):
     """处理普通文本消息"""
+    # 检查用户是否处于某个状态中，如果是则不处理
+    current_state = await state.get_state()
+    if current_state is not None:
+        logger.debug(f"用户 {msg.from_user.id} 处于状态 {current_state}，跳过通用消息处理")
+        return
+    
     await asyncio.sleep(1)
     await msg.reply(
         f"📝 您发送的消息：{msg.text}\n\n"
