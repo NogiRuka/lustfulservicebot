@@ -151,8 +151,8 @@ async def cb_edit_feedback_content(cb: types.CallbackQuery, state: FSMContext):
         caption=edit_text,
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center")],
-                [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
             ]
         )
     )
@@ -219,8 +219,8 @@ async def cb_feedback_my(cb: types.CallbackQuery):
             caption="📋 <b>我的反馈</b>\n\n您还没有提交过反馈。",
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center")],
-                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
                 ]
             )
         )
@@ -278,8 +278,8 @@ async def cb_feedback_my(cb: types.CallbackQuery):
             caption=text,
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center")],
-                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
                 ]
             )
         )

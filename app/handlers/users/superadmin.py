@@ -59,7 +59,9 @@ async def cb_dev_changelog_view(cb: types.CallbackQuery):
     changelogs = await get_all_dev_changelogs()
     
     if not changelogs:
-        text = "📋 <b>开发日志</b>\n\n暂无开发日志记录。\n\n💡 使用 /add_changelog 添加新的开发日志"
+        text = "📋 <b>开发日志</b>\n\n暂无开发日志记录。"
+        if role == ROLE_SUPERADMIN:
+            text += "\n\n💡 使用 /add_changelog 添加新的开发日志"
     else:
         text = "📋 <b>开发日志</b>\n\n"
         text += f"📊 共有 {len(changelogs)} 条记录\n\n"
