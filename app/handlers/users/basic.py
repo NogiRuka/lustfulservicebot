@@ -151,26 +151,25 @@ async def cb_common_server_info(cb: types.CallbackQuery):
         member_count = await get_group_member_count(cb.bot)
         
         info_text = (
-            f"🖥️ <b>服务器信息</b>\n\n"
-            f"👥 注册用户: {stats['total_users']}\n"
-            f"🎬 求片请求: {stats['total_requests']}\n"
-            f"📝 内容投稿: {stats['total_submissions']}\n"
-            f"💬 用户反馈: {stats['total_feedback']}\n"
-            f"👮 管理员数: {stats['total_admins']}\n"
-            f"📊 群组成员: {member_count}\n\n"
-            "如需返回主菜单，请点击下方按钮。"
+            f"🖥️ **服务器信息** 🖥️\n\n"
+            f"📊 **统计数据**\n"
+            f"├ 注册用户: {stats['total_users']}\n"
+            f"├ 求片请求: {stats['total_requests']}\n"
+            f"└ 内容投稿: {stats['total_submissions']}\n\n"
+            f"💫 **感谢您的使用！** 💫"
         )
     except Exception as e:
-        logger.error(f"获取服务器信息失败: {e}")
+        logger.error(f"获取服务信息失败: {e}")
         info_text = (
-            f"🖥️ <b>服务器信息</b>\n\n"
+            f"🖥️ <b>服务信息</b>\n\n"
             "❌ 暂时无法获取服务器信息，请稍后重试。\n\n"
             "如需返回主菜单，请点击下方按钮。"
         )
     
     await cb.message.edit_caption(
         caption=info_text,
-        reply_markup=back_to_main_kb
+        reply_markup=back_to_main_kb,
+        parse_mode="Markdown"
     )
     await cb.answer()
 

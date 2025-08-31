@@ -9,7 +9,7 @@ def get_user_main_menu() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="🙋 我的信息", callback_data="common_my_info"),
-                InlineKeyboardButton(text="🖥️ 服务器信息", callback_data="common_server_info"),
+                InlineKeyboardButton(text="🖥️ 服务信息", callback_data="common_server_info"),
             ],
             [
                 InlineKeyboardButton(text="🎬 求片中心", callback_data="movie_center"),
