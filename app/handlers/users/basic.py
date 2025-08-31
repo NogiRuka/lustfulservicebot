@@ -26,7 +26,7 @@ async def start(msg: types.Message):
         # 在群组中给出更明确的提示
         bot_username = (await msg.bot.get_me()).username
         await msg.reply(
-            f"🌟 **欢迎使用 {BOT_NICKNAME}**\n\n💫 请点击 [@{bot_username}](https://t.me/{bot_username}) 在私聊中使用机器人功能",
+            f"🌟 **欢迎使用 [{BOT_NICKNAME}](https://t.me/{bot_username})**\n💫 请在私聊中使用机器人功能",
             parse_mode="Markdown"
         )
         return
@@ -45,14 +45,22 @@ async def start(msg: types.Message):
     role = await get_role(msg.from_user.id)
     title, kb = get_panel_for_role(role)
     
-    welcome_text = f"🎉 欢迎使用{BOT_NICKNAME}\！\n\n👤 用户角色：{role}\n\n{title}"
+    # 美化的欢迎界面
+    welcome_text = (
+        f"🌟 **欢迎来到 {BOT_NICKNAME}** 🌟\n\n"
+        f"🎭 **您的身份**：{role}\n\n"
+        f"✨ **专属功能面板** ✨\n"
+        f"{title}\n\n"
+        f"💫 **开始您的精彩体验吧！** 💫"
+    )
     welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
     
     await msg.bot.send_photo(
         chat_id=msg.from_user.id,
         photo=welcome_photo,
         caption=welcome_text,
-        reply_markup=kb
+        reply_markup=kb,
+        parse_mode="Markdown"
     )
 
 

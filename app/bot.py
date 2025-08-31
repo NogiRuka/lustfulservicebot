@@ -10,7 +10,7 @@ from aiogram.client.bot import DefaultBotProperties
 from loguru import logger
 
 from app.middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity, GroupVerificationMiddleware
-from app.config import BOT_TOKEN, ADMINS_ID, SUPERADMIN_ID
+from app.config import BOT_TOKEN, ADMINS_ID, SUPERADMIN_ID, BOT_NICKNAME
 from app.handlers.users import users_routers
 from app.handlers.admins import admin_routers
 from app.handlers.superadmins import superadmin_routers
@@ -28,7 +28,7 @@ dp = Dispatcher(
 os.makedirs("./logs", exist_ok=True)
 logger.add("./logs/errors.log", enqueue=True, rotation="1 week", level="ERROR")
 logger.add("./logs/all.log", enqueue=True, rotation="1 week", level="DEBUG")
-logger.add(sys.stdout, level="DEBUG")  # 控制台输出DEBUG日志
+# logger.add(sys.stdout, level="DEBUG")  # 控制台输出DEBUG日志
 
 # ===== 机器人实例 =====
 bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
@@ -61,9 +61,9 @@ async def main() -> None:
     程序入口：初始化数据库、中间件并启动长轮询。
     """
     try:
-        logger.info("机器人已启动...")
-        logger.info(f"环境管理员ID：{ADMINS_ID}")
-        logger.info(f"环境超管ID：{SUPERADMIN_ID}")
+        logger.info(f"{BOT_NICKNAME}已启动...")
+        # logger.info(f"环境管理员ID：{ADMINS_ID}")
+        # logger.info(f"环境超管ID：{SUPERADMIN_ID}")
         # 确保数据库表存在（学习模式下自动创建）
         await init_db()
         dp.message.middleware(AntiFloodMiddleware())
