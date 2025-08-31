@@ -20,8 +20,27 @@ review_router = Router()
 # ==================== 审核中心 ====================
 
 @review_router.callback_query(F.data == "admin_review_center")
-async def cb_admin_review_center(cb: types.CallbackQuery):
+async def cb_admin_review_center(cb: types.CallbackQuery, state: FSMContext):
     """审核中心"""
+    # 删除之前发送的媒体消息
+    try:
+        data = await state.get_data()
+        sent_media_ids = data.get('sent_media_ids', [])
+        for message_id in sent_media_ids:
+            try:
+                await cb.message.bot.delete_message(chat_id=cb.from_user.id, message_id=message_id)
+            except Exception as e:
+                logger.warning(f"删除媒体消息失败: {e}")
+        # 清空已发送的媒体消息ID列表
+        await state.update_data(sent_media_ids=[])
+    except Exception as e:
+        logger.warning(f"状态处理失败: {e}")
+        # 如果状态处理失败，初始化一个空的媒体消息列表
+        try:
+            await state.update_data(sent_media_ids=[])
+        except Exception as e2:
+            logger.error(f"状态初始化也失败: {e2}")
+    
     movie_requests = await get_pending_movie_requests()
     content_submissions = await get_pending_content_submissions()
     
@@ -620,14 +639,15 @@ async def cb_admin_all_movies(cb: types.CallbackQuery, state: FSMContext):
     """查看所有求片"""
     # 清空之前的媒体消息记录
     await state.update_data(sent_media_ids=[])
-    await cb_admin_all_movies_page(cb, 1, state)
+    await cb_admin_all_movies_page(cb, state, 1)
 
 
 @review_router.callback_query(F.data.startswith("all_movie_page_"))
-async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext):
+async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, page: int = 1):
     """所有求片分页"""
     # 提取页码
     page = extract_page_from_callback(cb.data, "all_movie")
+    logger.info(f"查看所有求片分页，页码: {page}")
     
     # 删除之前发送的媒体消息
     try:
