@@ -28,7 +28,7 @@ def create_info_panel_text(user_info: dict) -> str:
     info_text = (
         f"🌟 **个人档案** 🌟\n\n"
         f"👤 **基本信息**\n"
-        f"├ 用户名: `{user_info.get('username', '未设置')}`\n"
+        f"├ 用户名: `[@{user_info.get('username', '未设置')}](https://t.me/{user_info.get('username', '未设置')})`\n"
         f"├ 昵称: {user_info.get('full_name', '未知')}\n"
         f"├ 用户ID: `{user_info.get('user_id', '未知')}`\n"
         f"└ 身份角色: **{user_info.get('role', '未知')}**\n\n"
