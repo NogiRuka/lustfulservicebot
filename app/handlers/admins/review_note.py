@@ -26,10 +26,13 @@ async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
-        caption=f"💬 <b>审核留言</b>\n\n请输入通过求片 #{request_id} 的留言：",
+        caption=f"💬 <b>审核留言</b>\n\n请输入通过求片 #{request_id} 的留言（可选）：",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_movie")]
+                [
+                    types.InlineKeyboardButton(text="⏭️ 跳过留言", callback_data="skip_review_note"),
+                    types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_movie")
+                ]
             ]
         )
     )
@@ -51,10 +54,13 @@ async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
-        caption=f"💬 <b>审核留言</b>\n\n请输入拒绝求片 #{request_id} 的留言：",
+        caption=f"💬 <b>审核留言</b>\n\n请输入拒绝求片 #{request_id} 的留言（可选）：",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_movie")]
+                [
+                    types.InlineKeyboardButton(text="⏭️ 跳过留言", callback_data="skip_review_note"),
+                    types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_movie")
+                ]
             ]
         )
     )
@@ -76,10 +82,13 @@ async def cb_approve_content_note(cb: types.CallbackQuery, state: FSMContext):
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
-        caption=f"💬 <b>审核留言</b>\n\n请输入通过投稿 #{submission_id} 的留言：",
+        caption=f"💬 <b>审核留言</b>\n\n请输入通过投稿 #{submission_id} 的留言（可选）：",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_content")]
+                [
+                    types.InlineKeyboardButton(text="⏭️ 跳过留言", callback_data="skip_review_note"),
+                    types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_content")
+                ]
             ]
         )
     )
@@ -101,10 +110,13 @@ async def cb_reject_content_note(cb: types.CallbackQuery, state: FSMContext):
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
-        caption=f"💬 <b>审核留言</b>\n\n请输入拒绝投稿 #{submission_id} 的留言：",
+        caption=f"💬 <b>审核留言</b>\n\n请输入拒绝投稿 #{submission_id} 的留言（可选）：",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_content")]
+                [
+                    types.InlineKeyboardButton(text="⏭️ 跳过留言", callback_data="skip_review_note"),
+                    types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_content")
+                ]
             ]
         )
     )
@@ -122,43 +134,26 @@ async def process_review_note(msg: types.Message, state: FSMContext):
     review_action = data.get('review_action')
     message_id = data.get('message_id')
     
-    if not review_note:
-        # 在面板回显错误信息
-        error_text = (
-            f"💬 <b>审核留言</b>\n\n"
-            f"❌ 留言内容不能为空，请重新输入："
-        )
-        try:
-            await msg.bot.edit_message_caption(
-                chat_id=msg.from_user.id,
-                message_id=message_id,
-                caption=error_text,
-                reply_markup=types.InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [types.InlineKeyboardButton(text="❌ 取消", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content")]
-                    ]
-                )
-            )
-        except Exception as e:
-            logger.error(f"编辑消息失败: {e}")
-        
-        # 删除管理员输入的消息
-        try:
-            await msg.delete()
-        except:
-            pass
-        return
+    # 留言现在可以为空，不需要检查
     
     # 在面板回显管理员输入的内容
     action_text = "通过" if review_action == "approved" else "拒绝"
     item_type = "求片" if review_type == "movie" else "投稿"
     
-    echo_text = (
-        f"💬 <b>审核留言</b>\n\n"
-        f"🎯 操作：{action_text}{item_type} #{review_id}\n"
-        f"📝 管理员输入：{review_note}\n\n"
-        f"请确认以上信息是否正确？"
-    )
+    if review_note.strip():
+        echo_text = (
+            f"💬 <b>审核留言</b>\n\n"
+            f"🎯 操作：{action_text}{item_type} #{review_id}\n"
+            f"📝 管理员输入：{review_note}\n\n"
+            f"请确认以上信息是否正确？"
+        )
+    else:
+        echo_text = (
+            f"💬 <b>审核留言</b>\n\n"
+            f"🎯 操作：{action_text}{item_type} #{review_id}\n"
+            f"📝 管理员输入：（空留言）\n\n"
+            f"请确认以上信息是否正确？"
+        )
     
     confirm_kb = types.InlineKeyboardMarkup(
         inline_keyboard=[
@@ -197,6 +192,51 @@ async def process_review_note(msg: types.Message, state: FSMContext):
         await msg.delete()
     except:
         pass
+
+
+@review_note_router.callback_query(F.data == "skip_review_note")
+async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
+    """跳过留言直接审核"""
+    data = await state.get_data()
+    
+    review_type = data.get('review_type')
+    review_id = data.get('review_id')
+    review_action = data.get('review_action')
+    
+    if review_type == 'movie':
+        success = await review_movie_request(review_id, cb.from_user.id, review_action, None)
+        item_type = "求片"
+    elif review_type == 'content':
+        success = await review_content_submission(review_id, cb.from_user.id, review_action, None)
+        item_type = "投稿"
+    else:
+        await cb.answer("❌ 审核类型错误", show_alert=True)
+        await state.clear()
+        return
+    
+    if success:
+        action_text = "通过" if review_action == "approved" else "拒绝"
+        result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{item_type} #{review_id}\n💬 留言：无\n\n审核结果已保存。"
+        
+        # 显示结果页面
+        result_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                ]
+            ]
+        )
+        
+        await cb.message.edit_caption(
+            caption=result_text,
+            reply_markup=result_kb
+        )
+    else:
+        await cb.answer("❌ 审核失败，请重试", show_alert=True)
+    
+    await state.clear()
+    await cb.answer()
 
 
 @review_note_router.callback_query(F.data == "confirm_review_note")
@@ -260,10 +300,13 @@ async def cb_edit_review_note(cb: types.CallbackQuery, state: FSMContext):
     # 返回输入状态
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
-        caption=f"💬 <b>审核留言</b>\n\n请重新输入{action_text}{item_type} #{review_id} 的留言：",
+        caption=f"💬 <b>审核留言</b>\n\n请重新输入{action_text}{item_type} #{review_id} 的留言（可选）：",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [types.InlineKeyboardButton(text="❌ 取消", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content")]
+                [
+                    types.InlineKeyboardButton(text="⏭️ 跳过留言", callback_data="skip_review_note"),
+                    types.InlineKeyboardButton(text="❌ 取消", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content")
+                ]
             ]
         )
     )
