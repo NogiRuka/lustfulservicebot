@@ -170,6 +170,53 @@ async def ConfirmAnnounce(msg: types.Message, state: FSMContext):
     await state.clear()
 
 
+@admins_router.message(StateFilter(Wait.waitReviewNote))
+async def process_review_note(msg: types.Message, state: FSMContext):
+    """处理审核留言"""
+    review_note = msg.text
+    data = await state.get_data()
+    
+    review_type = data.get('review_type')
+    review_id = data.get('review_id')
+    review_action = data.get('review_action')
+    
+    if review_type == 'movie':
+        success = await review_movie_request(review_id, msg.from_user.id, review_action, review_note)
+        item_type = "求片"
+    elif review_type == 'content':
+        success = await review_content_submission(review_id, msg.from_user.id, review_action, review_note)
+        item_type = "投稿"
+    else:
+        await msg.reply("❌ 审核类型错误")
+        await state.clear()
+        return
+    
+    if success:
+        action_text = "通过" if review_action == "approved" else "拒绝"
+        await msg.reply(f"✅ 已{action_text}{item_type} #{review_id}\n💬 留言：{review_note}")
+        
+        # 返回审核页面
+        if review_type == 'movie':
+            # 创建一个临时的callback query对象来重用现有函数
+            from types import SimpleNamespace
+            fake_cb = SimpleNamespace()
+            fake_cb.message = msg
+            fake_cb.from_user = msg.from_user
+            fake_cb.answer = lambda: None
+            await cb_admin_review_movie(fake_cb)
+        else:
+            from types import SimpleNamespace
+            fake_cb = SimpleNamespace()
+            fake_cb.message = msg
+            fake_cb.from_user = msg.from_user
+            fake_cb.answer = lambda: None
+            await cb_admin_review_content(fake_cb)
+    else:
+        await msg.reply("❌ 审核失败，请重试")
+    
+    await state.clear()
+
+
 # 仅超管：升为管理员
 @admins_router.message(Command("promote"))
 async def PromoteToAdmin(msg: types.Message):
@@ -298,7 +345,7 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
         status_text = get_status_text(req.status)
         
         text += f"{i}. 【{category_name}】{req.title}\n"
-        text += f"   👤 用户:{req.user_id} | 📅 {humanize_time(req.created_at)} | 🏷️ {status_text}\n"
+        text += f"   🆔 ID:{req.id} | 👤 用户:{req.user_id} | 📅 {humanize_time(req.created_at)} | 🏷️ {status_text}\n"
         
         if req.description:
             desc_preview = req.description[:60] + ('...' if len(req.description) > 60 else '')
@@ -321,6 +368,10 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
         extra_buttons.append([
             types.InlineKeyboardButton(text=f"✅ 通过 #{req.id}", callback_data=f"approve_movie_{req.id}"),
             types.InlineKeyboardButton(text=f"❌ 拒绝 #{req.id}", callback_data=f"reject_movie_{req.id}")
+        ])
+        extra_buttons.append([
+            types.InlineKeyboardButton(text=f"💬 留言通过 #{req.id}", callback_data=f"approve_movie_note_{req.id}"),
+            types.InlineKeyboardButton(text=f"💬 留言拒绝 #{req.id}", callback_data=f"reject_movie_note_{req.id}")
         ])
     
     # 添加其他功能按钮
@@ -433,6 +484,54 @@ async def cb_reject_movie(cb: types.CallbackQuery):
         await cb.answer("❌ 操作失败，请检查求片ID是否正确", show_alert=True)
 
 
+@admins_router.callback_query(F.data.startswith("approve_movie_note_"))
+async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
+    """留言通过求片"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    # 保存审核信息到状态
+    await state.update_data({
+        'review_type': 'movie',
+        'review_id': request_id,
+        'review_action': 'approved'
+    })
+    
+    await state.set_state(Wait.waitReviewNote)
+    await cb.message.edit_caption(
+        caption=f"💬 <b>审核留言</b>\n\n请输入通过求片 #{request_id} 的留言：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_movie")]
+            ]
+        )
+    )
+    await cb.answer()
+
+
+@admins_router.callback_query(F.data.startswith("reject_movie_note_"))
+async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
+    """留言拒绝求片"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    # 保存审核信息到状态
+    await state.update_data({
+        'review_type': 'movie',
+        'review_id': request_id,
+        'review_action': 'rejected'
+    })
+    
+    await state.set_state(Wait.waitReviewNote)
+    await cb.message.edit_caption(
+        caption=f"💬 <b>审核留言</b>\n\n请输入拒绝求片 #{request_id} 的留言：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_movie")]
+            ]
+        )
+    )
+    await cb.answer()
+
+
 @admins_router.callback_query(F.data == "admin_review_content")
 async def cb_admin_review_content(cb: types.CallbackQuery):
     """投稿审核"""
@@ -475,7 +574,7 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
         status_text = get_status_text(sub.status)
         
         text += f"{i}. 【{category_name}】{sub.title}\n"
-        text += f"   👤 用户:{sub.user_id} | 📅 {humanize_time(sub.created_at)} | 🏷️ {status_text}\n"
+        text += f"   🆔 ID:{sub.id} | 👤 用户:{sub.user_id} | 📅 {humanize_time(sub.created_at)} | 🏷️ {status_text}\n"
         
         content_preview = sub.content[:60] + ('...' if len(sub.content) > 60 else '')
         text += f"   📄 {content_preview}\n"
@@ -497,6 +596,10 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
         extra_buttons.append([
             types.InlineKeyboardButton(text=f"✅ 通过 #{sub.id}", callback_data=f"approve_content_{sub.id}"),
             types.InlineKeyboardButton(text=f"❌ 拒绝 #{sub.id}", callback_data=f"reject_content_{sub.id}")
+        ])
+        extra_buttons.append([
+            types.InlineKeyboardButton(text=f"💬 留言通过 #{sub.id}", callback_data=f"approve_content_note_{sub.id}"),
+            types.InlineKeyboardButton(text=f"💬 留言拒绝 #{sub.id}", callback_data=f"reject_content_note_{sub.id}")
         ])
     
     # 添加其他功能按钮
@@ -613,6 +716,54 @@ async def cb_reject_content(cb: types.CallbackQuery):
         await cb_admin_review_content(cb)
     else:
         await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
+
+
+@admins_router.callback_query(F.data.startswith("approve_content_note_"))
+async def cb_approve_content_note(cb: types.CallbackQuery, state: FSMContext):
+    """留言通过投稿"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    # 保存审核信息到状态
+    await state.update_data({
+        'review_type': 'content',
+        'review_id': submission_id,
+        'review_action': 'approved'
+    })
+    
+    await state.set_state(Wait.waitReviewNote)
+    await cb.message.edit_caption(
+        caption=f"💬 <b>审核留言</b>\n\n请输入通过投稿 #{submission_id} 的留言：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_content")]
+            ]
+        )
+    )
+    await cb.answer()
+
+
+@admins_router.callback_query(F.data.startswith("reject_content_note_"))
+async def cb_reject_content_note(cb: types.CallbackQuery, state: FSMContext):
+    """留言拒绝投稿"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    # 保存审核信息到状态
+    await state.update_data({
+        'review_type': 'content',
+        'review_id': submission_id,
+        'review_action': 'rejected'
+    })
+    
+    await state.set_state(Wait.waitReviewNote)
+    await cb.message.edit_caption(
+        caption=f"💬 <b>审核留言</b>\n\n请输入拒绝投稿 #{submission_id} 的留言：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="❌ 取消", callback_data="admin_review_content")]
+            ]
+        )
+    )
+    await cb.answer()
 
 
 # 管理员命令：回复反馈

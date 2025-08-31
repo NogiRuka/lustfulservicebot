@@ -365,7 +365,7 @@ async def cb_content_submit_my_page(cb: types.CallbackQuery, page: int = None):
     extra_buttons = [
         [
             types.InlineKeyboardButton(text="📝 继续投稿", callback_data="content_submit_new"),
-            types.InlineKeyboardButton(text="🔄 刷新", callback_data=f"my_content_page_{page}")
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data="content_submit_my")
         ],
         [
             types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),

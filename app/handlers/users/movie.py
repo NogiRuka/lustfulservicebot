@@ -396,7 +396,7 @@ async def cb_movie_request_my_page(cb: types.CallbackQuery, page: int = None):
     extra_buttons = [
         [
             types.InlineKeyboardButton(text="🎬 继续求片", callback_data="movie_request_new"),
-            types.InlineKeyboardButton(text="🔄 刷新", callback_data=f"my_movie_page_{page}")
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data="movie_request_my")
         ],
         [
             types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center"),
