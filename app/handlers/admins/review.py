@@ -13,6 +13,7 @@ from app.buttons.users import admin_review_center_kb, back_to_main_kb
 from app.utils.message_utils import safe_edit_message
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
 from app.utils.time_utils import humanize_time, get_status_text
+from app.utils.panel_utils import send_review_notification
 
 review_router = Router()
 
@@ -337,10 +338,21 @@ async def cb_approve_movie(cb: types.CallbackQuery):
     """快速通过求片"""
     request_id = int(cb.data.split("_")[-1])
     
+    # 先获取求片信息用于通知
+    requests = await get_pending_movie_requests()
+    request = next((r for r in requests if r.id == request_id), None)
+    
     success = await review_movie_request(request_id, cb.from_user.id, "approved")
     
     if success:
         await cb.answer(f"✅ 已通过求片 {request_id}")
+        
+        # 发送通知给用户
+        if request:
+            await send_review_notification(
+                cb.bot, request.user_id, 'movie', request.title, 'approved'
+            )
+        
         # 刷新审核列表
         await cb_admin_review_movie(cb)
     else:
@@ -352,10 +364,21 @@ async def cb_reject_movie(cb: types.CallbackQuery):
     """快速拒绝求片"""
     request_id = int(cb.data.split("_")[-1])
     
+    # 先获取求片信息用于通知
+    requests = await get_pending_movie_requests()
+    request = next((r for r in requests if r.id == request_id), None)
+    
     success = await review_movie_request(request_id, cb.from_user.id, "rejected")
     
     if success:
         await cb.answer(f"❌ 已拒绝求片 {request_id}")
+        
+        # 发送通知给用户
+        if request:
+            await send_review_notification(
+                cb.bot, request.user_id, 'movie', request.title, 'rejected'
+            )
+        
         # 刷新审核列表
         await cb_admin_review_movie(cb)
     else:
@@ -367,10 +390,21 @@ async def cb_approve_content(cb: types.CallbackQuery):
     """快速通过投稿"""
     submission_id = int(cb.data.split("_")[-1])
     
+    # 先获取投稿信息用于通知
+    submissions = await get_pending_content_submissions()
+    submission = next((s for s in submissions if s.id == submission_id), None)
+    
     success = await review_content_submission(submission_id, cb.from_user.id, "approved")
     
     if success:
         await cb.answer(f"✅ 已通过投稿 {submission_id}")
+        
+        # 发送通知给用户
+        if submission:
+            await send_review_notification(
+                cb.bot, submission.user_id, 'content', submission.title, 'approved'
+            )
+        
         # 刷新审核列表
         await cb_admin_review_content(cb)
     else:
@@ -499,10 +533,21 @@ async def cb_reject_content(cb: types.CallbackQuery):
     """快速拒绝投稿"""
     submission_id = int(cb.data.split("_")[-1])
     
+    # 先获取投稿信息用于通知
+    submissions = await get_pending_content_submissions()
+    submission = next((s for s in submissions if s.id == submission_id), None)
+    
     success = await review_content_submission(submission_id, cb.from_user.id, "rejected")
     
     if success:
         await cb.answer(f"❌ 已拒绝投稿 {submission_id}", show_alert=True)
+        
+        # 发送通知给用户
+        if submission:
+            await send_review_notification(
+                cb.bot, submission.user_id, 'content', submission.title, 'rejected'
+            )
+        
         # 刷新审核列表
         await cb_admin_review_content(cb)
     else:

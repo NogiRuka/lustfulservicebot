@@ -4,7 +4,8 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from app.utils.states import Wait
-from app.database.business import review_movie_request, review_content_submission
+from app.database.business import review_movie_request, review_content_submission, get_pending_movie_requests, get_pending_content_submissions
+from app.utils.panel_utils import send_review_notification
 
 review_note_router = Router()
 
@@ -203,10 +204,16 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
     review_id = data.get('review_id')
     review_action = data.get('review_action')
     
+    # 先获取项目信息用于通知
+    item = None
     if review_type == 'movie':
+        requests = await get_pending_movie_requests()
+        item = next((r for r in requests if r.id == review_id), None)
         success = await review_movie_request(review_id, cb.from_user.id, review_action, None)
         item_type = "求片"
     elif review_type == 'content':
+        submissions = await get_pending_content_submissions()
+        item = next((s for s in submissions if s.id == review_id), None)
         success = await review_content_submission(review_id, cb.from_user.id, review_action, None)
         item_type = "投稿"
     else:
@@ -216,6 +223,12 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
     
     if success:
         action_text = "通过" if review_action == "approved" else "拒绝"
+        
+        # 发送通知给用户
+        if item:
+            await send_review_notification(
+                cb.bot, item.user_id, review_type, item.title, review_action
+            )
         
         # 检查是否为媒体消息
         is_media_message = data.get('is_media_message', False)
@@ -261,10 +274,16 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
     review_action = data.get('review_action')
     review_note = data.get('review_note')
     
+    # 先获取项目信息用于通知
+    item = None
     if review_type == 'movie':
+        requests = await get_pending_movie_requests()
+        item = next((r for r in requests if r.id == review_id), None)
         success = await review_movie_request(review_id, cb.from_user.id, review_action, review_note)
         item_type = "求片"
     elif review_type == 'content':
+        submissions = await get_pending_content_submissions()
+        item = next((s for s in submissions if s.id == review_id), None)
         success = await review_content_submission(review_id, cb.from_user.id, review_action, review_note)
         item_type = "投稿"
     else:
@@ -274,6 +293,12 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
     
     if success:
         action_text = "通过" if review_action == "approved" else "拒绝"
+        
+        # 发送通知给用户（包含留言）
+        if item:
+            await send_review_notification(
+                cb.bot, item.user_id, review_type, item.title, review_action, review_note
+            )
         
         # 检查是否为媒体消息
         is_media_message = data.get('is_media_message', False)

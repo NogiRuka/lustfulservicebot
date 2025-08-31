@@ -110,5 +110,65 @@ def create_content_submit_text(step: str, category_name: str = None, title: str 
         return "📝 **投稿流程** 📝\n\n请按照提示完成操作"
 
 
+async def send_review_notification(bot, user_id: int, item_type: str, item_title: str, status: str, review_note: str = None):
+    """
+    发送审核结果通知给用户
+    
+    Args:
+        bot: 机器人实例
+        user_id: 用户ID
+        item_type: 项目类型 ('movie', 'content', 'feedback')
+        item_title: 项目标题
+        status: 审核状态 ('approved', 'rejected')
+        review_note: 审核备注（可选）
+    """
+    try:
+        # 根据类型和状态生成通知文本
+        type_emoji = {
+            'movie': '🎬',
+            'content': '📝',
+            'feedback': '💬'
+        }.get(item_type, '📋')
+        
+        type_name = {
+            'movie': '求片',
+            'content': '投稿',
+            'feedback': '反馈'
+        }.get(item_type, '项目')
+        
+        if status == 'approved':
+            status_emoji = '✅'
+            status_text = '已通过'
+            title_text = f"🎉 **{type_name}审核通过** 🎉"
+        else:
+            status_emoji = '❌'
+            status_text = '已拒绝'
+            title_text = f"📋 **{type_name}审核结果** 📋"
+        
+        notification_text = (
+            f"{title_text}\n\n"
+            f"{type_emoji} **{type_name}标题**：{item_title}\n"
+            f"{status_emoji} **审核结果**：{status_text}\n\n"
+        )
+        
+        if review_note:
+            notification_text += f"💬 **管理员留言**：\n{review_note}\n\n"
+        
+        if status == 'approved':
+            notification_text += "💫 感谢您的{type_name}，已成功通过审核！".format(type_name=type_name)
+        else:
+            notification_text += "📝 如有疑问，请联系管理员了解详情。"
+        
+        await bot.send_message(
+            chat_id=user_id,
+            text=notification_text,
+            parse_mode="Markdown"
+        )
+        
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"发送审核通知失败: {e}")
+
+
 # 默认的欢迎图片URL
 DEFAULT_WELCOME_PHOTO = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
