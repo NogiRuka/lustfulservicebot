@@ -4,10 +4,11 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from app.utils.states import Wait
-from app.database.business import create_content_submission, get_user_content_submissions, is_feature_enabled, get_all_movie_categories
+from app.database.business import create_content_submission, get_user_content_submissions, get_all_movie_categories, is_feature_enabled
 from app.buttons.users import content_center_kb, content_input_kb, back_to_main_kb
 from app.utils.time_utils import humanize_time, get_status_text
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
+from app.utils.panel_utils import create_content_submit_text
 
 content_router = Router()
 
@@ -108,8 +109,9 @@ async def cb_select_content_category(cb: types.CallbackQuery, state: FSMContext)
     )
     
     await cb.message.edit_caption(
-        caption=f"📝 <b>开始投稿</b>\n\n已选择类型：【{category_name}】\n\n请输入投稿标题：",
-        reply_markup=content_input_kb
+        caption=create_content_submit_text("input_title", category_name),
+        reply_markup=content_input_kb,
+        parse_mode="Markdown"
     )
     await state.set_state(Wait.waitContentTitle)
     await cb.answer()
@@ -137,13 +139,14 @@ async def process_content_title(msg: types.Message, state: FSMContext):
         await msg.bot.edit_message_caption(
             chat_id=msg.from_user.id,
             message_id=message_id,
-            caption=f"📝 <b>开始投稿</b>\n\n✅ 标题：{title}\n\n📄 请输入投稿内容或发送图片/文件：",
+            caption=create_content_submit_text("input_content", data.get('category_name'), title),
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[
                     [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
                     [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
                 ]
-            )
+            ),
+            parse_mode="Markdown"
         )
     except Exception as e:
         logger.error(f"编辑消息失败: {e}")

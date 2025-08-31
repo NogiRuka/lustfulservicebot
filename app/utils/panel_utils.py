@@ -33,7 +33,7 @@ def create_info_panel_text(user_info: dict) -> str:
         f"├ 用户ID: `{user_info.get('user_id', '未知')}`\n"
         f"└ 身份角色: **{user_info.get('role', '未知')}**\n\n"
         f"⏰ **时间记录**\n"
-        f"├ 注册时间: {user_info.get('created_at', '未知')}\n"
+        f"├ 开始时间: {user_info.get('created_at', '未知')}\n"
         f"└ 最后活跃: {user_info.get('last_activity_at', '未知')}"
     )
     
@@ -72,6 +72,41 @@ def create_movie_request_text(step: str, category_name: str = None, title: str =
     
     else:
         return "🎬 **求片流程** 🎬\n\n请按照提示完成操作"
+
+
+def create_content_submit_text(step: str, category_name: str = None, title: str = None) -> str:
+    """
+    创建内容投稿流程的提示文本
+    
+    Args:
+        step: 当前步骤 ('select_category', 'input_title', 'input_content')
+        category_name: 类型名称（可选）
+        title: 标题（可选）
+    
+    Returns:
+        格式化的提示文本
+    """
+    if step == "select_category":
+        return "📝 **开始投稿** 📝\n\n📂 请选择内容类型："
+    
+    elif step == "input_title":
+        return f"📝 **开始投稿** 📝\n\n📂 **类型**：【{category_name or '通用内容'}】\n\n📝 请输入投稿标题："
+    
+    elif step == "input_content":
+        return (
+            f"📝 **开始投稿** 📝\n\n"
+            f"📂 **类型**：【{category_name or '通用内容'}】\n"
+            f"✅ **标题**：{title or '未知'}\n\n"
+            f"📄 **请输入投稿内容**\n"
+            f"├ 可以发送文字内容\n"
+            f"├ 可以发送图片+说明文字\n"
+            f"├ 可以发送文件+说明文字\n"
+            f"└ 支持视频等多媒体内容\n\n"
+            f"💡 *丰富的内容更容易通过审核*"
+        )
+    
+    else:
+        return "📝 **投稿流程** 📝\n\n请按照提示完成操作"
 
 
 # 默认的欢迎图片URL
