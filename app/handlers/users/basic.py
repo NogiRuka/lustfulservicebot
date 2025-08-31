@@ -48,7 +48,6 @@ async def start(msg: types.Message):
     # 美化的欢迎界面
     welcome_text = (
         f"🌟 **欢迎来到 {BOT_NICKNAME}** 🌟\n\n"
-        f"🎭 **您的身份**：{role}\n\n"
         f"✨ **专属功能面板** ✨\n"
         f"{title}\n\n"
         f"💫 **开始您的精彩体验吧！** 💫"
@@ -153,20 +152,29 @@ async def cb_common_my_info(cb: types.CallbackQuery):
     user = await get_user(cb.from_user.id)
     role = await get_role(cb.from_user.id)
     
+    # 美化的个人信息界面
     info_text = (
-        f"🙋 <b>我的信息</b>\n\n"
-        f"👤 用户名: {cb.from_user.username or '未设置'}\n"
-        f"📝 昵称: {cb.from_user.full_name}\n"
-        f"🆔 用户ID: {cb.from_user.id}\n"
-        f"🎭 角色: {role}\n"
-        f"📅 注册时间: {user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user else '未知'}\n"
-        f"⏰ 最后活跃: {user.last_activity_at.strftime('%Y-%m-%d %H:%M:%S') if user and user.last_activity_at else '未知'}\n\n"
-        "如需返回主菜单，请点击下方按钮。"
+        f"🌟 **个人档案** 🌟\n\n"
+        f"┌─────────────────────┐\n"
+        f"│ 👤 **基本信息**\n"
+        f"├─────────────────────┤\n"
+        f"│ 🏷️ **用户名**: `{cb.from_user.username or '未设置'}`\n"
+        f"│ 📝 **昵称**: {cb.from_user.full_name}\n"
+        f"│ 🆔 **用户ID**: `{cb.from_user.id}`\n"
+        f"│ 🎭 **身份角色**: **{role}**\n"
+        f"├─────────────────────┤\n"
+        f"│ ⏰ **时间记录**\n"
+        f"├─────────────────────┤\n"
+        f"│ 📅 **注册时间**: {user.created_at.strftime('%Y年%m月%d日 %H:%M') if user else '未知'}\n"
+        f"│ 🕐 **最后活跃**: {user.last_activity_at.strftime('%Y年%m月%d日 %H:%M') if user and user.last_activity_at else '未知'}\n"
+        f"└─────────────────────┘\n\n"
+        f"💫 **感谢您使用我们的服务！** 💫"
     )
     
     await cb.message.edit_caption(
         caption=info_text,
-        reply_markup=back_to_main_kb
+        reply_markup=back_to_main_kb,
+        parse_mode="Markdown"
     )
     await cb.answer()
 
