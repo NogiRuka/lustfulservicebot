@@ -64,9 +64,10 @@ def create_movie_request_text(step: str, category_name: str = None, title: str =
             f"📂 **类型**：{category_name or '未知类型'}\n"
             f"✅ **片名**：{title or '未知'}\n\n"
             f"📝 **请输入详细描述**\n"
+            f"├ 可以发送豆瓣链接或其他\n"
             f"├ 可以描述剧情、演员、年份等信息\n"
             f"├ 也可以发送相关图片\n"
-            f"└ 或者直接跳过此步骤\n\n"
+            f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
             f"💡 *详细信息有助于更快找到资源*"
         )
     
@@ -98,10 +99,10 @@ def create_content_submit_text(step: str, category_name: str = None, title: str 
             f"📂 **类型**：【{category_name or '通用内容'}】\n"
             f"✅ **标题**：{title or '未知'}\n\n"
             f"📄 **请输入投稿内容**\n"
-            f"├ 可以发送文字内容\n"
-            f"├ 可以发送图片+说明文字\n"
-            f"├ 可以发送文件+说明文字\n"
-            f"└ 支持视频等多媒体内容\n\n"
+            f"├ 可以发送磁力链接\n"
+            f"├ 可以发送网盘链接\n"
+            f"├ 可以发送资源描述\n"
+            f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
             f"💡 *丰富的内容更容易通过审核*"
         )
     
