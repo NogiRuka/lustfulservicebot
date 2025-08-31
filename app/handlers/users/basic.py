@@ -151,9 +151,9 @@ async def cb_common_server_info(cb: types.CallbackQuery):
         member_count = await get_group_member_count(cb.bot)
         
         info_text = (
-            f"🖥️ **服务器信息** 🖥️\n\n"
+            f"🖥️ **服务信息** 🖥️\n\n"
             f"📊 **统计数据**\n"
-            f"├ 注册用户: {stats['total_users']}\n"
+            f"├ 使用用户: {stats['total_users']}\n"
             f"├ 求片请求: {stats['total_requests']}\n"
             f"└ 内容投稿: {stats['total_submissions']}\n\n"
             f"💫 **感谢您的使用！** 💫"
@@ -162,7 +162,7 @@ async def cb_common_server_info(cb: types.CallbackQuery):
         logger.error(f"获取服务信息失败: {e}")
         info_text = (
             f"🖥️ <b>服务信息</b>\n\n"
-            "❌ 暂时无法获取服务器信息，请稍后重试。\n\n"
+            "❌ 暂时无法获取服务信息，请稍后重试。\n\n"
             "如需返回主菜单，请点击下方按钮。"
         )
     
