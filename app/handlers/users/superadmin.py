@@ -23,16 +23,14 @@ superadmin_router = Router()
 @superadmin_router.callback_query(F.data == "superadmin_manage_center")
 async def cb_superadmin_manage_center(cb: types.CallbackQuery):
     """管理中心"""
-    # 系统总开关由BotStatusMiddleware统一处理，超管拥有特权访问
-    
-    if not await is_feature_enabled("superadmin_panel_enabled"):
-        await cb.answer("❌ 超管面板已关闭", show_alert=True)
-        return
+    # 系统总开关由BotStatusMiddleware统一处理，超管拥有完全特权访问
     
     role = await get_role(cb.from_user.id)
     if role != ROLE_SUPERADMIN:
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
+    
+    # 超管不受任何功能开关限制，拥有完全访问权限
     
     admins = await get_admin_list()
     admin_count = len([a for a in admins if a.role == ROLE_ADMIN])

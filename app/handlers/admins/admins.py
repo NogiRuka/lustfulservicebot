@@ -30,11 +30,12 @@ admins_router = Router()
 async def ShowPanel(msg: types.Message):
     # 系统总开关由BotStatusMiddleware统一处理，管理员拥有特权访问
     
-    if not await is_feature_enabled("admin_panel_enabled"):
+    role = await get_role(msg.from_user.id)
+    
+    # 超管不受任何功能开关限制，普通管理员需要检查面板开关
+    if role != ROLE_SUPERADMIN and not await is_feature_enabled("admin_panel_enabled"):
         await msg.reply("❌ 管理员面板已关闭")
         return
-    
-    role = await get_role(msg.from_user.id)
     admin_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
     admin_text = f"🛡️ 管理员面板\n\n👤 用户角色：{role}\n\n欢迎使用管理员功能，请选择下方按钮进行操作。"
     
