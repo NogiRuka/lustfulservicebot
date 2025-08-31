@@ -6,6 +6,7 @@ from loguru import logger
 from app.utils.states import Wait
 from app.database.business import (
     get_pending_movie_requests, get_pending_content_submissions,
+    get_all_movie_requests, get_all_content_submissions,
     review_movie_request, review_content_submission
 )
 from app.buttons.users import admin_review_center_kb, back_to_main_kb
@@ -576,3 +577,164 @@ async def cb_delete_media_message(cb: types.CallbackQuery, state: FSMContext):
     except Exception as e:
         logger.warning(f"删除媒体消息失败: {e}")
         await cb.answer("❌ 删除消息失败", show_alert=True)
+
+
+# ==================== 所有记录查看 ====================
+
+@review_router.callback_query(F.data == "admin_all_movies")
+async def cb_admin_all_movies(cb: types.CallbackQuery):
+    """查看所有求片"""
+    await cb_admin_all_movies_page(cb, 1)
+
+
+@review_router.callback_query(F.data.startswith("all_movie_page_"))
+async def cb_admin_all_movies_page(cb: types.CallbackQuery, page: int = None):
+    """所有求片分页"""
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "all_movie")
+    
+    requests = await get_all_movie_requests()
+    
+    if not requests:
+        await safe_edit_message(
+            cb.message,
+            caption="📋 <b>所有求片</b>\n\n暂无求片记录。",
+            reply_markup=admin_review_center_kb
+        )
+        await cb.answer()
+        return
+    
+    paginator = Paginator(requests, page_size=3)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
+    
+    # 构建页面内容
+    text = format_page_header("📋 <b>所有求片</b>", page_info)
+    
+    start_num = (page - 1) * paginator.page_size + 1
+    for i, req in enumerate(page_items, start_num):
+        # 获取类型信息
+        category_name = "未知类型"
+        if hasattr(req, 'category') and req.category:
+            category_name = req.category.name
+        
+        # 状态显示
+        status_text = get_status_text(req.status)
+        
+        # 美化的卡片式布局
+        text += f"┌─ {i}. 🎬 <b>【{category_name}】{req.title}</b>\n"
+        text += f"├ 🆔 ID：<code>{req.id}</code>\n"
+        text += f"├ 👤 用户：{req.user_id}\n"
+        text += f"├ ⏰ 时间：<i>{humanize_time(req.created_at)}</i>\n"
+        text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
+        
+        if req.description:
+            desc_preview = req.description[:60] + ('...' if len(req.description) > 60 else '')
+            text += f"├ 📝 描述：{desc_preview}\n"
+        
+        # 显示审核备注（如果有）
+        if hasattr(req, 'review_note') and req.review_note:
+            note_preview = req.review_note[:60] + ('...' if len(req.review_note) > 60 else '')
+            text += f"└ 💬 <b>审核备注</b>：<blockquote>{note_preview}</blockquote>\n"
+        else:
+            text += f"└─────────────────\n"
+        
+        text += "\n"
+    
+    # 创建分页键盘
+    keyboard = paginator.get_keyboard(
+        page, 
+        "all_movie_page",
+        extra_buttons=[
+            [
+                types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center")
+            ]
+        ]
+    )
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=keyboard
+    )
+    await cb.answer()
+
+
+@review_router.callback_query(F.data == "admin_all_content")
+async def cb_admin_all_content(cb: types.CallbackQuery):
+    """查看所有投稿"""
+    await cb_admin_all_content_page(cb, 1)
+
+
+@review_router.callback_query(F.data.startswith("all_content_page_"))
+async def cb_admin_all_content_page(cb: types.CallbackQuery, page: int = None):
+    """所有投稿分页"""
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "all_content")
+    
+    submissions = await get_all_content_submissions()
+    
+    if not submissions:
+        await safe_edit_message(
+            cb.message,
+            caption="📄 <b>所有投稿</b>\n\n暂无投稿记录。",
+            reply_markup=admin_review_center_kb
+        )
+        await cb.answer()
+        return
+    
+    paginator = Paginator(submissions, page_size=3)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
+    
+    # 构建页面内容
+    text = format_page_header("📄 <b>所有投稿</b>", page_info)
+    
+    start_num = (page - 1) * paginator.page_size + 1
+    for i, sub in enumerate(page_items, start_num):
+        # 获取类型信息
+        category_name = "未知类型"
+        if hasattr(sub, 'category') and sub.category:
+            category_name = sub.category.name
+        
+        # 状态显示
+        status_text = get_status_text(sub.status)
+        
+        # 美化的卡片式布局
+        text += f"┌─ {i}. 📝 <b>【{category_name}】{sub.title}</b>\n"
+        text += f"├ 🆔 ID：<code>{sub.id}</code>\n"
+        text += f"├ 👤 用户：{sub.user_id}\n"
+        text += f"├ ⏰ 时间：<i>{humanize_time(sub.created_at)}</i>\n"
+        text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
+        
+        content_preview = sub.content[:60] + ('...' if len(sub.content) > 60 else '')
+        text += f"├ 📄 内容：{content_preview}\n"
+        
+        # 显示审核备注（如果有）
+        if hasattr(sub, 'review_note') and sub.review_note:
+            note_preview = sub.review_note[:60] + ('...' if len(sub.review_note) > 60 else '')
+            text += f"└ 💬 <b>审核备注</b>：<blockquote>{note_preview}</blockquote>\n"
+        else:
+            text += f"└─────────────────\n"
+        
+        text += "\n"
+    
+    # 创建分页键盘
+    keyboard = paginator.get_keyboard(
+        page, 
+        "all_content_page",
+        extra_buttons=[
+            [
+                types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center")
+            ]
+        ]
+    )
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=keyboard
+    )
+    await cb.answer()

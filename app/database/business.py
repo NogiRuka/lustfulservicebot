@@ -129,6 +129,21 @@ async def get_pending_movie_requests() -> List[MovieRequest]:
             return []
 
 
+async def get_all_movie_requests() -> List[MovieRequest]:
+    """获取所有求片请求"""
+    async for session in get_db():
+        try:
+            result = await session.execute(
+                select(MovieRequest)
+                .options(selectinload(MovieRequest.category))
+                .order_by(MovieRequest.created_at.desc())
+            )
+            return result.scalars().all()
+        except Exception as e:
+            logger.error(f"获取所有求片请求失败: {e}")
+            return []
+
+
 async def review_movie_request(request_id: int, reviewer_id: int, status: str, review_note: str = None) -> bool:
     """审核求片请求"""
     async for session in get_db():
@@ -214,6 +229,21 @@ async def get_pending_content_submissions() -> List[ContentSubmission]:
             return result.scalars().all()
         except Exception as e:
             logger.error(f"获取待审核内容投稿失败: {e}")
+            return []
+
+
+async def get_all_content_submissions() -> List[ContentSubmission]:
+    """获取所有内容投稿"""
+    async for session in get_db():
+        try:
+            result = await session.execute(
+                select(ContentSubmission)
+                .options(selectinload(ContentSubmission.category))
+                .order_by(ContentSubmission.created_at.desc())
+            )
+            return result.scalars().all()
+        except Exception as e:
+            logger.error(f"获取所有内容投稿失败: {e}")
             return []
 
 

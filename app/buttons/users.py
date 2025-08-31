@@ -175,6 +175,10 @@ admin_review_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="📝 投稿审核", callback_data="admin_review_content"),
         ],
         [
+            InlineKeyboardButton(text="📋 所有求片", callback_data="admin_all_movies"),
+            InlineKeyboardButton(text="📄 所有投稿", callback_data="admin_all_content"),
+        ],
+        [
             InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
         ],
     ]
