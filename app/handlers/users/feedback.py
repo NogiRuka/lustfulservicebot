@@ -14,11 +14,7 @@ feedback_router = Router()
 @feedback_router.callback_query(F.data == "feedback_center")
 async def cb_feedback_center(cb: types.CallbackQuery):
     """用户反馈中心"""
-    # 检查系统总开关和反馈功能开关
-    if not await is_feature_enabled("system_enabled"):
-        await cb.answer("❌ 系统维护中，暂时无法使用", show_alert=True)
-        return
-    
+    # 检查反馈功能开关
     if not await is_feature_enabled("feedback_enabled"):
         await cb.answer("❌ 用户反馈功能已关闭", show_alert=True)
         return

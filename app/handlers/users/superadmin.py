@@ -23,10 +23,7 @@ superadmin_router = Router()
 @superadmin_router.callback_query(F.data == "superadmin_manage_center")
 async def cb_superadmin_manage_center(cb: types.CallbackQuery):
     """管理中心"""
-    # 检查超管面板开关
-    if not await is_feature_enabled("system_enabled"):
-        await cb.answer("❌ 系统维护中，暂时无法使用", show_alert=True)
-        return
+    # 系统总开关由BotStatusMiddleware统一处理，超管拥有特权访问
     
     if not await is_feature_enabled("superadmin_panel_enabled"):
         await cb.answer("❌ 超管面板已关闭", show_alert=True)

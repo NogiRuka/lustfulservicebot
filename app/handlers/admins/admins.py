@@ -28,10 +28,7 @@ admins_router = Router()
 
 @admins_router.message(Command("panel"))
 async def ShowPanel(msg: types.Message):
-    # 检查管理员面板开关
-    if not await is_feature_enabled("system_enabled"):
-        await msg.reply("❌ 系统维护中，暂时无法使用")
-        return
+    # 系统总开关由BotStatusMiddleware统一处理，管理员拥有特权访问
     
     if not await is_feature_enabled("admin_panel_enabled"):
         await msg.reply("❌ 管理员面板已关闭")

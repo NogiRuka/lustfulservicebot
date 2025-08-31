@@ -16,10 +16,7 @@ content_router = Router()
 @content_router.callback_query(F.data == "content_center")
 async def cb_content_center(cb: types.CallbackQuery):
     """内容投稿中心"""
-    # 检查系统总开关和投稿功能开关
-    if not await is_feature_enabled("system_enabled"):
-        await cb.answer("❌ 系统维护中，暂时无法使用", show_alert=True)
-        return
+    # 系统总开关由BotStatusMiddleware统一处理
     
     if not await is_feature_enabled("content_submit_enabled"):
         await cb.answer("❌ 内容投稿功能已关闭", show_alert=True)
@@ -35,9 +32,9 @@ async def cb_content_center(cb: types.CallbackQuery):
 @content_router.callback_query(F.data == "content_submit_new")
 async def cb_content_submit_new(cb: types.CallbackQuery, state: FSMContext):
     """开始投稿 - 选择类型"""
-    # 检查功能开关
-    if not await is_feature_enabled("system_enabled") or not await is_feature_enabled("content_submit_enabled"):
-        await cb.answer("❌ 投稿功能暂时不可用", show_alert=True)
+    # 检查投稿功能开关
+    if not await is_feature_enabled("content_submit_enabled"):
+        await cb.answer("❌ 投稿功能已关闭", show_alert=True)
         return
     
     await state.clear()
