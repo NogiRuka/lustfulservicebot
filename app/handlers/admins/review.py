@@ -90,10 +90,6 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
         if hasattr(req, 'file_id') and req.file_id:
             text += f"   📎 [查看附件](https://t.me/c/{req.file_id})\n"
         
-        text += "\n"
-    
-    text += "💡 使用下方按钮快速审核，或输入命令：\n"
-    text += "/approve_movie [ID] - 通过 | /reject_movie [ID] - 拒绝"
     
     # 创建分页键盘
     extra_buttons = []
@@ -186,10 +182,6 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
         if sub.file_id:
             text += f"   📎 [查看附件](https://t.me/c/{sub.file_id})\n"
         
-        text += "\n"
-    
-    text += "💡 使用下方按钮快速审核，或输入命令：\n"
-    text += "/approve_content [ID] - 通过 | /reject_content [ID] - 拒绝"
     
     # 创建分页键盘
     extra_buttons = []
@@ -233,17 +225,18 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
 
 @review_router.callback_query(F.data.startswith("approve_movie_"))
 async def cb_approve_movie(cb: types.CallbackQuery):
+    logger.info(f"cb_approve_movie求片review: {cb.data}")
     """快速通过求片"""
     request_id = int(cb.data.split("_")[-1])
     
     success = await review_movie_request(request_id, cb.from_user.id, "approved")
     
     if success:
-        await cb.answer(f"✅ 已通过求片 {request_id}", show_alert=True)
+        await cb.answer(f"✅ 已通过求片 {request_id}")
         # 刷新审核列表
         await cb_admin_review_movie(cb)
     else:
-        await cb.answer("❌ 操作失败，请检查求片ID是否正确", show_alert=True)
+        await cb.answer("❌ 操作失败，请检查求片ID是否正确")
 
 
 @review_router.callback_query(F.data.startswith("reject_movie_"))
@@ -254,11 +247,11 @@ async def cb_reject_movie(cb: types.CallbackQuery):
     success = await review_movie_request(request_id, cb.from_user.id, "rejected")
     
     if success:
-        await cb.answer(f"❌ 已拒绝求片 {request_id}", show_alert=True)
+        await cb.answer(f"❌ 已拒绝求片 {request_id}")
         # 刷新审核列表
         await cb_admin_review_movie(cb)
     else:
-        await cb.answer("❌ 操作失败，请检查求片ID是否正确", show_alert=True)
+        await cb.answer("❌ 操作失败，请检查求片ID是否正确")
 
 
 @review_router.callback_query(F.data.startswith("approve_content_"))
@@ -269,11 +262,11 @@ async def cb_approve_content(cb: types.CallbackQuery):
     success = await review_content_submission(submission_id, cb.from_user.id, "approved")
     
     if success:
-        await cb.answer(f"✅ 已通过投稿 {submission_id}", show_alert=True)
+        await cb.answer(f"✅ 已通过投稿 {submission_id}")
         # 刷新审核列表
         await cb_admin_review_content(cb)
     else:
-        await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
+        await cb.answer("❌ 操作失败，请检查投稿ID是否正确")
 
 
 # ==================== 详情查看功能 ====================
@@ -288,7 +281,7 @@ async def cb_review_movie_detail(cb: types.CallbackQuery):
     request = next((r for r in requests if r.id == request_id), None)
     
     if not request:
-        await cb.answer("❌ 求片请求不存在或已被处理", show_alert=True)
+        await cb.answer("❌ 求片请求不存在或已被处理")
         return
     
     # 构建详情文本
@@ -344,7 +337,7 @@ async def cb_review_content_detail(cb: types.CallbackQuery):
     submission = next((s for s in submissions if s.id == submission_id), None)
     
     if not submission:
-        await cb.answer("❌ 投稿不存在或已被处理", show_alert=True)
+        await cb.answer("❌ 投稿不存在或已被处理",)
         return
     
     # 构建详情文本
@@ -401,8 +394,8 @@ async def cb_reject_content(cb: types.CallbackQuery):
     success = await review_content_submission(submission_id, cb.from_user.id, "rejected")
     
     if success:
-        await cb.answer(f"❌ 已拒绝投稿 {submission_id}", show_alert=True)
+        await cb.answer(f"❌ 已拒绝投稿 {submission_id}")
         # 刷新审核列表
         await cb_admin_review_content(cb)
     else:
-        await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
+        await cb.answer("❌ 操作失败，请检查投稿ID是否正确")

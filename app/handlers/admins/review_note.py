@@ -123,27 +123,40 @@ async def process_review_note(msg: types.Message, state: FSMContext):
     message_id = data.get('message_id')
     
     if not review_note:
-        await msg.reply("留言内容不能为空，请重新输入：")
+        # 在面板回显错误信息
+        error_text = (
+            f"💬 <b>审核留言</b>\n\n"
+            f"❌ 留言内容不能为空，请重新输入："
+        )
+        try:
+            await msg.bot.edit_message_caption(
+                chat_id=msg.from_user.id,
+                message_id=message_id,
+                caption=error_text,
+                reply_markup=types.InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [types.InlineKeyboardButton(text="❌ 取消", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content")]
+                    ]
+                )
+            )
+        except Exception as e:
+            logger.error(f"编辑消息失败: {e}")
+        
+        # 删除管理员输入的消息
+        try:
+            await msg.delete()
+        except:
+            pass
         return
     
-    # 删除用户输入的消息
-    try:
-        await msg.delete()
-    except:
-        pass
-    
-    # 保存留言到状态
-    await state.update_data(review_note=review_note)
-    
-    # 显示确认页面
+    # 在面板回显管理员输入的内容
     action_text = "通过" if review_action == "approved" else "拒绝"
     item_type = "求片" if review_type == "movie" else "投稿"
     
-    note_preview = review_note[:100] + ('...' if len(review_note) > 100 else '')
-    confirm_text = (
-        f"📋 <b>确认审核留言</b>\n\n"
+    echo_text = (
+        f"💬 <b>审核留言</b>\n\n"
         f"🎯 操作：{action_text}{item_type} #{review_id}\n"
-        f"💬 留言：{note_preview}\n\n"
+        f"📝 管理员输入：{review_note}\n\n"
         f"请确认以上信息是否正确？"
     )
     
@@ -159,11 +172,15 @@ async def process_review_note(msg: types.Message, state: FSMContext):
         ]
     )
     
+    # 保存留言到状态
+    await state.update_data(review_note=review_note)
+    
+    # 在面板回显
     try:
         await msg.bot.edit_message_caption(
             chat_id=msg.from_user.id,
             message_id=message_id,
-            caption=confirm_text,
+            caption=echo_text,
             reply_markup=confirm_kb
         )
     except Exception as e:
@@ -171,9 +188,15 @@ async def process_review_note(msg: types.Message, state: FSMContext):
         # 如果编辑失败，发送新消息
         await msg.answer_photo(
             photo="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true",
-            caption=confirm_text,
+            caption=echo_text,
             reply_markup=confirm_kb
         )
+    
+    # 删除管理员输入的消息
+    try:
+        await msg.delete()
+    except:
+        pass
 
 
 @review_note_router.callback_query(F.data == "confirm_review_note")
