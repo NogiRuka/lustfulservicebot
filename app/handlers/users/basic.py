@@ -164,7 +164,7 @@ async def cb_common_server_info(cb: types.CallbackQuery):
     except Exception as e:
         logger.error(f"获取服务信息失败: {e}")
         info_text = (
-            f"🖥️ <b>服务信息</b>\n\n"
+            f"🖥️ **服务信息** 🖥️\n\n"
             "❌ 暂时无法获取服务信息，请稍后重试。\n\n"
             "如需返回主菜单，请点击下方按钮。"
         )
