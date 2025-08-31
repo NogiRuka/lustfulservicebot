@@ -19,7 +19,7 @@ from app.database.business import (
 )
 from app.buttons.users import back_to_main_kb
 from app.database.business import is_feature_enabled
-from app.utils.panel_utils import get_user_display_link, send_feedback_reply_notification, send_admin_message_notification
+from app.utils.panel_utils import get_user_display_link, send_feedback_reply_notification, send_admin_message_notification, DEFAULT_WELCOME_PHOTO
 from app.utils.time_utils import humanize_time
 import re
 
@@ -36,7 +36,7 @@ async def ShowPanel(msg: types.Message):
     if role != ROLE_SUPERADMIN and not await is_feature_enabled("admin_panel_enabled"):
         await msg.reply("❌ 管理员面板已关闭")
         return
-    admin_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    admin_photo = DEFAULT_WELCOME_PHOTO
     admin_text = f"🛡️ 管理员面板\n\n👤 用户角色：{role}\n\n欢迎使用管理员功能，请选择下方按钮进行操作。"
     
     await msg.bot.send_photo(

@@ -5,7 +5,7 @@ from loguru import logger
 
 from app.utils.states import Wait
 from app.database.business import review_movie_request, review_content_submission, get_pending_movie_requests, get_pending_content_submissions
-from app.utils.panel_utils import send_review_notification
+from app.utils.panel_utils import send_review_notification, DEFAULT_WELCOME_PHOTO
 
 review_note_router = Router()
 
@@ -183,7 +183,7 @@ async def process_review_note(msg: types.Message, state: FSMContext):
         logger.error(f"编辑消息失败: {e}")
         # 如果编辑失败，发送新消息
         await msg.answer_photo(
-            photo="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true",
+            photo=DEFAULT_WELCOME_PHOTO,
             caption=echo_text,
             reply_markup=confirm_kb
         )

@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from app.utils.message_utils import safe_edit_message
+from app.utils.panel_utils import DEFAULT_WELCOME_PHOTO
 
 from app.utils.states import Wait
 from app.database.users import get_user, get_role
@@ -864,7 +865,7 @@ async def process_category_name(msg: types.Message, state: FSMContext):
     
     # 发送结果消息
     await msg.answer_photo(
-        photo="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true",
+        photo=DEFAULT_WELCOME_PHOTO,
         caption=result_text,
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
