@@ -42,7 +42,11 @@ async def cb_content_submit_new(cb: types.CallbackQuery, state: FSMContext):
     # 获取可用的类型
     categories = await get_all_movie_categories(active_only=True)
     if not categories:
-        await cb.answer("❌ 暂无可用的内容类型，请联系管理员", show_alert=True)
+        await cb.message.edit_caption(
+            caption="❌ 暂无可用的内容类型，请联系管理员。",
+            reply_markup=back_to_main_kb
+        )
+        await cb.answer()
         return
     
     # 创建类型选择键盘
@@ -88,7 +92,11 @@ async def cb_select_content_category(cb: types.CallbackQuery, state: FSMContext)
         if category:
             category_name = category.name
         else:
-            await cb.answer("❌ 类型不存在", show_alert=True)
+            await cb.message.edit_caption(
+                caption="❌ 类型不存在，请重新选择。",
+                reply_markup=back_to_main_kb
+            )
+            await cb.answer()
             return
     
     # 保存选择的类型

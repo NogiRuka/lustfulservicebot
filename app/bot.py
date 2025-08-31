@@ -27,7 +27,8 @@ dp = Dispatcher(
 
 os.makedirs("./logs", exist_ok=True)
 logger.add("./logs/errors.log", enqueue=True, rotation="1 week", level="ERROR")
-logger.add("./logs/all.log", enqueue=True, rotation="1 week")
+logger.add("./logs/all.log", enqueue=True, rotation="1 week", level="DEBUG")
+logger.add(sys.stdout, level="DEBUG")  # 控制台输出DEBUG日志
 
 # ===== 机器人实例 =====
 bot = Bot(BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
