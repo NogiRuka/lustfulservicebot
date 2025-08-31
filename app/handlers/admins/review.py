@@ -13,7 +13,7 @@ from app.buttons.users import admin_review_center_kb, back_to_main_kb
 from app.utils.message_utils import safe_edit_message
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
 from app.utils.time_utils import humanize_time, get_status_text
-from app.utils.panel_utils import send_review_notification, get_user_display_link
+from app.utils.panel_utils import send_review_notification, get_user_display_link, cleanup_sent_media_messages
 
 review_router = Router()
 
@@ -60,14 +60,19 @@ async def cb_admin_review_center(cb: types.CallbackQuery, state: FSMContext):
 # ==================== 求片审核 ====================
 
 @review_router.callback_query(F.data == "admin_review_movie")
-async def cb_admin_review_movie(cb: types.CallbackQuery):
+async def cb_admin_review_movie(cb: types.CallbackQuery, state: FSMContext):
     """求片审核"""
-    await cb_admin_review_movie_page(cb, 1)
+    # 清空之前的媒体消息记录
+    await state.update_data(sent_media_ids=[])
+    await cb_admin_review_movie_page(cb, state, 1)
 
 
 @review_router.callback_query(F.data.startswith("movie_review_page_"))
-async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
+async def cb_admin_review_movie_page(cb: types.CallbackQuery, state: FSMContext, page: int = None):
     """求片审核分页"""
+    # 清理之前发送的媒体消息
+    await cleanup_sent_media_messages(cb.bot, state)
+    
     # 提取页码
     if page is None:
         page = extract_page_from_callback(cb.data, "movie_review")
@@ -148,12 +153,21 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
             )
             
             try:
-                await cb.message.bot.send_photo(
+                sent_message = await cb.message.bot.send_photo(
                     chat_id=cb.from_user.id, 
                     photo=req.file_id, 
                     caption=media_caption,
                     parse_mode="HTML",
                     reply_markup=media_keyboard
+                )
+                
+                # 记录发送的媒体消息ID
+                data = await state.get_data()
+                sent_media_ids = data.get('sent_media_ids', [])
+                sent_media_ids.append(sent_message.message_id)
+                await state.update_data(
+                    sent_media_ids=sent_media_ids,
+                    chat_id=cb.from_user.id
                 )
             except Exception as e:
                 logger.warning(f"发送媒体消息失败: {e}")
@@ -204,14 +218,19 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
 # ==================== 投稿审核 ====================
 
 @review_router.callback_query(F.data == "admin_review_content")
-async def cb_admin_review_content(cb: types.CallbackQuery):
+async def cb_admin_review_content(cb: types.CallbackQuery, state: FSMContext):
     """投稿审核"""
-    await cb_admin_review_content_page(cb, 1)
+    # 清空之前的媒体消息记录
+    await state.update_data(sent_media_ids=[])
+    await cb_admin_review_content_page(cb, state, 1)
 
 
 @review_router.callback_query(F.data.startswith("content_review_page_"))
-async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None):
+async def cb_admin_review_content_page(cb: types.CallbackQuery, state: FSMContext, page: int = None):
     """投稿审核分页"""
+    # 清理之前发送的媒体消息
+    await cleanup_sent_media_messages(cb.bot, state)
+    
     # 提取页码
     if page is None:
         page = extract_page_from_callback(cb.data, "content_review")

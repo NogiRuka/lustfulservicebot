@@ -14,10 +14,13 @@ from app.database.users import set_role, get_role
 from app.utils.roles import ROLE_ADMIN, ROLE_SUPERADMIN, ROLE_USER
 from app.utils.commands_catalog import build_commands_help
 from app.database.business import (
-    get_all_feedback_list, reply_user_feedback, review_movie_request, review_content_submission
+    get_all_feedback_list, reply_user_feedback, review_movie_request, review_content_submission,
+    get_all_movie_requests, get_all_content_submissions
 )
 from app.buttons.users import back_to_main_kb
 from app.database.business import is_feature_enabled
+from app.utils.panel_utils import get_user_display_link, send_feedback_reply_notification
+from app.utils.time_utils import humanize_time
 import re
 
 admins_router = Router()
@@ -190,6 +193,12 @@ async def cb_admin_feedback_browse(cb: types.CallbackQuery):
                 "resolved": "✅"
             }.get(feedback.status, "❓")
             
+            status_text = {
+                "pending": "待处理",
+                "processing": "处理中", 
+                "resolved": "已解决"
+            }.get(feedback.status, "未知")
+            
             type_emoji = {
                 "bug": "🐛",
                 "suggestion": "💡",
@@ -197,13 +206,23 @@ async def cb_admin_feedback_browse(cb: types.CallbackQuery):
                 "other": "❓"
             }.get(feedback.feedback_type, "❓")
             
+            type_text = {
+                "bug": "Bug反馈",
+                "suggestion": "建议反馈",
+                "complaint": "投诉反馈",
+                "other": "其他反馈"
+            }.get(feedback.feedback_type, "未知类型")
+            
+            # 获取用户显示链接
+            user_display = await get_user_display_link(feedback.user_id)
+            
             # 美化的卡片式布局
             content_preview = feedback.content[:40] + ('...' if len(feedback.content) > 40 else '')
             text += f"┌─ {i}. {type_emoji} {status_emoji} <b>ID:{feedback.id}</b>\n"
-            text += f"├ 👤 用户：{feedback.user_id}\n"
-            text += f"├ ⏰ 时间：<i>{feedback.created_at.strftime('%m-%d %H:%M')}</i>\n"
-            text += f"├ 📂 类型：{type_emoji} {feedback.feedback_type}\n"
-            text += f"├ 🏷️ 状态：<code>{feedback.status}</code>\n"
+            text += f"├ 👤 用户：{user_display}\n"
+            text += f"├ ⏰ 时间：<i>{humanize_time(feedback.created_at)}</i>\n"
+            text += f"├ 📂 类型：{type_emoji} {type_text}\n"
+            text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
             text += f"└ 📄 内容：{content_preview}\n\n"
         
         if len(feedbacks) > 15:
@@ -222,23 +241,141 @@ async def cb_admin_feedback_browse(cb: types.CallbackQuery):
 @admins_router.message(Command("reply"))
 async def admin_reply_feedback(msg: types.Message):
     """回复用户反馈"""
-    parts = msg.text.strip().split(maxsplit=2)
+    parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
         await msg.reply("用法：/reply [反馈ID] [回复内容]")
         return
     
     try:
         feedback_id = int(parts[1])
-        reply_content = parts[2]
     except ValueError:
         await msg.reply("反馈ID必须是数字")
+        return
+    
+    reply_content = parts[2]
+    
+    # 先获取反馈信息
+    feedbacks = await get_all_feedback_list()
+    feedback = next((f for f in feedbacks if f.id == feedback_id), None)
+    
+    if not feedback:
+        await msg.reply("❌ 反馈不存在")
         return
     
     success = await reply_user_feedback(feedback_id, msg.from_user.id, reply_content)
     
     if success:
-        await msg.reply(f"✅ 已回复反馈 {feedback_id}")
+        # 发送通知给用户
+        await send_feedback_reply_notification(msg.bot, feedback.user_id, feedback_id, reply_content)
+        
+        # 发送成功消息给管理员
+        success_msg = await msg.reply(f"✅ 已回复反馈 {feedback_id}，用户已收到通知")
+        
+        # 删除命令消息和成功消息（延迟删除）
+        try:
+            await msg.delete()
+            # 3秒后删除成功消息
+            import asyncio
+            await asyncio.sleep(3)
+            await success_msg.delete()
+        except Exception as e:
+            from loguru import logger
+            logger.warning(f"删除消息失败: {e}")
     else:
         await msg.reply("❌ 回复失败，请检查反馈ID是否正确")
+
+
+# 管理员命令：向用户发送消息
+@admins_router.message(Command("message"))
+async def admin_message_user(msg: types.Message):
+    """向特定项目的用户发送消息"""
+    parts = msg.text.split(maxsplit=3)
+    if len(parts) < 4:
+        await msg.reply(
+            "用法：/message [类型] [ID] [消息内容]\n\n"
+            "类型支持：\n"
+            "• movie - 求片\n"
+            "• content - 投稿\n"
+            "• feedback - 反馈\n\n"
+            "示例：/message movie 123 您的求片已处理完成"
+        )
+        return
+    
+    item_type = parts[1].lower()
+    try:
+        item_id = int(parts[2])
+    except ValueError:
+        await msg.reply("❌ ID必须是数字")
+        return
+    
+    message_content = parts[3]
+    
+    # 根据类型获取对应的项目和用户信息
+    user_id = None
+    item_title = None
+    
+    if item_type == "movie":
+        requests = await get_all_movie_requests()
+        item = next((r for r in requests if r.id == item_id), None)
+        if item:
+            user_id = item.user_id
+            item_title = item.title
+            type_name = "求片"
+    elif item_type == "content":
+        submissions = await get_all_content_submissions()
+        item = next((s for s in submissions if s.id == item_id), None)
+        if item:
+            user_id = item.user_id
+            item_title = item.title
+            type_name = "投稿"
+    elif item_type == "feedback":
+        feedbacks = await get_all_feedback_list()
+        item = next((f for f in feedbacks if f.id == item_id), None)
+        if item:
+            user_id = item.user_id
+            item_title = f"反馈#{item_id}"
+            type_name = "反馈"
+    else:
+        await msg.reply("❌ 不支持的类型，请使用 movie、content 或 feedback")
+        return
+    
+    if not user_id:
+        await msg.reply(f"❌ {type_name} ID {item_id} 不存在")
+        return
+    
+    # 发送消息给用户
+    try:
+        notification_text = (
+            f"📨 <b>管理员消息</b> 📨\n\n"
+            f"📋 <b>关于</b>：{type_name} - {item_title}\n"
+            f"🆔 <b>ID</b>：{item_id}\n\n"
+            f"💬 <b>消息内容</b>：\n{message_content}\n\n"
+            f"📝 如有疑问，请联系管理员。"
+        )
+        
+        await msg.bot.send_message(
+            chat_id=user_id,
+            text=notification_text,
+            parse_mode="HTML"
+        )
+        
+        # 发送成功消息给管理员
+        success_msg = await msg.reply(f"✅ 消息已发送给用户（{type_name} #{item_id}）")
+        
+        # 删除命令消息和成功消息（延迟删除）
+        try:
+            await msg.delete()
+            # 3秒后删除成功消息
+            import asyncio
+            await asyncio.sleep(3)
+            await success_msg.delete()
+        except Exception as e:
+            from loguru import logger
+            logger.warning(f"删除消息失败: {e}")
+            
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"发送消息失败: {e}")
+        await msg.reply("❌ 发送消息失败，请检查用户是否存在")
 
 

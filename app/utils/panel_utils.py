@@ -14,7 +14,7 @@ def create_welcome_panel_text(title: str, role: str = None) -> str:
         格式化的欢迎文本
     """
     welcome_text = (
-        f"🌸 <b>欢迎来到 {BOT_NICKNAME}</b> 🌸\n\n"
+        f"🌸 欢迎来到 <b>{BOT_NICKNAME}</b> 🌸\n\n"
     )
     
     welcome_text += (
@@ -189,6 +189,62 @@ async def get_user_display_link(user_id: int) -> str:
             return f"用户{user_id}"
     except Exception:
         return f"用户{user_id}"
+
+
+async def cleanup_sent_media_messages(bot, state):
+    """
+    清理已发送的媒体消息
+    
+    Args:
+        bot: 机器人实例
+        state: FSM状态
+    """
+    try:
+        data = await state.get_data()
+        sent_media_ids = data.get('sent_media_ids', [])
+        
+        for message_id in sent_media_ids:
+            try:
+                await bot.delete_message(chat_id=data.get('chat_id'), message_id=message_id)
+            except Exception as e:
+                from loguru import logger
+                logger.warning(f"删除媒体消息失败 {message_id}: {e}")
+        
+        # 清空已发送的媒体消息记录
+        await state.update_data(sent_media_ids=[])
+        
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"清理媒体消息失败: {e}")
+
+
+async def send_feedback_reply_notification(bot, user_id: int, feedback_id: int, reply_content: str):
+    """
+    发送反馈回复通知给用户
+    
+    Args:
+        bot: 机器人实例
+        user_id: 用户ID
+        feedback_id: 反馈ID
+        reply_content: 回复内容
+    """
+    try:
+        notification_text = (
+            f"💬 <b>反馈回复通知</b> 💬\n\n"
+            f"🆔 <b>反馈ID</b>：{feedback_id}\n"
+            f"👨‍💼 <b>管理员回复</b>：\n{reply_content}\n\n"
+            f"📝 感谢您的反馈，如有其他问题请继续联系我们。"
+        )
+        
+        await bot.send_message(
+            chat_id=user_id,
+            text=notification_text,
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"发送反馈回复通知失败: {e}")
 
 
 # 默认的欢迎图片URL

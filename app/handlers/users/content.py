@@ -142,8 +142,8 @@ async def process_content_title(msg: types.Message, state: FSMContext):
             caption=create_content_submit_text("input_content", data.get('category_name'), title),
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
-                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
                 ]
             ),
              parse_mode="HTML"
@@ -254,8 +254,8 @@ async def cb_edit_content_body(cb: types.CallbackQuery, state: FSMContext):
         caption=edit_text,
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
-                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
-                [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
             ]
         )
     )
@@ -328,8 +328,8 @@ async def cb_content_submit_my_page(cb: types.CallbackQuery, page: int = None):
             caption="📋 <b>我的投稿</b>\n\n您还没有提交过投稿。",
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")],
-                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
                 ]
             )
         )
