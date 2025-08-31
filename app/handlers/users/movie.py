@@ -8,6 +8,7 @@ from app.database.business import create_movie_request, get_user_movie_requests,
 from app.buttons.users import movie_center_kb, movie_input_kb, back_to_main_kb
 from app.utils.time_utils import humanize_time, get_status_text
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
+from app.utils.panel_utils import create_movie_request_text
 
 movie_router = Router()
 
@@ -95,8 +96,9 @@ async def cb_select_category(cb: types.CallbackQuery, state: FSMContext):
     await state.update_data(message_id=cb.message.message_id, category_id=category_id, category_name=category.name)
     
     await cb.message.edit_caption(
-        caption=f"🎬 <b>开始求片</b>\n\n📂 类型：{category.name}\n\n请输入您想要的片名：",
-        reply_markup=back_to_main_kb
+        caption=create_movie_request_text("input_title", category.name),
+        reply_markup=back_to_main_kb,
+        parse_mode="Markdown"
     )
     
     await state.set_state(Wait.waitMovieTitle)
@@ -136,8 +138,9 @@ async def process_movie_title(msg: types.Message, state: FSMContext):
         await msg.bot.edit_message_caption(
             chat_id=msg.from_user.id,
             message_id=message_id,
-            caption=f"🎬 <b>开始求片</b>\n\n📂 类型：{category_name}\n✅ 片名：{title}\n\n📝 请输入详细描述（可选）或发送图片：",
-            reply_markup=movie_input_kb
+            caption=create_movie_request_text("input_description", category_name, title),
+            reply_markup=movie_input_kb,
+            parse_mode="Markdown"
         )
     except Exception as e:
         logger.error(f"编辑消息失败: {e}")

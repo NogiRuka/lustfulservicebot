@@ -40,5 +40,39 @@ def create_info_panel_text(user_info: dict) -> str:
     return info_text
 
 
+def create_movie_request_text(step: str, category_name: str = None, title: str = None) -> str:
+    """
+    创建求片流程的提示文本
+    
+    Args:
+        step: 当前步骤 ('select_category', 'input_title', 'input_description')
+        category_name: 类型名称（可选）
+        title: 片名（可选）
+    
+    Returns:
+        格式化的提示文本
+    """
+    if step == "select_category":
+        return "🎬 **开始求片** 🎬\n\n📂 请选择您要求片的类型："
+    
+    elif step == "input_title":
+        return f"🎬 **开始求片** 🎬\n\n📂 **类型**：{category_name or '未知类型'}\n\n📝 请输入您想要的片名："
+    
+    elif step == "input_description":
+        return (
+            f"🎬 **开始求片** 🎬\n\n"
+            f"📂 **类型**：{category_name or '未知类型'}\n"
+            f"✅ **片名**：{title or '未知'}\n\n"
+            f"📝 **请输入详细描述**\n"
+            f"├ 可以描述剧情、演员、年份等信息\n"
+            f"├ 也可以发送相关图片\n"
+            f"└ 或者直接跳过此步骤\n\n"
+            f"💡 *详细信息有助于更快找到资源*"
+        )
+    
+    else:
+        return "🎬 **求片流程** 🎬\n\n请按照提示完成操作"
+
+
 # 默认的欢迎图片URL
 DEFAULT_WELCOME_PHOTO = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
