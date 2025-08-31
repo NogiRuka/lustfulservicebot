@@ -243,11 +243,18 @@ async def cb_feedback_my(cb: types.CallbackQuery):
                 "other": "❓"
             }.get(feedback.feedback_type, "❓")
             
-            text += f"{i}. {type_emoji} {status_emoji} {feedback.content[:30]}{'...' if len(feedback.content) > 30 else ''}\n"
-            text += f"   状态：{feedback.status} | {feedback.created_at.strftime('%m-%d %H:%M')}\n"
+            # 美化的卡片式布局
+            content_preview = feedback.content[:30] + ('...' if len(feedback.content) > 30 else '')
+            text += f"┌─ {i}. {type_emoji} {status_emoji} <b>{content_preview}</b>\n"
+            text += f"├ 🏷️ 状态：<code>{feedback.status}</code>\n"
+            text += f"├ ⏰ 时间：<i>{feedback.created_at.strftime('%m-%d %H:%M')}</i>\n"
+            text += f"├ 📂 类型：{type_emoji} {feedback.feedback_type}\n"
             
             if feedback.reply_content:
-                text += f"   💬 回复：{feedback.reply_content[:50]}{'...' if len(feedback.reply_content) > 50 else ''}\n"
+                reply_preview = feedback.reply_content[:50] + ('...' if len(feedback.reply_content) > 50 else '')
+                text += f"└ 💬 <b>管理员回复</b>：<blockquote>{reply_preview}</blockquote>\n"
+            else:
+                text += f"└─────────────────\n"
             
             text += "\n"
         

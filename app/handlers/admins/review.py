@@ -79,16 +79,22 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
         # 状态显示
         status_text = get_status_text(req.status)
         
-        text += f"{i}. 【{category_name}】{req.title}\n"
-        text += f"   🆔 ID:{req.id} | 👤 用户:{req.user_id} | 📅 {humanize_time(req.created_at)} | 🏷️ {status_text}\n"
+        # 美化的卡片式布局
+        text += f"┌─ {i}. 🎬 <b>【{category_name}】{req.title}</b>\n"
+        text += f"├ 🆔 ID：<code>{req.id}</code>\n"
+        text += f"├ 👤 用户：{req.user_id}\n"
+        text += f"├ ⏰ 时间：<i>{humanize_time(req.created_at)}</i>\n"
+        text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
         
         if req.description:
             desc_preview = req.description[:60] + ('...' if len(req.description) > 60 else '')
-            text += f"   📝 {desc_preview}\n"
+            text += f"├ 📝 描述：{desc_preview}\n"
         
         # 媒体链接
         if hasattr(req, 'file_id') and req.file_id:
-            text += f"   📎 [查看附件](https://t.me/c/{req.file_id})\n"
+            text += f"└ 📎 [查看附件](https://t.me/c/{req.file_id})\n"
+        else:
+            text += f"└─────────────────\n"
         
     
     # 创建分页键盘
@@ -172,15 +178,21 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
         # 状态显示
         status_text = get_status_text(sub.status)
         
-        text += f"{i}. 【{category_name}】{sub.title}\n"
-        text += f"   🆔 ID:{sub.id} | 👤 用户:{sub.user_id} | 📅 {humanize_time(sub.created_at)} | 🏷️ {status_text}\n"
+        # 美化的卡片式布局
+        text += f"┌─ {i}. 📝 <b>【{category_name}】{sub.title}</b>\n"
+        text += f"├ 🆔 ID：<code>{sub.id}</code>\n"
+        text += f"├ 👤 用户：{sub.user_id}\n"
+        text += f"├ ⏰ 时间：<i>{humanize_time(sub.created_at)}</i>\n"
+        text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
         
         content_preview = sub.content[:60] + ('...' if len(sub.content) > 60 else '')
-        text += f"   📄 {content_preview}\n"
+        text += f"├ 📄 内容：{content_preview}\n"
         
         # 媒体链接
         if sub.file_id:
-            text += f"   📎 [查看附件](https://t.me/c/{sub.file_id})\n"
+            text += f"└ 📎 [查看附件](https://t.me/c/{sub.file_id})\n"
+        else:
+            text += f"└─────────────────\n"
         
     
     # 创建分页键盘

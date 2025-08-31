@@ -212,10 +212,10 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
         file_info = "\n🎥 包含视频"
     
     # 删除用户消息
-    try:
-        await msg.delete()
-    except:
-        pass
+    # try:
+    #     await msg.delete()
+    # except:
+    #     pass
     
     # 保存描述信息到状态
     await state.update_data(description=description, file_id=file_id, file_info=file_info)

@@ -352,12 +352,26 @@ async def cb_content_submit_my_page(cb: types.CallbackQuery, page: int = None):
         status_text = get_status_text(sub.status)
         time_text = humanize_time(sub.created_at)
         
-        text += f"{i}. {status_emoji} {sub.title}\n"
-        text += f"   状态：{status_text} | {time_text}\n"
+        # 美化的卡片式布局
+        text += f"┌─ {i}. {status_emoji} <b>{sub.title}</b>\n"
+        text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
+        text += f"├ ⏰ 时间：<i>{time_text}</i>\n"
+        
+        # 显示类型信息（如果有）
+        if hasattr(sub, 'category') and sub.category:
+            text += f"├ 📂 类型：{sub.category.name}\n"
+        
+        # 显示内容预览（限制长度）
+        if hasattr(sub, 'content') and sub.content:
+            content_preview = sub.content[:50] + ('...' if len(sub.content) > 50 else '')
+            text += f"├ 📄 内容：{content_preview}\n"
         
         # 显示审核备注（如果有）
         if hasattr(sub, 'review_note') and sub.review_note:
-            text += f"   💬 备注：{sub.review_note}\n"
+            note_preview = sub.review_note[:60] + ('...' if len(sub.review_note) > 60 else '')
+            text += f"└ 💬 <b>管理员备注</b>：<blockquote>{note_preview}</blockquote>\n"
+        else:
+            text += f"└─────────────────\n"
         
         text += "\n"
     

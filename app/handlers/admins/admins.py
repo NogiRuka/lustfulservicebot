@@ -197,9 +197,14 @@ async def cb_admin_feedback_browse(cb: types.CallbackQuery):
                 "other": "❓"
             }.get(feedback.feedback_type, "❓")
             
-            text += f"{i}. {type_emoji} {status_emoji} ID:{feedback.id}\n"
-            text += f"   用户:{feedback.user_id} | {feedback.created_at.strftime('%m-%d %H:%M')}\n"
-            text += f"   内容:{feedback.content[:40]}{'...' if len(feedback.content) > 40 else ''}\n\n"
+            # 美化的卡片式布局
+            content_preview = feedback.content[:40] + ('...' if len(feedback.content) > 40 else '')
+            text += f"┌─ {i}. {type_emoji} {status_emoji} <b>ID:{feedback.id}</b>\n"
+            text += f"├ 👤 用户：{feedback.user_id}\n"
+            text += f"├ ⏰ 时间：<i>{feedback.created_at.strftime('%m-%d %H:%M')}</i>\n"
+            text += f"├ 📂 类型：{type_emoji} {feedback.feedback_type}\n"
+            text += f"├ 🏷️ 状态：<code>{feedback.status}</code>\n"
+            text += f"└ 📄 内容：{content_preview}\n\n"
         
         if len(feedbacks) > 15:
             text += f"... 还有 {len(feedbacks) - 15} 条记录\n\n"
