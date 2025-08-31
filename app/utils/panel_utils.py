@@ -1,4 +1,5 @@
 from app.config.config import BOT_NICKNAME
+from app.database.users import get_user
 
 
 def create_welcome_panel_text(title: str, role: str = None) -> str:
@@ -168,6 +169,26 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
     except Exception as e:
         from loguru import logger
         logger.error(f"发送审核通知失败: {e}")
+
+
+async def get_user_display_link(user_id: int) -> str:
+    """
+    根据用户ID生成用户显示链接
+    
+    Args:
+        user_id: 用户ID
+    
+    Returns:
+        格式化的用户链接或用户ID
+    """
+    try:
+        user = await get_user(user_id)
+        if user and user.username:
+            return f"<a href='https://t.me/{user.username}'>@{user.username}</a>"
+        else:
+            return f"用户{user_id}"
+    except Exception:
+        return f"用户{user_id}"
 
 
 # 默认的欢迎图片URL

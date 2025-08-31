@@ -13,7 +13,7 @@ from app.buttons.users import admin_review_center_kb, back_to_main_kb
 from app.utils.message_utils import safe_edit_message
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
 from app.utils.time_utils import humanize_time, get_status_text
-from app.utils.panel_utils import send_review_notification
+from app.utils.panel_utils import send_review_notification, get_user_display_link
 
 review_router = Router()
 
@@ -100,10 +100,13 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
         # 状态显示
         status_text = get_status_text(req.status)
         
+        # 获取用户显示链接
+        user_display = await get_user_display_link(req.user_id)
+        
         # 美化的卡片式布局
         text += f"┌─ {i}. 🎬 <b>【{category_name}】{req.title}</b>\n"
         text += f"├ 🆔 ID：<code>{req.id}</code>\n"
-        text += f"├ 👤 用户：{req.user_id}\n"
+        text += f"├ 👤 用户：{user_display}\n"
         text += f"├ ⏰ 时间：<i>{humanize_time(req.created_at)}</i>\n"
         text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
         
@@ -117,7 +120,7 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
             media_caption = (
                 f"🎬 <b>【{category_name}】{req.title}</b>\n\n"
                 f"🆔 <b>求片ID</b>：<code>{req.id}</code>\n"
-                f"👤 <b>用户</b>：{req.user_id}\n"
+                f"👤 <b>用户</b>：{user_display}\n"
                 f"⏰ <b>时间</b>：{humanize_time(req.created_at)}\n"
                 f"🏷️ <b>状态</b>：<code>{status_text}</code>\n\n"
             )
@@ -241,10 +244,13 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
         # 状态显示
         status_text = get_status_text(sub.status)
         
+        # 获取用户显示链接
+        user_display = await get_user_display_link(sub.user_id)
+        
         # 美化的卡片式布局
         text += f"┌─ {i}. 📝 <b>【{category_name}】{sub.title}</b>\n"
         text += f"├ 🆔 ID：<code>{sub.id}</code>\n"
-        text += f"├ 👤 用户：{sub.user_id}\n"
+        text += f"├ 👤 用户：{user_display}\n"
         text += f"├ ⏰ 时间：<i>{humanize_time(sub.created_at)}</i>\n"
         text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
         
@@ -257,7 +263,7 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
             media_caption = (
                 f"📝 <b>【{category_name}】{sub.title}</b>\n\n"
                 f"🆔 <b>投稿ID</b>：<code>{sub.id}</code>\n"
-                f"👤 <b>用户</b>：{sub.user_id}\n"
+                f"👤 <b>用户</b>：{user_display}\n"
                 f"⏰ <b>时间</b>：{humanize_time(sub.created_at)}\n"
                 f"🏷️ <b>状态</b>：<code>{status_text}</code>\n\n"
             )
@@ -426,12 +432,15 @@ async def cb_review_movie_detail(cb: types.CallbackQuery):
         await cb.answer("❌ 求片请求不存在或已被处理")
         return
     
+    # 获取用户显示链接
+    user_display = await get_user_display_link(request.user_id)
+    
     # 构建详情文本
     detail_text = (
         f"🎬 <b>求片详情</b>\n\n"
         f"🆔 ID：{request.id}\n"
         f"🎭 片名：{request.title}\n"
-        f"👤 用户ID：{request.user_id}\n"
+        f"👤 用户：{user_display}\n"
         f"📅 提交时间：{humanize_time(request.created_at)}\n"
         f"📝 状态：{get_status_text(request.status)}\n\n"
     )
@@ -482,12 +491,15 @@ async def cb_review_content_detail(cb: types.CallbackQuery):
         await cb.answer("❌ 投稿不存在或已被处理",)
         return
     
+    # 获取用户显示链接
+    user_display = await get_user_display_link(submission.user_id)
+    
     # 构建详情文本
     detail_text = (
         f"📝 <b>投稿详情</b>\n\n"
         f"🆔 ID：{submission.id}\n"
         f"📝 标题：{submission.title}\n"
-        f"👤 用户ID：{submission.user_id}\n"
+        f"👤 用户：{user_display}\n"
         f"📅 提交时间：{humanize_time(submission.created_at)}\n"
         f"📊 状态：{get_status_text(submission.status)}\n\n"
     )
@@ -742,10 +754,13 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, p
         # 状态显示
         status_text = get_status_text(req.status)
         
+        # 获取用户显示链接
+        user_display = await get_user_display_link(req.user_id)
+        
         # 美化的卡片式布局
         text += f"┌─ {i}. 🎬 <b>【{category_name}】{req.title}</b>\n"
         text += f"├ 🆔 ID：<code>{req.id}</code>\n"
-        text += f"├ 👤 用户：{req.user_id}\n"
+        text += f"├ 👤 用户：{user_display}\n"
         text += f"├ ⏰ 时间：<i>{humanize_time(req.created_at)}</i>\n"
         text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
         
@@ -759,7 +774,7 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, p
             media_caption = (
                 f"🎬 <b>【{category_name}】{req.title}</b>\n\n"
                 f"🆔 <b>求片ID</b>：<code>{req.id}</code>\n"
-                f"👤 <b>用户</b>：{req.user_id}\n"
+                f"👤 <b>用户</b>：{user_display}\n"
                 f"⏰ <b>时间</b>：{humanize_time(req.created_at)}\n"
                 f"🏷️ <b>状态</b>：<code>{status_text}</code>\n\n"
             )
@@ -882,10 +897,13 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext):
         # 状态显示
         status_text = get_status_text(sub.status)
         
+        # 获取用户显示链接
+        user_display = await get_user_display_link(sub.user_id)
+        
         # 美化的卡片式布局
         text += f"┌─ {i}. 📝 <b>【{category_name}】{sub.title}</b>\n"
         text += f"├ 🆔 ID：<code>{sub.id}</code>\n"
-        text += f"├ 👤 用户：{sub.user_id}\n"
+        text += f"├ 👤 用户：{user_display}\n"
         text += f"├ ⏰ 时间：<i>{humanize_time(sub.created_at)}</i>\n"
         text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
         
@@ -898,7 +916,7 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext):
             media_caption = (
                 f"📝 <b>【{category_name}】{sub.title}</b>\n\n"
                 f"🆔 <b>投稿ID</b>：<code>{sub.id}</code>\n"
-                f"👤 <b>用户</b>：{sub.user_id}\n"
+                f"👤 <b>用户</b>：{user_display}\n"
                 f"⏰ <b>时间</b>：{humanize_time(sub.created_at)}\n"
                 f"🏷️ <b>状态</b>：<code>{status_text}</code>\n\n"
             )
