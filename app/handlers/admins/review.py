@@ -106,12 +106,31 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
             
             media_caption += "📎 <b>附件预览</b> ⬆️"
             
+            # 创建媒体消息的审核按钮
+            media_keyboard = types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        types.InlineKeyboardButton(text=f"✅ 通过 #{req.id}", callback_data=f"approve_movie_{req.id}"),
+                        types.InlineKeyboardButton(text=f"❌ 拒绝 #{req.id}", callback_data=f"reject_movie_{req.id}")
+                    ],
+                    [
+                        types.InlineKeyboardButton(text=f"💬 留言通过 #{req.id}", callback_data=f"approve_movie_note_{req.id}"),
+                        types.InlineKeyboardButton(text=f"💬 留言拒绝 #{req.id}", callback_data=f"reject_movie_note_{req.id}")
+                    ],
+                    [
+                        types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_movie_detail_{req.id}"),
+                        types.InlineKeyboardButton(text="🔙 返回列表", callback_data="admin_review_movie")
+                    ]
+                ]
+            )
+            
             try:
                 await cb.message.bot.send_photo(
                     chat_id=cb.from_user.id, 
                     photo=req.file_id, 
                     caption=media_caption,
-                    parse_mode="HTML"
+                    parse_mode="HTML",
+                    reply_markup=media_keyboard
                 )
             except Exception as e:
                 logger.warning(f"发送媒体消息失败: {e}")
