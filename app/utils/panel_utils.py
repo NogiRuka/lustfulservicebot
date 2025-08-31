@@ -13,11 +13,11 @@ def create_welcome_panel_text(title: str, role: str = None) -> str:
         格式化的欢迎文本
     """
     welcome_text = (
-        f"🌸 **欢迎来到 {BOT_NICKNAME}** 🌸\n\n"
+        f"🌸 <b>欢迎来到 {BOT_NICKNAME}</b> 🌸\n\n"
     )
     
     welcome_text += (
-        f"✨ **专属功能面板** ✨\n"
+        f"✨ <b>专属功能面板</b> ✨\n"
         f"{title}"
     )
     
@@ -26,13 +26,13 @@ def create_welcome_panel_text(title: str, role: str = None) -> str:
 
 def create_info_panel_text(user_info: dict) -> str:
     info_text = (
-        f"🌟 **个人档案** 🌟\n\n"
-        f"👤 **基本信息**\n"
-        f"├ 用户名: `[@{user_info.get('username', '未设置')}](https://t.me/{user_info.get('username', '未设置')})`\n"
+        f"🌟 <b>个人档案</b> 🌟\n\n"
+        f"👤 <b>基本信息</b>\n"
+        f"├ 用户名: <code>@{user_info.get('username', '未设置')}</code>\n"
         f"├ 昵称: {user_info.get('full_name', '未知')}\n"
-        f"├ 用户ID: `{user_info.get('user_id', '未知')}`\n"
-        f"└ 身份角色: **{user_info.get('role', '未知')}**\n\n"
-        f"⏰ **时间记录**\n"
+        f"├ 用户ID: <code>{user_info.get('user_id', '未知')}</code>\n"
+        f"└ 身份角色: <b>{user_info.get('role', '未知')}</b>\n\n"
+        f"⏰ <b>时间记录</b>\n"
         f"├ 开始时间: {user_info.get('created_at', '未知')}\n"
         f"└ 最后活跃: {user_info.get('last_activity_at', '未知')}"
     )
@@ -53,26 +53,26 @@ def create_movie_request_text(step: str, category_name: str = None, title: str =
         格式化的提示文本
     """
     if step == "select_category":
-        return "🎬 **开始求片** 🎬\n\n📂 请选择您要求片的类型："
+        return "🎬 <b>开始求片</b> 🎬\n\n📂 请选择您要求片的类型："
     
     elif step == "input_title":
-        return f"🎬 **开始求片** 🎬\n\n📂 **类型**：{category_name or '未知类型'}\n\n📝 请输入您想要的片名："
+        return f"🎬 <b>开始求片</b> 🎬\n\n📂 <b>类型</b>：{category_name or '未知类型'}\n\n📝 请输入您想要的片名："
     
     elif step == "input_description":
         return (
-            f"🎬 **开始求片** 🎬\n\n"
-            f"📂 **类型**：{category_name or '未知类型'}\n"
-            f"✅ **片名**：{title or '未知'}\n\n"
-            f"📝 **请输入详细描述**\n"
+            f"🎬 <b>开始求片</b> 🎬\n\n"
+            f"📂 <b>类型</b>：{category_name or '未知类型'}\n"
+            f"✅ <b>片名</b>：{title or '未知'}\n\n"
+            f"📝 <b>请输入详细描述</b>\n"
             f"├ 可以发送豆瓣链接或其他\n"
             f"├ 可以描述剧情、演员、年份等信息\n"
             f"├ 也可以发送相关图片\n"
             f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
-            f"💡 *详细信息有助于更快找到资源*"
+            f"💡 <i>详细信息有助于更快找到资源</i>"
         )
     
     else:
-        return "🎬 **求片流程** 🎬\n\n请按照提示完成操作"
+        return "🎬 <b>求片流程</b> 🎬\n\n请按照提示完成操作"
 
 
 def create_content_submit_text(step: str, category_name: str = None, title: str = None) -> str:
@@ -88,26 +88,26 @@ def create_content_submit_text(step: str, category_name: str = None, title: str 
         格式化的提示文本
     """
     if step == "select_category":
-        return "📝 **开始投稿** 📝\n\n📂 请选择内容类型："
+        return "📝 <b>开始投稿</b> 📝\n\n📂 请选择内容类型："
     
     elif step == "input_title":
-        return f"📝 **开始投稿** 📝\n\n📂 **类型**：【{category_name or '通用内容'}】\n\n📝 请输入投稿标题："
+        return f"📝 <b>开始投稿</b> 📝\n\n📂 <b>类型</b>：【{category_name or '通用内容'}】\n\n📝 请输入投稿标题："
     
     elif step == "input_content":
         return (
-            f"📝 **开始投稿** 📝\n\n"
-            f"📂 **类型**：【{category_name or '通用内容'}】\n"
-            f"✅ **标题**：{title or '未知'}\n\n"
-            f"📄 **请输入投稿内容**\n"
+            f"📝 <b>开始投稿</b> 📝\n\n"
+            f"📂 <b>类型</b>：【{category_name or '通用内容'}】\n"
+            f"✅ <b>标题</b>：{title or '未知'}\n\n"
+            f"📄 <b>请输入投稿内容</b>\n"
             f"├ 可以发送磁力链接\n"
             f"├ 可以发送网盘链接\n"
             f"├ 可以发送资源描述\n"
             f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
-            f"💡 *丰富的内容更容易通过审核*"
+            f"💡 <i>丰富的内容更容易通过审核</i>"
         )
     
     else:
-        return "📝 **投稿流程** 📝\n\n请按照提示完成操作"
+        return "📝 <b>投稿流程</b> 📝\n\n请按照提示完成操作"
 
 
 async def send_review_notification(bot, user_id: int, item_type: str, item_title: str, status: str, review_note: str = None):
@@ -139,20 +139,20 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         if status == 'approved':
             status_emoji = '✅'
             status_text = '已通过'
-            title_text = f"🎉 **{type_name}审核通过** 🎉"
+            title_text = f"🎉 <b>{type_name}审核通过</b> 🎉"
         else:
             status_emoji = '❌'
             status_text = '已拒绝'
-            title_text = f"📋 **{type_name}审核结果** 📋"
+            title_text = f"📋 <b>{type_name}审核结果</b> 📋"
         
         notification_text = (
             f"{title_text}\n\n"
-            f"{type_emoji} **{type_name}标题**：{item_title}\n"
-            f"{status_emoji} **审核结果**：{status_text}\n\n"
+            f"{type_emoji} <b>{type_name}标题</b>：{item_title}\n"
+            f"{status_emoji} <b>审核结果</b>：{status_text}\n\n"
         )
         
         if review_note:
-            notification_text += f"💬 **管理员留言**：\n{review_note}\n\n"
+            notification_text += f"💬 <b>管理员留言</b>：\n{review_note}\n\n"
         
         if status == 'approved':
             notification_text += "💫 感谢您的{type_name}，已成功通过审核！".format(type_name=type_name)
@@ -162,7 +162,7 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         await bot.send_message(
             chat_id=user_id,
             text=notification_text,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         
     except Exception as e:

@@ -27,8 +27,8 @@ async def start(msg: types.Message):
         # 在群组中给出更明确的提示
         bot_username = (await msg.bot.get_me()).username
         await msg.reply(
-            f"🌟 **欢迎使用 [{BOT_NICKNAME}](https://t.me/{bot_username})**\n💫 请在私聊中使用机器人功能",
-            parse_mode="Markdown"
+            f"🌟 <b>欢迎使用 <a href='https://t.me/{bot_username}'>{BOT_NICKNAME}</a></b>\n💫 请在私聊中使用机器人功能",
+            parse_mode="HTML"
         )
         return
     
@@ -55,7 +55,7 @@ async def start(msg: types.Message):
         photo=welcome_photo,
         caption=welcome_text,
         reply_markup=kb,
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -101,7 +101,7 @@ async def cb_back_to_main(cb: types.CallbackQuery):
         await cb.message.edit_caption(
             caption=welcome_text,
             reply_markup=kb,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     else:
         # 如果没有图片，删除当前消息并发送新的带图片消息
@@ -115,7 +115,7 @@ async def cb_back_to_main(cb: types.CallbackQuery):
             photo=welcome_photo,
             caption=welcome_text,
             reply_markup=kb,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     
     await cb.answer()
@@ -141,7 +141,7 @@ async def cb_common_my_info(cb: types.CallbackQuery):
     await cb.message.edit_caption(
         caption=info_text,
         reply_markup=back_to_main_kb,
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
     await cb.answer()
 
@@ -154,17 +154,17 @@ async def cb_common_server_info(cb: types.CallbackQuery):
         member_count = await get_group_member_count(cb.bot)
         
         info_text = (
-            f"🖥️ **服务信息** 🖥️\n\n"
-            f"📊 **统计数据**\n"
+            f"🖥️ <b>服务信息</b> 🖥️\n\n"
+            f"📊 <b>统计数据</b>\n"
             f"├ 使用用户: {stats['total_users']}\n"
             f"├ 求片请求: {stats['total_requests']}\n"
             f"└ 内容投稿: {stats['total_submissions']}\n\n"
-            f"💫 **感谢您的使用！** 💫"
+            f"💫 <b>感谢您的使用！</b> 💫"
         )
     except Exception as e:
         logger.error(f"获取服务信息失败: {e}")
         info_text = (
-            f"🖥️ **服务信息** 🖥️\n\n"
+            f"🖥️ <b>服务信息</b> 🖥️\n\n"
             "❌ 暂时无法获取服务信息，请稍后重试。\n\n"
             "如需返回主菜单，请点击下方按钮。"
         )
@@ -172,7 +172,7 @@ async def cb_common_server_info(cb: types.CallbackQuery):
     await cb.message.edit_caption(
         caption=info_text,
         reply_markup=back_to_main_kb,
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
     await cb.answer()
 
@@ -217,8 +217,8 @@ async def cb_clear_chat_history(cb: types.CallbackQuery):
         # 发送确认消息
         await cb.bot.send_message(
             chat_id=chat_id,
-            text=f"🗑️ **清空完成**\n\n已尝试清理聊天记录\n删除了 {deleted_count} 条消息\n\n💡 *注：由于Telegram限制，只能删除最近48小时内的消息*",
-            parse_mode="Markdown"
+            text=f"🗑️ <b>清空完成</b>\n\n已尝试清理聊天记录\n删除了 {deleted_count} 条消息\n\n💡 <i>注：由于Telegram限制，只能删除最近48小时内的消息</i>",
+            parse_mode="HTML"
         )
         
     except Exception as e:

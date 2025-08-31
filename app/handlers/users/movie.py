@@ -98,7 +98,7 @@ async def cb_select_category(cb: types.CallbackQuery, state: FSMContext):
     await cb.message.edit_caption(
         caption=create_movie_request_text("input_title", category.name),
         reply_markup=back_to_main_kb,
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
     
     await state.set_state(Wait.waitMovieTitle)
@@ -140,7 +140,7 @@ async def process_movie_title(msg: types.Message, state: FSMContext):
             message_id=message_id,
             caption=create_movie_request_text("input_description", category_name, title),
             reply_markup=movie_input_kb,
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
     except Exception as e:
         logger.error(f"编辑消息失败: {e}")

@@ -111,7 +111,7 @@ async def cb_select_content_category(cb: types.CallbackQuery, state: FSMContext)
     await cb.message.edit_caption(
         caption=create_content_submit_text("input_title", category_name),
         reply_markup=content_input_kb,
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
     await state.set_state(Wait.waitContentTitle)
     await cb.answer()
@@ -146,7 +146,7 @@ async def process_content_title(msg: types.Message, state: FSMContext):
                     [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
                 ]
             ),
-            parse_mode="Markdown"
+             parse_mode="HTML"
         )
     except Exception as e:
         logger.error(f"编辑消息失败: {e}")
