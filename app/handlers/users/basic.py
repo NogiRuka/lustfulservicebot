@@ -153,9 +153,9 @@ async def cb_common_server_info(cb: types.CallbackQuery):
         info_text = (
             f"🖥️ <b>服务器信息</b>\n\n"
             f"👥 注册用户: {stats['total_users']}\n"
-            f"🎬 求片请求: {stats['total_movie_requests']}\n"
-            f"📝 内容投稿: {stats['total_content_submissions']}\n"
-            f"💬 用户反馈: {stats['total_user_feedback']}\n"
+            f"🎬 求片请求: {stats['total_requests']}\n"
+            f"📝 内容投稿: {stats['total_submissions']}\n"
+            f"💬 用户反馈: {stats['total_feedback']}\n"
             f"👮 管理员数: {stats['total_admins']}\n"
             f"📊 群组成员: {member_count}\n\n"
             "如需返回主菜单，请点击下方按钮。"
