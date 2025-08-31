@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from app.utils.states import Wait
-from app.database.business import create_content_submission, get_user_content_submissions
+from app.database.business import create_content_submission, get_user_content_submissions, is_feature_enabled
 from app.buttons.users import content_center_kb, content_input_kb, back_to_main_kb
 
 content_router = Router()
@@ -13,6 +13,15 @@ content_router = Router()
 @content_router.callback_query(F.data == "content_center")
 async def cb_content_center(cb: types.CallbackQuery):
     """内容投稿中心"""
+    # 检查系统总开关和投稿功能开关
+    if not await is_feature_enabled("system_enabled"):
+        await cb.answer("❌ 系统维护中，暂时无法使用", show_alert=True)
+        return
+    
+    if not await is_feature_enabled("content_submit_enabled"):
+        await cb.answer("❌ 内容投稿功能已关闭", show_alert=True)
+        return
+    
     await cb.message.edit_caption(
         caption="📝 <b>内容投稿中心</b>\n\n请选择您需要的功能：",
         reply_markup=content_center_kb
@@ -23,6 +32,13 @@ async def cb_content_center(cb: types.CallbackQuery):
 @content_router.callback_query(F.data == "content_submit_new")
 async def cb_content_submit_new(cb: types.CallbackQuery, state: FSMContext):
     """开始投稿"""
+    # 检查功能开关
+    if not await is_feature_enabled("system_enabled") or not await is_feature_enabled("content_submit_enabled"):
+        await cb.answer("❌ 投稿功能暂时不可用", show_alert=True)
+        return
+    
+    await state.clear()
+    
     await cb.message.edit_caption(
         caption="📝 <b>开始投稿</b>\n\n请输入投稿标题：",
         reply_markup=content_input_kb

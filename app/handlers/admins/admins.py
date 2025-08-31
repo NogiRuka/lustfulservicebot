@@ -19,12 +19,23 @@ from app.database.business import (
 )
 from app.buttons.users import admin_review_center_kb, back_to_main_kb
 from app.utils.message_utils import safe_edit_message
+from app.database.business import is_feature_enabled
+from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
 
 admins_router = Router()
 
 
 @admins_router.message(Command("panel"))
 async def ShowPanel(msg: types.Message):
+    # 检查管理员面板开关
+    if not await is_feature_enabled("system_enabled"):
+        await msg.reply("❌ 系统维护中，暂时无法使用")
+        return
+    
+    if not await is_feature_enabled("admin_panel_enabled"):
+        await msg.reply("❌ 管理员面板已关闭")
+        return
+    
     role = await get_role(msg.from_user.id)
     admin_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
     admin_text = f"🛡️ 管理员面板\n\n👤 用户角色：{role}\n\n欢迎使用管理员功能，请选择下方按钮进行操作。"
@@ -246,6 +257,16 @@ async def cb_admin_review_center(cb: types.CallbackQuery):
 @admins_router.callback_query(F.data == "admin_review_movie")
 async def cb_admin_review_movie(cb: types.CallbackQuery):
     """求片审核"""
+    await cb_admin_review_movie_page(cb, 1)
+
+
+@admins_router.callback_query(F.data.startswith("movie_review_page_"))
+async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
+    """求片审核分页"""
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "movie_review")
+    
     requests = await get_pending_movie_requests()
     
     if not requests:
@@ -253,60 +274,59 @@ async def cb_admin_review_movie(cb: types.CallbackQuery):
             caption="🎬 <b>求片审核</b>\n\n暂无待审核的求片请求。",
             reply_markup=admin_review_detail_kb
         )
-    else:
-        text = "🎬 <b>求片审核</b>\n\n"
-        for i, req in enumerate(requests[:5], 1):  # 显示5条，避免消息过长
-            text += f"{i}. ID:{req.id} - {req.title}\n"
-            text += f"   👤 用户:{req.user_id}\n"
-            text += f"   📅 时间:{req.created_at.strftime('%Y-%m-%d %H:%M')}\n"
-            
-            if req.description:
-                desc_preview = req.description[:80] + ('...' if len(req.description) > 80 else '')
-                text += f"   📝 描述:{desc_preview}\n"
-            else:
-                text += f"   📝 描述:无\n"
-                
-            if hasattr(req, 'file_id') and req.file_id:
-                text += f"   📎 附件:有\n"
-            else:
-                text += f"   📎 附件:无\n"
-            
-            text += "\n"
-        
-        if len(requests) > 5:
-            text += f"... 还有 {len(requests) - 5} 条记录\n\n"
-        
-        # 添加快速审核按钮
-        if requests:
-            first_req = requests[0]
-            review_kb = types.InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_movie_detail_{first_req.id}"),
-                        types.InlineKeyboardButton(text="✅ 快速通过", callback_data=f"approve_movie_{first_req.id}")
-                    ],
-                    [
-                        types.InlineKeyboardButton(text="❌ 快速拒绝", callback_data=f"reject_movie_{first_req.id}"),
-                        types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="admin_review_movie")
-                    ],
-                    [
-                        types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
-                        types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
-                    ]
-                ]
-            )
-        else:
-            review_kb = admin_review_detail_kb
-            
-        text += "💡 点击按钮进行快速审核，或使用命令:\n"
-        text += "/approve_movie [ID] - 通过求片\n"
-        text += "/reject_movie [ID] - 拒绝求片"
-        
-        await cb.message.edit_caption(
-            caption=text,
-            reply_markup=review_kb
-        )
+        await cb.answer()
+        return
     
+    paginator = Paginator(requests, page_size=3)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
+    
+    # 构建页面内容
+    text = format_page_header("🎬 <b>求片审核</b>", page_info)
+    
+    start_num = (page - 1) * paginator.page_size + 1
+    for i, req in enumerate(page_items, start_num):
+        text += f"{i}. ID:{req.id} - {req.title}\n"
+        text += f"   👤 用户:{req.user_id}\n"
+        text += f"   📅 时间:{req.created_at.strftime('%Y-%m-%d %H:%M')}\n"
+        
+        if req.description:
+            desc_preview = req.description[:60] + ('...' if len(req.description) > 60 else '')
+            text += f"   📝 描述:{desc_preview}\n"
+        else:
+            text += f"   📝 描述:无\n"
+            
+        if hasattr(req, 'file_id') and req.file_id:
+            text += f"   📎 附件:有\n"
+        else:
+            text += f"   📎 附件:无\n"
+        
+        text += f"   /approve_movie {req.id} | /reject_movie {req.id}\n\n"
+    
+    text += "💡 快速命令：\n"
+    text += "/approve_movie [ID] - 通过求片\n"
+    text += "/reject_movie [ID] - 拒绝求片"
+    
+    # 创建分页键盘
+    extra_buttons = [
+        [
+            types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_movie_detail_{page_items[0].id}" if page_items else "admin_review_movie"),
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data="admin_review_movie")
+        ],
+        [
+            types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        ]
+    ]
+    
+    keyboard = paginator.create_pagination_keyboard(
+        page, "movie_review", extra_buttons
+    )
+    
+    await cb.message.edit_caption(
+        caption=text,
+        reply_markup=keyboard
+    )
     await cb.answer()
 
 

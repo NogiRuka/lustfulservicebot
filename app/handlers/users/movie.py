@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from app.utils.states import Wait
-from app.database.business import create_movie_request, get_user_movie_requests, get_all_movie_categories
+from app.database.business import create_movie_request, get_user_movie_requests, get_all_movie_categories, is_feature_enabled
 from app.buttons.users import movie_center_kb, movie_input_kb, back_to_main_kb
 
 movie_router = Router()
@@ -13,6 +13,15 @@ movie_router = Router()
 @movie_router.callback_query(F.data == "movie_center")
 async def cb_movie_center(cb: types.CallbackQuery):
     """求片中心"""
+    # 检查系统总开关和求片功能开关
+    if not await is_feature_enabled("system_enabled"):
+        await cb.answer("❌ 系统维护中，暂时无法使用", show_alert=True)
+        return
+    
+    if not await is_feature_enabled("movie_request_enabled"):
+        await cb.answer("❌ 求片功能已关闭", show_alert=True)
+        return
+    
     await cb.message.edit_caption(
         caption="🎬 <b>求片中心</b>\n\n请选择您需要的功能：",
         reply_markup=movie_center_kb
@@ -23,6 +32,11 @@ async def cb_movie_center(cb: types.CallbackQuery):
 @movie_router.callback_query(F.data == "movie_request_new")
 async def cb_movie_request_new(cb: types.CallbackQuery, state: FSMContext):
     """开始求片 - 选择类型"""
+    # 检查功能开关
+    if not await is_feature_enabled("system_enabled") or not await is_feature_enabled("movie_request_enabled"):
+        await cb.answer("❌ 求片功能暂时不可用", show_alert=True)
+        return
+    
     await state.clear()
     
     # 获取所有可用的求片类型

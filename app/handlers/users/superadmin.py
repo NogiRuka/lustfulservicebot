@@ -8,9 +8,10 @@ from app.database.users import get_user, get_role
 from app.database.business import (
     promote_user_to_admin, demote_admin_to_user, get_admin_list, get_all_feedback_list,
     get_all_movie_categories, create_movie_category, update_movie_category, delete_movie_category,
-    get_all_system_settings, set_system_setting
+    get_all_system_settings, set_system_setting, is_feature_enabled
 )
 from app.buttons.users import superadmin_manage_center_kb, superadmin_action_kb, back_to_main_kb
+from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
 from app.utils.roles import ROLE_ADMIN, ROLE_SUPERADMIN
 
 superadmin_router = Router()
@@ -19,6 +20,15 @@ superadmin_router = Router()
 @superadmin_router.callback_query(F.data == "superadmin_manage_center")
 async def cb_superadmin_manage_center(cb: types.CallbackQuery):
     """管理中心"""
+    # 检查超管面板开关
+    if not await is_feature_enabled("system_enabled"):
+        await cb.answer("❌ 系统维护中，暂时无法使用", show_alert=True)
+        return
+    
+    if not await is_feature_enabled("superadmin_panel_enabled"):
+        await cb.answer("❌ 超管面板已关闭", show_alert=True)
+        return
+    
     role = await get_role(cb.from_user.id)
     if role != ROLE_SUPERADMIN:
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
@@ -314,55 +324,278 @@ async def superadmin_demote_admin(msg: types.Message):
         await msg.reply("❌ 操作失败，请稍后重试")
 
 
+# ==================== 快速操作命令 ====================
+
+@superadmin_router.message(Command("add_category"))
+async def superadmin_add_category_cmd(msg: types.Message):
+    """添加类型命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.strip().split(maxsplit=2)
+    if len(parts) < 2:
+        await msg.reply("用法：/add_category [名称] [描述]\n示例：/add_category 科幻片 科幻类型的电影")
+        return
+    
+    name = parts[1]
+    description = parts[2] if len(parts) > 2 else f"由超管创建的类型：{name}"
+    
+    success = await create_movie_category(
+        name=name,
+        description=description,
+        creator_id=msg.from_user.id
+    )
+    
+    if success:
+        await msg.reply(f"✅ 成功添加类型：{name}")
+    else:
+        await msg.reply("❌ 添加失败，类型名称可能已存在")
+
+
+@superadmin_router.message(Command("edit_category"))
+async def superadmin_edit_category_cmd(msg: types.Message):
+    """编辑类型命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.strip().split(maxsplit=3)
+    if len(parts) < 3:
+        await msg.reply("用法：/edit_category [ID] [新名称] [新描述]\n示例：/edit_category 1 动作片 动作类型的电影")
+        return
+    
+    try:
+        category_id = int(parts[1])
+        name = parts[2]
+        description = parts[3] if len(parts) > 3 else None
+    except ValueError:
+        await msg.reply("❌ 类型ID必须是数字")
+        return
+    
+    success = await update_movie_category(
+        category_id=category_id,
+        name=name,
+        description=description
+    )
+    
+    if success:
+        await msg.reply(f"✅ 成功编辑类型 ID:{category_id}")
+    else:
+        await msg.reply("❌ 编辑失败，请检查类型ID是否正确")
+
+
+@superadmin_router.message(Command("toggle_category"))
+async def superadmin_toggle_category_cmd(msg: types.Message):
+    """切换类型状态命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await msg.reply("用法：/toggle_category [ID]\n示例：/toggle_category 1")
+        return
+    
+    category_id = int(parts[1])
+    
+    # 获取当前状态
+    category = await get_movie_category_by_id(category_id)
+    if not category:
+        await msg.reply("❌ 类型不存在")
+        return
+    
+    new_status = not category.is_active
+    success = await update_movie_category(
+        category_id=category_id,
+        is_active=new_status
+    )
+    
+    if success:
+        status_text = "启用" if new_status else "禁用"
+        await msg.reply(f"✅ 已{status_text}类型：{category.name}")
+    else:
+        await msg.reply("❌ 操作失败")
+
+
+@superadmin_router.message(Command("delete_category"))
+async def superadmin_delete_category_cmd(msg: types.Message):
+    """删除类型命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.strip().split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await msg.reply("用法：/delete_category [ID]\n示例：/delete_category 1")
+        return
+    
+    category_id = int(parts[1])
+    
+    # 获取类型信息
+    category = await get_movie_category_by_id(category_id)
+    if not category:
+        await msg.reply("❌ 类型不存在")
+        return
+    
+    success = await delete_movie_category(category_id)
+    
+    if success:
+        await msg.reply(f"✅ 已删除类型：{category.name}")
+    else:
+        await msg.reply("❌ 删除失败，可能有求片记录关联此类型")
+
+
+@superadmin_router.message(Command("set_setting"))
+async def superadmin_set_setting_cmd(msg: types.Message):
+    """设置系统配置命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.strip().split(maxsplit=2)
+    if len(parts) != 3:
+        await msg.reply("用法：/set_setting [键名] [值]\n示例：/set_setting movie_request_enabled true")
+        return
+    
+    setting_key = parts[1]
+    setting_value = parts[2]
+    
+    success = await set_system_setting(
+        setting_key=setting_key,
+        setting_value=setting_value,
+        updater_id=msg.from_user.id
+    )
+    
+    if success:
+        await msg.reply(f"✅ 已设置 {setting_key} = {setting_value}")
+    else:
+        await msg.reply("❌ 设置失败")
+
+
+@superadmin_router.message(Command("toggle_feature"))
+async def superadmin_toggle_feature_cmd(msg: types.Message):
+    """快速切换功能开关命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.strip().split()
+    if len(parts) != 2:
+        await msg.reply("用法：/toggle_feature [功能名]\n示例：/toggle_feature movie_request_enabled")
+        return
+    
+    feature_key = parts[1]
+    
+    # 获取当前状态
+    current_value = await get_system_setting(feature_key, "false")
+    new_value = "false" if current_value.lower() in ["true", "1", "yes", "on"] else "true"
+    
+    success = await set_system_setting(
+        setting_key=feature_key,
+        setting_value=new_value,
+        updater_id=msg.from_user.id
+    )
+    
+    if success:
+        status_text = "启用" if new_value == "true" else "禁用"
+        await msg.reply(f"✅ 已{status_text}功能：{feature_key}")
+    else:
+        await msg.reply("❌ 切换失败")
+
+
+@superadmin_router.message(Command("view_settings"))
+async def superadmin_view_settings_cmd(msg: types.Message):
+    """查看所有设置命令"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    settings = await get_all_system_settings()
+    
+    if not settings:
+        await msg.reply("暂无系统设置")
+        return
+    
+    text = "⚙️ <b>系统设置列表</b>\n\n"
+    
+    for i, setting in enumerate(settings[:20], 1):  # 显示前20个
+        status = "✅" if setting.is_active else "❌"
+        text += f"{i}. {status} {setting.setting_key}: {setting.setting_value}\n"
+    
+    if len(settings) > 20:
+        text += f"\n... 还有 {len(settings) - 20} 个设置"
+    
+    await msg.reply(text, parse_mode="HTML")
+
+
 # ==================== 类型管理功能 ====================
 
 @superadmin_router.callback_query(F.data == "superadmin_category_manage")
 async def cb_superadmin_category_manage(cb: types.CallbackQuery):
     """类型管理主页面"""
+    await cb_superadmin_category_manage_page(cb, 1)
+
+
+@superadmin_router.callback_query(F.data.startswith("category_manage_page_"))
+async def cb_superadmin_category_manage_page(cb: types.CallbackQuery, page: int = None):
+    """类型管理分页"""
     role = await get_role(cb.from_user.id)
     if role != ROLE_SUPERADMIN:
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "category_manage")
+    
     categories = await get_all_movie_categories(active_only=False)
+    paginator = Paginator(categories, page_size=5)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
     
-    text = "📂 <b>类型管理</b>\n\n"
-    text += f"📊 当前类型数量：{len(categories)}\n\n"
+    # 构建页面内容
+    text = format_page_header("📂 <b>类型管理</b>", page_info)
     
-    if categories:
+    if page_items:
         text += "📋 类型列表：\n"
-        for i, category in enumerate(categories[:10], 1):  # 显示前10个
+        start_num = (page - 1) * paginator.page_size + 1
+        for i, category in enumerate(page_items, start_num):
             status = "✅" if category.is_active else "❌"
             text += f"{i}. {status} {category.name}\n"
-            text += f"   ID:{category.id} | 创建时间:{category.created_at.strftime('%m-%d %H:%M')}\n\n"
-        
-        if len(categories) > 10:
-            text += f"... 还有 {len(categories) - 10} 个类型\n\n"
-    else:
-        text += "暂无类型\n\n"
+            text += f"   ID:{category.id} | 创建:{category.created_at.strftime('%m-%d %H:%M')}\n"
+            text += f"   /edit_category {category.id} | /toggle_category {category.id}\n\n"
     
-    text += "💡 使用命令进行管理：\n"
+    text += "💡 快速命令：\n"
     text += "/add_category [名称] [描述] - 添加类型\n"
-    text += "/edit_category [ID] [名称] [描述] - 编辑类型\n"
-    text += "/toggle_category [ID] - 启用/禁用类型\n"
     text += "/delete_category [ID] - 删除类型"
     
-    category_manage_kb = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(text="➕ 添加类型", callback_data="add_category_prompt"),
-                types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="superadmin_category_manage")
-            ],
-            [
-                types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
-                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
-            ]
+    # 创建分页键盘
+    extra_buttons = [
+        [
+            types.InlineKeyboardButton(text="➕ 添加类型", callback_data="add_category_prompt"),
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data="superadmin_category_manage")
+        ],
+        [
+            types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
         ]
+    ]
+    
+    keyboard = paginator.create_pagination_keyboard(
+        page, "category_manage", extra_buttons
     )
     
     await cb.message.edit_caption(
         caption=text,
-        reply_markup=category_manage_kb
+        reply_markup=keyboard
     )
     await cb.answer()
 
@@ -490,39 +723,59 @@ async def cb_superadmin_system_settings(cb: types.CallbackQuery):
 @superadmin_router.callback_query(F.data == "view_all_settings")
 async def cb_view_all_settings(cb: types.CallbackQuery):
     """查看所有系统设置"""
+    await cb_view_all_settings_page(cb, 1)
+
+
+@superadmin_router.callback_query(F.data.startswith("settings_page_"))
+async def cb_view_all_settings_page(cb: types.CallbackQuery, page: int = None):
+    """系统设置分页"""
     role = await get_role(cb.from_user.id)
     if role != ROLE_SUPERADMIN:
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "settings")
+    
     settings = await get_all_system_settings()
+    paginator = Paginator(settings, page_size=8)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
     
-    text = "📋 <b>所有系统设置</b>\n\n"
+    # 构建页面内容
+    text = format_page_header("📋 <b>所有系统设置</b>", page_info)
     
-    if settings:
-        for i, setting in enumerate(settings[:15], 1):  # 显示前15个
+    if page_items:
+        start_num = (page - 1) * paginator.page_size + 1
+        for i, setting in enumerate(page_items, start_num):
             status = "✅" if setting.is_active else "❌"
             text += f"{i}. {status} {setting.setting_key}\n"
-            text += f"   值: {setting.setting_value}\n"
-            text += f"   类型: {setting.setting_type}\n"
+            text += f"   值: {setting.setting_value} | 类型: {setting.setting_type}\n"
             if setting.description:
                 text += f"   说明: {setting.description}\n"
-            text += "\n"
-        
-        if len(settings) > 15:
-            text += f"... 还有 {len(settings) - 15} 个设置\n\n"
-    else:
-        text += "暂无设置"
+            text += f"   /set_setting {setting.setting_key} [新值]\n\n"
+    
+    text += "💡 快速命令：\n"
+    text += "/toggle_feature [功能名] - 快速切换功能"
+    
+    # 创建分页键盘
+    extra_buttons = [
+        [
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data="view_all_settings"),
+            types.InlineKeyboardButton(text="⬅️ 返回设置", callback_data="superadmin_system_settings")
+        ],
+        [
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        ]
+    ]
+    
+    keyboard = paginator.create_pagination_keyboard(
+        page, "settings", extra_buttons
+    )
     
     await cb.message.edit_caption(
         caption=text,
-        reply_markup=types.InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    types.InlineKeyboardButton(text="⬅️ 返回设置", callback_data="superadmin_system_settings"),
-                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
-                ]
-            ]
-        )
+        reply_markup=keyboard
     )
     await cb.answer()

@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from app.utils.states import Wait
-from app.database.business import create_user_feedback, get_user_feedback_list
+from app.database.business import create_user_feedback, get_user_feedback_list, is_feature_enabled
 from app.buttons.users import feedback_center_kb, feedback_input_kb, back_to_main_kb
 
 feedback_router = Router()
@@ -13,6 +13,15 @@ feedback_router = Router()
 @feedback_router.callback_query(F.data == "feedback_center")
 async def cb_feedback_center(cb: types.CallbackQuery):
     """用户反馈中心"""
+    # 检查系统总开关和反馈功能开关
+    if not await is_feature_enabled("system_enabled"):
+        await cb.answer("❌ 系统维护中，暂时无法使用", show_alert=True)
+        return
+    
+    if not await is_feature_enabled("feedback_enabled"):
+        await cb.answer("❌ 用户反馈功能已关闭", show_alert=True)
+        return
+    
     await cb.message.edit_caption(
         caption="💬 <b>用户反馈中心</b>\n\n请选择您需要的功能：",
         reply_markup=feedback_center_kb
