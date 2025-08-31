@@ -25,3 +25,4 @@ class Wait(StatesGroup):
     
     # 超管添加管理员状态
     waitAdminUserId = State()
+    waitCategoryName = State()

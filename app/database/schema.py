@@ -24,6 +24,23 @@ class User(Base):
         return f"<User(id={self.id}, username={self.username}, name={self.full_name})>"
 
 
+class MovieCategory(Base):
+    """求片类型表。"""
+    
+    __tablename__ = "movie_categories"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String, nullable=False, unique=True)  # 类型名称
+    description = Column(Text, nullable=True)  # 类型描述
+    is_active = Column(Boolean, nullable=False, server_default="true")  # 是否启用
+    sort_order = Column(Integer, nullable=False, server_default="0")  # 排序
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    created_by = Column(BigInteger, ForeignKey('users.chat_id'), nullable=False)  # 创建人
+    
+    def __repr__(self):
+        return f"<MovieCategory(id={self.id}, name={self.name}, is_active={self.is_active})>"
+
+
 class MovieRequest(Base):
     """求片请求表。"""
     
@@ -31,6 +48,7 @@ class MovieRequest(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey('users.chat_id'), nullable=False)
+    category_id = Column(Integer, ForeignKey('movie_categories.id'), nullable=False)  # 类型ID
     title = Column(String, nullable=False)  # 片名
     description = Column(Text, nullable=True)  # 描述
     file_id = Column(String, nullable=True)  # Telegram文件ID
@@ -38,6 +56,9 @@ class MovieRequest(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     reviewed_at = Column(DateTime, nullable=True)
     reviewed_by = Column(BigInteger, nullable=True)  # 审核人ID
+    
+    # 关系
+    category = relationship("MovieCategory")
     
     def __repr__(self):
         return f"<MovieRequest(id={self.id}, title={self.title}, status={self.status})>"
@@ -95,3 +116,22 @@ class AdminAction(Base):
     
     def __repr__(self):
         return f"<AdminAction(id={self.id}, admin={self.admin_id}, action={self.action_type})>"
+
+
+class SystemSettings(Base):
+    """系统功能开关表。"""
+    
+    __tablename__ = "system_settings"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    setting_key = Column(String, nullable=False, unique=True)  # 设置键名
+    setting_value = Column(String, nullable=False)  # 设置值
+    setting_type = Column(String, nullable=False, server_default="boolean")  # 设置类型：boolean/string/integer
+    description = Column(Text, nullable=True)  # 设置描述
+    is_active = Column(Boolean, nullable=False, server_default="true")  # 是否启用
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, nullable=True)
+    updated_by = Column(BigInteger, ForeignKey('users.chat_id'), nullable=True)  # 最后修改人
+    
+    def __repr__(self):
+        return f"<SystemSettings(id={self.id}, key={self.setting_key}, value={self.setting_value})>"

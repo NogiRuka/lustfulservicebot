@@ -55,52 +55,6 @@ async def start(msg: types.Message):
     )
 
 
-@basic_router.message(Command("menu"))
-async def show_menu(msg: types.Message):
-    role = await get_role(msg.from_user.id)
-    title, kb = get_panel_for_role(role)
-    welcome_text = f"🎉 欢迎使用机器人！\n\n👤 用户角色：{role}\n\n{title}"
-    await msg.reply(welcome_text, reply_markup=kb)
-
-
-@basic_router.message(Command("commands"))
-async def show_commands(msg: types.Message):
-    role = await get_role(msg.from_user.id)
-    commands_text = build_commands_help(role)
-    await msg.reply(commands_text)
-
-
-@basic_router.message(Command("role"))
-async def show_role(msg: types.Message):
-    role = await get_role(msg.from_user.id)
-    await msg.reply(f"👤 您的角色：{role}")
-
-
-@basic_router.message(Command("id"))
-async def show_id(msg: types.Message):
-    await msg.reply(f"🆔 您的用户ID：{msg.from_user.id}")
-
-
-@basic_router.callback_query(F.data == "user_help")
-async def cb_user_help(cb: types.CallbackQuery):
-    """帮助信息"""
-    role = await get_role(cb.from_user.id)
-    commands_text = build_commands_help(role)
-    
-    help_text = (
-        f"📖 <b>帮助信息</b>\n\n"
-        f"👤 您的角色：{role}\n\n"
-        f"{commands_text}\n\n"
-        "如需返回主菜单，请点击下方按钮。"
-    )
-    
-    await cb.message.edit_caption(
-        caption=help_text,
-        reply_markup=back_to_main_kb
-    )
-    await cb.answer()
-
-
 @basic_router.callback_query(F.data == "user_profile")
 async def cb_user_profile(cb: types.CallbackQuery):
     """用户资料"""

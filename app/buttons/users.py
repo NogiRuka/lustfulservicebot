@@ -199,6 +199,10 @@ superadmin_manage_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="👥 我的管理", callback_data="superadmin_my_admins"),
         ],
         [
+            InlineKeyboardButton(text="📂 类型管理", callback_data="superadmin_category_manage"),
+            InlineKeyboardButton(text="⚙️ 系统设置", callback_data="superadmin_system_settings"),
+        ],
+        [
             InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
         ],
     ]

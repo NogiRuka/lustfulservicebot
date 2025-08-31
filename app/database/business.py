@@ -1,6 +1,6 @@
 from sqlalchemy import select, delete, func, update
 from sqlalchemy.orm import selectinload
-from app.database.schema import User, MovieRequest, ContentSubmission, UserFeedback, AdminAction
+from app.database.schema import User, MovieRequest, ContentSubmission, UserFeedback, AdminAction, MovieCategory, SystemSettings
 from app.database.db import get_db
 from loguru import logger
 from typing import List, Optional
@@ -76,12 +76,13 @@ async def get_admin_list() -> List[User]:
 
 # ==================== 求片中心 ====================
 
-async def create_movie_request(user_id: int, title: str, description: str = None, file_id: str = None) -> bool:
+async def create_movie_request(user_id: int, category_id: int, title: str, description: str = None, file_id: str = None) -> bool:
     """创建求片请求"""
     async for session in get_db():
         try:
             request = MovieRequest(
                 user_id=user_id,
+                category_id=category_id,
                 title=title,
                 description=description,
                 file_id=file_id
@@ -368,3 +369,165 @@ async def get_server_stats() -> dict:
         except Exception as e:
             logger.error(f"获取服务器统计信息失败: {e}")
             return {}
+
+
+# ==================== 求片类型管理 ====================
+
+async def create_movie_category(name: str, description: str = None, creator_id: int = None) -> bool:
+    """创建求片类型"""
+    async for session in get_db():
+        try:
+            category = MovieCategory(
+                name=name,
+                description=description,
+                created_by=creator_id
+            )
+            session.add(category)
+            await session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"创建求片类型失败: {e}")
+            await session.rollback()
+            return False
+
+
+async def get_all_movie_categories(active_only: bool = True) -> List[MovieCategory]:
+    """获取所有求片类型"""
+    async for session in get_db():
+        try:
+            query = select(MovieCategory).order_by(MovieCategory.sort_order, MovieCategory.created_at)
+            if active_only:
+                query = query.where(MovieCategory.is_active == True)
+            result = await session.execute(query)
+            return result.scalars().all()
+        except Exception as e:
+            logger.error(f"获取求片类型失败: {e}")
+            return []
+
+
+async def get_movie_category_by_id(category_id: int) -> Optional[MovieCategory]:
+    """根据ID获取求片类型"""
+    async for session in get_db():
+        try:
+            result = await session.execute(
+                select(MovieCategory).where(MovieCategory.id == category_id)
+            )
+            return result.scalar_one_or_none()
+        except Exception as e:
+            logger.error(f"获取求片类型失败: {e}")
+            return None
+
+
+async def update_movie_category(category_id: int, name: str = None, description: str = None, is_active: bool = None) -> bool:
+    """更新求片类型"""
+    async for session in get_db():
+        try:
+            update_data = {}
+            if name is not None:
+                update_data['name'] = name
+            if description is not None:
+                update_data['description'] = description
+            if is_active is not None:
+                update_data['is_active'] = is_active
+            
+            if update_data:
+                await session.execute(
+                    update(MovieCategory).where(MovieCategory.id == category_id).values(**update_data)
+                )
+                await session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"更新求片类型失败: {e}")
+            await session.rollback()
+            return False
+
+
+async def delete_movie_category(category_id: int) -> bool:
+    """删除求片类型"""
+    async for session in get_db():
+        try:
+            await session.execute(
+                delete(MovieCategory).where(MovieCategory.id == category_id)
+            )
+            await session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"删除求片类型失败: {e}")
+            await session.rollback()
+            return False
+
+
+# ==================== 系统设置管理 ====================
+
+async def get_system_setting(setting_key: str, default_value: str = None) -> str:
+    """获取系统设置值"""
+    async for session in get_db():
+        try:
+            result = await session.execute(
+                select(SystemSettings).where(
+                    SystemSettings.setting_key == setting_key,
+                    SystemSettings.is_active == True
+                )
+            )
+            setting = result.scalar_one_or_none()
+            return setting.setting_value if setting else default_value
+        except Exception as e:
+            logger.error(f"获取系统设置失败: {e}")
+            return default_value
+
+
+async def set_system_setting(setting_key: str, setting_value: str, setting_type: str = "boolean", description: str = None, updater_id: int = None) -> bool:
+    """设置系统设置值"""
+    async for session in get_db():
+        try:
+            # 检查设置是否已存在
+            result = await session.execute(
+                select(SystemSettings).where(SystemSettings.setting_key == setting_key)
+            )
+            existing_setting = result.scalar_one_or_none()
+            
+            if existing_setting:
+                # 更新现有设置
+                await session.execute(
+                    update(SystemSettings).where(SystemSettings.setting_key == setting_key).values(
+                        setting_value=setting_value,
+                        updated_at=datetime.now(),
+                        updated_by=updater_id
+                    )
+                )
+            else:
+                # 创建新设置
+                setting = SystemSettings(
+                    setting_key=setting_key,
+                    setting_value=setting_value,
+                    setting_type=setting_type,
+                    description=description,
+                    updated_by=updater_id
+                )
+                session.add(setting)
+            
+            await session.commit()
+            return True
+        except Exception as e:
+            logger.error(f"设置系统设置失败: {e}")
+            await session.rollback()
+            return False
+
+
+async def get_all_system_settings() -> List[SystemSettings]:
+    """获取所有系统设置"""
+    async for session in get_db():
+        try:
+            result = await session.execute(
+                select(SystemSettings).order_by(SystemSettings.setting_key)
+            )
+            return result.scalars().all()
+        except Exception as e:
+            logger.error(f"获取系统设置失败: {e}")
+            return []
+
+
+async def is_feature_enabled(feature_key: str) -> bool:
+    """检查功能是否启用"""
+    setting_value = await get_system_setting(feature_key, "true")
+    return setting_value.lower() in ["true", "1", "yes", "on"]
