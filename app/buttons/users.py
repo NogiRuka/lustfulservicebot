@@ -149,8 +149,6 @@ feedback_center_kb = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(text="📋 我的反馈", callback_data="feedback_my"),
-        ],
-        [
             InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
         ],
     ]
@@ -231,6 +229,7 @@ other_functions_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="📖 帮助信息", callback_data="user_help"),
         ],
         [
+            InlineKeyboardButton(text="🗑️ 清空记录", callback_data="clear_chat_history"),
             InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
         ],
     ]

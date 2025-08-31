@@ -283,8 +283,8 @@ async def cb_edit_movie_description(cb: types.CallbackQuery, state: FSMContext):
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
                 [types.InlineKeyboardButton(text="跳过描述", callback_data="skip_description")],
-                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center")],
-                [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
             ]
         )
     )
@@ -357,8 +357,8 @@ async def cb_movie_request_my_page(cb: types.CallbackQuery, page: int = None):
             caption="📋 <b>我的求片</b>\n\n您还没有提交过求片请求。",
             reply_markup=types.InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center")],
-                    [types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
+                    [types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")]
                 ]
             )
         )

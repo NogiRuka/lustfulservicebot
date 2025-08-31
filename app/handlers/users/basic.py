@@ -193,6 +193,40 @@ async def cb_user_help(cb: types.CallbackQuery):
     await cb.answer("📖 暂无帮助信息", show_alert=True)
 
 
+@basic_router.callback_query(F.data == "clear_chat_history")
+async def cb_clear_chat_history(cb: types.CallbackQuery):
+    """清空聊天记录"""
+    try:
+        # 获取当前聊天中的所有消息并删除
+        chat_id = cb.from_user.id
+        
+        # 尝试删除最近的消息（Telegram API限制，只能删除最近48小时内的消息）
+        # 这里我们尝试删除最近100条消息
+        deleted_count = 0
+        for i in range(100):
+            try:
+                # 从当前消息ID开始向前删除
+                message_id = cb.message.message_id - i
+                if message_id > 0:
+                    await cb.bot.delete_message(chat_id=chat_id, message_id=message_id)
+                    deleted_count += 1
+            except Exception:
+                # 忽略删除失败的消息（可能已经被删除或超出时间限制）
+                continue
+        
+        # 发送确认消息
+        await cb.bot.send_message(
+            chat_id=chat_id,
+            text=f"🗑️ **清空完成**\n\n已尝试清理聊天记录\n删除了 {deleted_count} 条消息\n\n💡 *注：由于Telegram限制，只能删除最近48小时内的消息*",
+            parse_mode="Markdown"
+        )
+        
+    except Exception as e:
+        await cb.answer(f"❌ 清空失败: {str(e)}", show_alert=True)
+    
+    await cb.answer("🗑️ 正在清空聊天记录...")
+
+
 # 普通文本消息：防并发回显
 @basic_router.message(F.text, IsCommand(), IsBusyFilter())
 async def message(msg: types.Message, state: FSMContext):
