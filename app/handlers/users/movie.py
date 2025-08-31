@@ -128,7 +128,6 @@ async def process_movie_title(msg: types.Message, state: FSMContext):
     
     # 发送新消息显示下一步
     await msg.answer_photo(
-        photo="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true",
         caption=f"🎬 <b>开始求片</b>\n\n📂 类型：{category_name}\n✅ 片名：{title}\n\n📝 请输入详细描述（可选）或发送图片：",
         reply_markup=movie_input_kb
     )

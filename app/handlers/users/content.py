@@ -116,6 +116,8 @@ async def cb_select_content_category(cb: types.CallbackQuery, state: FSMContext)
 @content_router.message(StateFilter(Wait.waitContentTitle))
 async def process_content_title(msg: types.Message, state: FSMContext):
     """处理投稿标题"""
+    logger.debug(f"收到投稿标题输入: {msg.text}, 用户: {msg.from_user.id}, 当前状态: {await state.get_state()}")
+    
     title = msg.text
     await state.update_data(title=title)
     
