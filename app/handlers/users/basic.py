@@ -91,15 +91,17 @@ async def cb_back_to_main(cb: types.CallbackQuery):
     role = await get_role(cb.from_user.id)
     title, kb = get_panel_for_role(role)
     
-    welcome_text = f"🎉 欢迎使用机器人！\n\n👤 用户角色：{role}\n\n{title}"
-    welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+    # 使用复用的面板样式函数
+    welcome_text = create_welcome_panel_text(title, role)
+    welcome_photo = DEFAULT_WELCOME_PHOTO
     
     # 检查当前消息是否有图片
     if cb.message.photo:
         # 如果有图片，编辑caption
         await cb.message.edit_caption(
             caption=welcome_text,
-            reply_markup=kb
+            reply_markup=kb,
+            parse_mode="Markdown"
         )
     else:
         # 如果没有图片，删除当前消息并发送新的带图片消息
@@ -112,7 +114,8 @@ async def cb_back_to_main(cb: types.CallbackQuery):
             chat_id=cb.from_user.id,
             photo=welcome_photo,
             caption=welcome_text,
-            reply_markup=kb
+            reply_markup=kb,
+            parse_mode="Markdown"
         )
     
     await cb.answer()
