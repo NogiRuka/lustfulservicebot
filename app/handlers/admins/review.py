@@ -643,10 +643,11 @@ async def cb_admin_all_movies(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_router.callback_query(F.data.startswith("all_movie_page_"))
-async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, page: int = 1):
+async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, page: int = None):
     """所有求片分页"""
     # 提取页码
-    page = extract_page_from_callback(cb.data, "all_movie")
+    if page is None:
+        page = extract_page_from_callback(cb.data, "all_movie")
     logger.info(f"查看所有求片分页，页码: {page}")
     
     # 删除之前发送的媒体消息
@@ -759,7 +760,7 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, p
     # 创建分页键盘
     keyboard = paginator.create_pagination_keyboard(
         page, 
-        "all_movie_page",
+        "all_movie",
         extra_buttons=[
             [
                 types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center")

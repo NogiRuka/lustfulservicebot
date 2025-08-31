@@ -1,6 +1,6 @@
 from typing import List, Any, Callable
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-
+from loguru import logger
 
 class Paginator:
     """分页工具类"""
@@ -100,6 +100,7 @@ def format_page_header(title: str, page_info: dict) -> str:
 
 def extract_page_from_callback(callback_data: str, prefix: str) -> int:
     """从回调数据中提取页码"""
+    logger.info(f"从回调数据中提取页码，回调数据: {callback_data}")
     try:
         if callback_data.startswith(f"{prefix}_page_"):
             return int(callback_data.split("_page_")[-1])

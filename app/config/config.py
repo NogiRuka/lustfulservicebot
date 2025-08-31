@@ -11,6 +11,9 @@ else:
     # Fallback: load from current working directory
     load_dotenv(override=True, encoding="utf-8")
 
+BOT_NICKNAME = os.getenv("BOT_NICKNAME")
+BOT_NAME = os.getenv("BOT_NAME")
+
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Safely parse admins list (allow empty)

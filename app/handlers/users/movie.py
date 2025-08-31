@@ -202,7 +202,7 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
         description = msg.caption or "[图片描述]"
         file_id = msg.photo[-1].file_id
         file_info = "\n📷 包含图片"
-        await msg.bot.send_photo(chat_id=msg.chat.id, photo=file_id, caption="就是这张😏")
+        # await msg.bot.send_photo(chat_id=msg.chat.id, photo=file_id, caption="就是这张😏")
     elif msg.document:
         description = msg.caption or "[文件描述]"
         file_id = msg.document.file_id
@@ -213,10 +213,10 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
         file_info = "\n🎥 包含视频"
     
     # 删除用户消息
-    # try:
-    #     await msg.delete()
-    # except:
-    #     pass
+    try:
+        await msg.delete()
+    except:
+        pass
     
     # 保存描述信息到状态
     await state.update_data(description=description, file_id=file_id, file_info=file_info)

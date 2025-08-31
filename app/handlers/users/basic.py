@@ -13,7 +13,7 @@ from app.buttons.panels import get_panel_for_role
 from app.database.business import get_server_stats
 from app.utils.group_utils import get_group_member_count, user_in_group_filter
 from app.utils.commands_catalog import build_commands_help
-from app.config.config import GROUP
+from app.config.config import GROUP, BOT_NICKNAME
 
 basic_router = Router()
 
@@ -26,8 +26,8 @@ async def start(msg: types.Message):
         # 在群组中给出更明确的提示
         bot_username = (await msg.bot.get_me()).username
         await msg.reply(
-            f"👋 你好！请点击 @{bot_username} 或直接私聊我来使用完整功能。\n\n"
-            "🔒 为了保护隐私，主要功能仅在私聊中提供。"
+            f"🌟 **欢迎使用 {BOT_NICKNAME}**\n\n💫 请点击 [@{bot_username}](https://t.me/{bot_username}) 在私聊中使用机器人功能",
+            parse_mode="Markdown"
         )
         return
     
@@ -45,7 +45,7 @@ async def start(msg: types.Message):
     role = await get_role(msg.from_user.id)
     title, kb = get_panel_for_role(role)
     
-    welcome_text = f"🎉 欢迎使用机器人！\n\n👤 用户角色：{role}\n\n{title}"
+    welcome_text = f"🎉 欢迎使用{BOT_NICKNAME}\！\n\n👤 用户角色：{role}\n\n{title}"
     welcome_photo = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
     
     await msg.bot.send_photo(
@@ -68,7 +68,7 @@ async def cb_user_profile(cb: types.CallbackQuery):
         f"👤 用户名：{cb.from_user.username or '未设置'}\n"
         f"📝 昵称：{cb.from_user.full_name}\n"
         f"🎭 角色：{role}\n"
-        f"📅 注册时间：{user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user else '未知'}\n"
+        f"📅 开始时间：{user.created_at.strftime('%Y-%m-%d %H:%M:%S') if user else '未知'}\n"
         f"⏰ 最后活跃：{user.last_activity_at.strftime('%Y-%m-%d %H:%M:%S') if user and user.last_activity_at else '未知'}\n\n"
         "如需返回主菜单，请点击下方按钮。"
     )
