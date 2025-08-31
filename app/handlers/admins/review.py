@@ -1,0 +1,408 @@
+from aiogram import types, F, Router
+from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
+from loguru import logger
+
+from app.utils.states import Wait
+from app.database.business import (
+    get_pending_movie_requests, get_pending_content_submissions,
+    review_movie_request, review_content_submission
+)
+from app.buttons.users import admin_review_center_kb, back_to_main_kb
+from app.utils.message_utils import safe_edit_message
+from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
+from app.utils.time_utils import humanize_time, get_status_text
+
+review_router = Router()
+
+
+# ==================== 审核中心 ====================
+
+@review_router.callback_query(F.data == "admin_review_center")
+async def cb_admin_review_center(cb: types.CallbackQuery):
+    """审核中心"""
+    movie_requests = await get_pending_movie_requests()
+    content_submissions = await get_pending_content_submissions()
+    
+    text = "✅ <b>审核中心</b>\n\n"
+    text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
+    text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
+    text += "请选择要审核的类型："
+    
+    await cb.message.edit_caption(
+        caption=text,
+        reply_markup=admin_review_center_kb
+    )
+    await cb.answer()
+
+
+# ==================== 求片审核 ====================
+
+@review_router.callback_query(F.data == "admin_review_movie")
+async def cb_admin_review_movie(cb: types.CallbackQuery):
+    """求片审核"""
+    await cb_admin_review_movie_page(cb, 1)
+
+
+@review_router.callback_query(F.data.startswith("movie_review_page_"))
+async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
+    """求片审核分页"""
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "movie_review")
+    
+    requests = await get_pending_movie_requests()
+    
+    if not requests:
+        await safe_edit_message(
+            cb.message,
+            caption="🎬 <b>求片审核</b>\n\n暂无待审核的求片请求。",
+            reply_markup=admin_review_center_kb
+        )
+        await cb.answer()
+        return
+    
+    paginator = Paginator(requests, page_size=3)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
+    
+    # 构建页面内容
+    text = format_page_header("🎬 <b>求片审核</b>", page_info)
+    
+    start_num = (page - 1) * paginator.page_size + 1
+    for i, req in enumerate(page_items, start_num):
+        # 获取类型信息
+        category_name = "未知类型"
+        if hasattr(req, 'category') and req.category:
+            category_name = req.category.name
+        
+        # 状态显示
+        status_text = get_status_text(req.status)
+        
+        text += f"{i}. 【{category_name}】{req.title}\n"
+        text += f"   🆔 ID:{req.id} | 👤 用户:{req.user_id} | 📅 {humanize_time(req.created_at)} | 🏷️ {status_text}\n"
+        
+        if req.description:
+            desc_preview = req.description[:60] + ('...' if len(req.description) > 60 else '')
+            text += f"   📝 {desc_preview}\n"
+        
+        # 媒体链接
+        if hasattr(req, 'file_id') and req.file_id:
+            text += f"   📎 [查看附件](https://t.me/c/{req.file_id})\n"
+        
+        text += "\n"
+    
+    text += "💡 使用下方按钮快速审核，或输入命令：\n"
+    text += "/approve_movie [ID] - 通过 | /reject_movie [ID] - 拒绝"
+    
+    # 创建分页键盘
+    extra_buttons = []
+    
+    # 为当前页面的每个求片添加快速操作按钮
+    for req in page_items:
+        extra_buttons.append([
+            types.InlineKeyboardButton(text=f"✅ 通过 #{req.id}", callback_data=f"approve_movie_{req.id}"),
+            types.InlineKeyboardButton(text=f"❌ 拒绝 #{req.id}", callback_data=f"reject_movie_{req.id}")
+        ])
+        extra_buttons.append([
+            types.InlineKeyboardButton(text=f"💬 留言通过 #{req.id}", callback_data=f"approve_movie_note_{req.id}"),
+            types.InlineKeyboardButton(text=f"💬 留言拒绝 #{req.id}", callback_data=f"reject_movie_note_{req.id}")
+        ])
+    
+    # 添加其他功能按钮
+    extra_buttons.extend([
+        [
+            types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_movie_detail_{page_items[0].id}" if page_items else "admin_review_movie"),
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data="admin_review_movie")
+        ],
+        [
+            types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        ]
+    ])
+    
+    keyboard = paginator.create_pagination_keyboard(
+        page, "movie_review", extra_buttons
+    )
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=keyboard
+    )
+    await cb.answer()
+
+
+# ==================== 投稿审核 ====================
+
+@review_router.callback_query(F.data == "admin_review_content")
+async def cb_admin_review_content(cb: types.CallbackQuery):
+    """投稿审核"""
+    await cb_admin_review_content_page(cb, 1)
+
+
+@review_router.callback_query(F.data.startswith("content_review_page_"))
+async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None):
+    """投稿审核分页"""
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "content_review")
+    
+    submissions = await get_pending_content_submissions()
+    
+    if not submissions:
+        await safe_edit_message(
+            cb.message,
+            caption="📝 <b>投稿审核</b>\n\n暂无待审核的投稿。",
+            reply_markup=admin_review_center_kb
+        )
+        await cb.answer()
+        return
+    
+    paginator = Paginator(submissions, page_size=3)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
+    
+    # 构建页面内容
+    text = format_page_header("📝 <b>投稿审核</b>", page_info)
+    
+    start_num = (page - 1) * paginator.page_size + 1
+    for i, sub in enumerate(page_items, start_num):
+        # 获取类型信息
+        category_name = "通用内容"
+        if hasattr(sub, 'category') and sub.category:
+            category_name = sub.category.name
+        
+        # 状态显示
+        status_text = get_status_text(sub.status)
+        
+        text += f"{i}. 【{category_name}】{sub.title}\n"
+        text += f"   🆔 ID:{sub.id} | 👤 用户:{sub.user_id} | 📅 {humanize_time(sub.created_at)} | 🏷️ {status_text}\n"
+        
+        content_preview = sub.content[:60] + ('...' if len(sub.content) > 60 else '')
+        text += f"   📄 {content_preview}\n"
+        
+        # 媒体链接
+        if sub.file_id:
+            text += f"   📎 [查看附件](https://t.me/c/{sub.file_id})\n"
+        
+        text += "\n"
+    
+    text += "💡 使用下方按钮快速审核，或输入命令：\n"
+    text += "/approve_content [ID] - 通过 | /reject_content [ID] - 拒绝"
+    
+    # 创建分页键盘
+    extra_buttons = []
+    
+    # 为当前页面的每个投稿添加快速操作按钮
+    for sub in page_items:
+        extra_buttons.append([
+            types.InlineKeyboardButton(text=f"✅ 通过 #{sub.id}", callback_data=f"approve_content_{sub.id}"),
+            types.InlineKeyboardButton(text=f"❌ 拒绝 #{sub.id}", callback_data=f"reject_content_{sub.id}")
+        ])
+        extra_buttons.append([
+            types.InlineKeyboardButton(text=f"💬 留言通过 #{sub.id}", callback_data=f"approve_content_note_{sub.id}"),
+            types.InlineKeyboardButton(text=f"💬 留言拒绝 #{sub.id}", callback_data=f"reject_content_note_{sub.id}")
+        ])
+    
+    # 添加其他功能按钮
+    extra_buttons.extend([
+        [
+            types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_content_detail_{page_items[0].id}" if page_items else "admin_review_content"),
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data="admin_review_content")
+        ],
+        [
+            types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        ]
+    ])
+    
+    keyboard = paginator.create_pagination_keyboard(
+        page, "content_review", extra_buttons
+    )
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=keyboard
+    )
+    await cb.answer()
+
+
+# ==================== 快速审核操作 ====================
+
+@review_router.callback_query(F.data.startswith("approve_movie_"))
+async def cb_approve_movie(cb: types.CallbackQuery):
+    """快速通过求片"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    success = await review_movie_request(request_id, cb.from_user.id, "approved")
+    
+    if success:
+        await cb.answer(f"✅ 已通过求片 {request_id}", show_alert=True)
+        # 刷新审核列表
+        await cb_admin_review_movie(cb)
+    else:
+        await cb.answer("❌ 操作失败，请检查求片ID是否正确", show_alert=True)
+
+
+@review_router.callback_query(F.data.startswith("reject_movie_"))
+async def cb_reject_movie(cb: types.CallbackQuery):
+    """快速拒绝求片"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    success = await review_movie_request(request_id, cb.from_user.id, "rejected")
+    
+    if success:
+        await cb.answer(f"❌ 已拒绝求片 {request_id}", show_alert=True)
+        # 刷新审核列表
+        await cb_admin_review_movie(cb)
+    else:
+        await cb.answer("❌ 操作失败，请检查求片ID是否正确", show_alert=True)
+
+
+@review_router.callback_query(F.data.startswith("approve_content_"))
+async def cb_approve_content(cb: types.CallbackQuery):
+    """快速通过投稿"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    success = await review_content_submission(submission_id, cb.from_user.id, "approved")
+    
+    if success:
+        await cb.answer(f"✅ 已通过投稿 {submission_id}", show_alert=True)
+        # 刷新审核列表
+        await cb_admin_review_content(cb)
+    else:
+        await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
+
+
+# ==================== 详情查看功能 ====================
+
+@review_router.callback_query(F.data.startswith("review_movie_detail_"))
+async def cb_review_movie_detail(cb: types.CallbackQuery):
+    """查看求片详情"""
+    request_id = int(cb.data.split("_")[-1])
+    
+    # 获取求片详情
+    requests = await get_pending_movie_requests()
+    request = next((r for r in requests if r.id == request_id), None)
+    
+    if not request:
+        await cb.answer("❌ 求片请求不存在或已被处理", show_alert=True)
+        return
+    
+    # 构建详情文本
+    detail_text = (
+        f"🎬 <b>求片详情</b>\n\n"
+        f"🆔 ID：{request.id}\n"
+        f"🎭 片名：{request.title}\n"
+        f"👤 用户ID：{request.user_id}\n"
+        f"📅 提交时间：{humanize_time(request.created_at)}\n"
+        f"📝 状态：{get_status_text(request.status)}\n\n"
+    )
+    
+    if request.description:
+        detail_text += f"📄 描述：\n{request.description}\n\n"
+    else:
+        detail_text += f"📄 描述：无\n\n"
+    
+    if hasattr(request, 'file_id') and request.file_id:
+        detail_text += f"📎 附件：有（文件ID: {request.file_id[:20]}...）\n\n"
+    else:
+        detail_text += f"📎 附件：无\n\n"
+    
+    detail_text += "请选择审核操作："
+    
+    # 详情页面按钮
+    detail_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="✅ 通过", callback_data=f"approve_movie_{request.id}"),
+                types.InlineKeyboardButton(text="❌ 拒绝", callback_data=f"reject_movie_{request.id}")
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回列表", callback_data="admin_review_movie"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            ]
+        ]
+    )
+    
+    await cb.message.edit_caption(
+        caption=detail_text,
+        reply_markup=detail_kb
+    )
+    await cb.answer()
+
+
+@review_router.callback_query(F.data.startswith("review_content_detail_"))
+async def cb_review_content_detail(cb: types.CallbackQuery):
+    """查看投稿详情"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    # 获取投稿详情
+    submissions = await get_pending_content_submissions()
+    submission = next((s for s in submissions if s.id == submission_id), None)
+    
+    if not submission:
+        await cb.answer("❌ 投稿不存在或已被处理", show_alert=True)
+        return
+    
+    # 构建详情文本
+    detail_text = (
+        f"📝 <b>投稿详情</b>\n\n"
+        f"🆔 ID：{submission.id}\n"
+        f"📝 标题：{submission.title}\n"
+        f"👤 用户ID：{submission.user_id}\n"
+        f"📅 提交时间：{humanize_time(submission.created_at)}\n"
+        f"📊 状态：{get_status_text(submission.status)}\n\n"
+    )
+    
+    # 显示内容（限制长度）
+    if len(submission.content) > 500:
+        content_display = submission.content[:500] + "\n\n... (内容过长，已截断)"
+    else:
+        content_display = submission.content
+    
+    detail_text += f"📄 内容：\n{content_display}\n\n"
+    
+    if submission.file_id:
+        detail_text += f"📎 附件：有（文件ID: {submission.file_id[:20]}...）\n\n"
+    else:
+        detail_text += f"📎 附件：无\n\n"
+    
+    detail_text += "请选择审核操作："
+    
+    # 详情页面按钮
+    detail_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="✅ 通过", callback_data=f"approve_content_{submission.id}"),
+                types.InlineKeyboardButton(text="❌ 拒绝", callback_data=f"reject_content_{submission.id}")
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回列表", callback_data="admin_review_content"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            ]
+        ]
+    )
+    
+    await cb.message.edit_caption(
+        caption=detail_text,
+        reply_markup=detail_kb
+    )
+    await cb.answer()
+
+
+@review_router.callback_query(F.data.startswith("reject_content_"))
+async def cb_reject_content(cb: types.CallbackQuery):
+    """快速拒绝投稿"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    success = await review_content_submission(submission_id, cb.from_user.id, "rejected")
+    
+    if success:
+        await cb.answer(f"❌ 已拒绝投稿 {submission_id}", show_alert=True)
+        # 刷新审核列表
+        await cb_admin_review_content(cb)
+    else:
+        await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
