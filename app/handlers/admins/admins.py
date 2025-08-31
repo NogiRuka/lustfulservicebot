@@ -21,6 +21,7 @@ from app.buttons.users import admin_review_center_kb, back_to_main_kb
 from app.utils.message_utils import safe_edit_message
 from app.database.business import is_feature_enabled
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
+from app.utils.time_utils import humanize_time, get_status_text
 import re
 
 admins_router = Router()
@@ -288,26 +289,29 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
     
     start_num = (page - 1) * paginator.page_size + 1
     for i, req in enumerate(page_items, start_num):
-        text += f"{i}. ID:{req.id} - {req.title}\n"
-        text += f"   👤 用户:{req.user_id}\n"
-        text += f"   📅 时间:{req.created_at.strftime('%Y-%m-%d %H:%M')}\n"
+        # 获取类型信息
+        category_name = "未知类型"
+        if hasattr(req, 'category') and req.category:
+            category_name = req.category.name
+        
+        # 状态显示
+        status_text = get_status_text(req.status)
+        
+        text += f"{i}. 【{category_name}】{req.title}\n"
+        text += f"   👤 用户:{req.user_id} | 📅 {humanize_time(req.created_at)} | 🏷️ {status_text}\n"
         
         if req.description:
             desc_preview = req.description[:60] + ('...' if len(req.description) > 60 else '')
-            text += f"   📝 描述:{desc_preview}\n"
-        else:
-            text += f"   📝 描述:无\n"
-            
-        if hasattr(req, 'file_id') and req.file_id:
-            text += f"   📎 附件:有\n"
-        else:
-            text += f"   📎 附件:无\n"
+            text += f"   📝 {desc_preview}\n"
         
-        text += f"   /approve_movie {req.id} | /reject_movie {req.id}\n\n"
+        # 媒体链接
+        if hasattr(req, 'file_id') and req.file_id:
+            text += f"   📎 [查看附件](https://t.me/c/{req.file_id})\n"
+        
+        text += "\n"
     
-    text += "💡 快速命令：\n"
-    text += "/approve_movie [ID] - 通过求片\n"
-    text += "/reject_movie [ID] - 拒绝求片"
+    text += "💡 使用下方按钮快速审核，或输入命令：\n"
+    text += "/approve_movie [ID] - 通过 | /reject_movie [ID] - 拒绝"
     
     # 创建分页键盘
     extra_buttons = []
@@ -462,23 +466,28 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
     
     start_num = (page - 1) * paginator.page_size + 1
     for i, sub in enumerate(page_items, start_num):
-        text += f"{i}. ID:{sub.id} - {sub.title}\n"
-        text += f"   👤 用户:{sub.user_id}\n"
-        text += f"   📅 时间:{sub.created_at.strftime('%Y-%m-%d %H:%M')}\n"
+        # 获取类型信息
+        category_name = "通用内容"
+        if hasattr(sub, 'category') and sub.category:
+            category_name = sub.category.name
+        
+        # 状态显示
+        status_text = get_status_text(sub.status)
+        
+        text += f"{i}. 【{category_name}】{sub.title}\n"
+        text += f"   👤 用户:{sub.user_id} | 📅 {humanize_time(sub.created_at)} | 🏷️ {status_text}\n"
         
         content_preview = sub.content[:60] + ('...' if len(sub.content) > 60 else '')
-        text += f"   📄 内容:{content_preview}\n"
+        text += f"   📄 {content_preview}\n"
         
+        # 媒体链接
         if sub.file_id:
-            text += f"   📎 附件:有\n"
-        else:
-            text += f"   📎 附件:无\n"
+            text += f"   📎 [查看附件](https://t.me/c/{sub.file_id})\n"
         
-        text += f"   /approve_content {sub.id} | /reject_content {sub.id}\n\n"
+        text += "\n"
     
-    text += "💡 快速命令：\n"
-    text += "/approve_content [ID] - 通过投稿\n"
-    text += "/reject_content [ID] - 拒绝投稿"
+    text += "💡 使用下方按钮快速审核，或输入命令：\n"
+    text += "/approve_content [ID] - 通过 | /reject_content [ID] - 拒绝"
     
     # 创建分页键盘
     extra_buttons = []

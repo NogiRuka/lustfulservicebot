@@ -71,6 +71,7 @@ class ContentSubmission(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, ForeignKey('users.chat_id'), nullable=False)
+    category_id = Column(Integer, ForeignKey('movie_categories.id'), nullable=True)  # 类型ID（可选）
     title = Column(String, nullable=False)  # 标题
     content = Column(Text, nullable=False)  # 内容
     file_id = Column(String, nullable=True)  # Telegram文件ID
@@ -78,6 +79,9 @@ class ContentSubmission(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     reviewed_at = Column(DateTime, nullable=True)
     reviewed_by = Column(BigInteger, nullable=True)  # 审核人ID
+    
+    # 关系
+    category = relationship("MovieCategory")
     
     def __repr__(self):
         return f"<ContentSubmission(id={self.id}, title={self.title}, status={self.status})>"

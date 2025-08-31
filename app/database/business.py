@@ -157,12 +157,13 @@ async def review_movie_request(request_id: int, reviewer_id: int, status: str) -
 
 # ==================== 内容投稿 ====================
 
-async def create_content_submission(user_id: int, title: str, content: str, file_id: str = None) -> bool:
+async def create_content_submission(user_id: int, title: str, content: str, file_id: str = None, category_id: int = None) -> bool:
     """创建内容投稿"""
     async for session in get_db():
         try:
             submission = ContentSubmission(
                 user_id=user_id,
+                category_id=category_id,
                 title=title,
                 content=content,
                 file_id=file_id

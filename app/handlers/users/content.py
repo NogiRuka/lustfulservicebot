@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 
 from app.utils.states import Wait
-from app.database.business import create_content_submission, get_user_content_submissions, is_feature_enabled
+from app.database.business import create_content_submission, get_user_content_submissions, is_feature_enabled, get_all_movie_categories
 from app.buttons.users import content_center_kb, content_input_kb, back_to_main_kb
 
 content_router = Router()
@@ -31,7 +31,7 @@ async def cb_content_center(cb: types.CallbackQuery):
 
 @content_router.callback_query(F.data == "content_submit_new")
 async def cb_content_submit_new(cb: types.CallbackQuery, state: FSMContext):
-    """开始投稿"""
+    """开始投稿 - 选择类型"""
     # 检查功能开关
     if not await is_feature_enabled("system_enabled") or not await is_feature_enabled("content_submit_enabled"):
         await cb.answer("❌ 投稿功能暂时不可用", show_alert=True)
@@ -39,12 +39,68 @@ async def cb_content_submit_new(cb: types.CallbackQuery, state: FSMContext):
     
     await state.clear()
     
+    # 获取可用的类型
+    categories = await get_all_movie_categories(active_only=True)
+    if not categories:
+        await cb.answer("❌ 暂无可用的内容类型，请联系管理员", show_alert=True)
+        return
+    
+    # 创建类型选择键盘
+    keyboard = []
+    for category in categories:
+        keyboard.append([types.InlineKeyboardButton(
+            text=f"📂 {category.name}",
+            callback_data=f"select_content_category_{category.id}"
+        )])
+    
+    # 添加通用内容选项
+    keyboard.append([types.InlineKeyboardButton(
+        text="📄 通用内容（无分类）",
+        callback_data="select_content_category_0"
+    )])
+    
+    keyboard.append([types.InlineKeyboardButton(
+        text="🔙 返回",
+        callback_data="content_center"
+    )])
+    
+    category_kb = types.InlineKeyboardMarkup(inline_keyboard=keyboard)
+    
     await cb.message.edit_caption(
-        caption="📝 <b>开始投稿</b>\n\n请输入投稿标题：",
-        reply_markup=content_input_kb
+        caption="📝 <b>开始投稿</b>\n\n请选择内容类型：",
+        reply_markup=category_kb
     )
     # 保存消息ID用于后续编辑
     await state.update_data(message_id=cb.message.message_id)
+    await cb.answer()
+
+
+@content_router.callback_query(F.data.startswith("select_content_category_"))
+async def cb_select_content_category(cb: types.CallbackQuery, state: FSMContext):
+    """选择投稿类型"""
+    category_id = int(cb.data.split("_")[-1])
+    
+    # 获取类型信息
+    category_name = "通用内容"
+    if category_id > 0:
+        categories = await get_all_movie_categories(active_only=True)
+        category = next((c for c in categories if c.id == category_id), None)
+        if category:
+            category_name = category.name
+        else:
+            await cb.answer("❌ 类型不存在", show_alert=True)
+            return
+    
+    # 保存选择的类型
+    await state.update_data(
+        category_id=category_id if category_id > 0 else None,
+        category_name=category_name
+    )
+    
+    await cb.message.edit_caption(
+        caption=f"📝 <b>开始投稿</b>\n\n已选择类型：【{category_name}】\n\n请输入投稿标题：",
+        reply_markup=content_input_kb
+    )
     await state.set_state(Wait.waitContentTitle)
     await cb.answer()
 
@@ -120,8 +176,12 @@ async def process_content_body(msg: types.Message, state: FSMContext):
     
     # 显示确认页面
     content_preview = content[:100] + ('...' if len(content) > 100 else '')
+    # 获取类型信息
+    category_name = data.get('category_name', '通用内容')
+    
     confirm_text = (
         f"📋 <b>确认投稿信息</b>\n\n"
+        f"📂 类型：【{category_name}】\n"
         f"📝 标题：{title}\n"
         f"📄 内容：{content_preview}{file_info}\n\n"
         f"请确认以上信息是否正确？"
@@ -156,12 +216,14 @@ async def cb_edit_content_body(cb: types.CallbackQuery, state: FSMContext):
     """重新编辑投稿内容"""
     data = await state.get_data()
     title = data.get('title', '')
+    category_name = data.get('category_name', '通用内容')
     current_content = data.get('content', '')
     current_file_info = data.get('file_info', '')
     
     # 显示当前信息和编辑提示
     edit_text = (
         f"✏️ <b>重新编辑投稿内容</b>\n\n"
+        f"📂 类型：【{category_name}】\n"
         f"📝 标题：{title}\n"
     )
     
@@ -194,13 +256,15 @@ async def cb_confirm_content_submit(cb: types.CallbackQuery, state: FSMContext):
     content = data.get('content', '')
     file_id = data.get('file_id')
     file_info = data.get('file_info', '')
+    category_id = data.get('category_id')
+    category_name = data.get('category_name', '通用内容')
     
-    success = await create_content_submission(cb.from_user.id, title, content, file_id)
+    success = await create_content_submission(cb.from_user.id, title, content, file_id, category_id)
     
     # 显示最终结果
     if success:
         content_preview = content[:50] + ('...' if len(content) > 50 else '')
-        result_text = f"✅ <b>投稿提交成功！</b>\n\n📝 标题：{title}\n📄 内容：{content_preview}{file_info}\n\n您的投稿已提交，等待管理员审核。"
+        result_text = f"✅ <b>投稿提交成功！</b>\n\n📂 类型：【{category_name}】\n📝 标题：{title}\n📄 内容：{content_preview}{file_info}\n\n您的投稿已提交，等待管理员审核。"
         
         # 成功页面按钮
         success_kb = types.InlineKeyboardMarkup(
