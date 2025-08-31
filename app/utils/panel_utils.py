@@ -28,10 +28,10 @@ def create_info_panel_text(user_info: dict) -> str:
     info_text = (
         f"🌟 <b>个人档案</b> 🌟\n\n"
         f"👤 <b>基本信息</b>\n"
-        f"├ 用户名: <code>@{user_info.get('username', '未设置')}</code>\n"
+        f"├ 用户名: <a href='https://t.me/{user_info.get('username', '未设置')}'>@{user_info.get('username', '未设置')}</a>\n"
         f"├ 昵称: {user_info.get('full_name', '未知')}\n"
         f"├ 用户ID: <code>{user_info.get('user_id', '未知')}</code>\n"
-        f"└ 身份角色: <b>{user_info.get('role', '未知')}</b>\n\n"
+        f"└ 身份角色: <b>{'用户' if user_info.get('role') == 'user' else '管理员' if user_info.get('role') == 'admin' else '超级管理员' if user_info.get('role') == 'superadmin' else '未知'}</b>\n\n"
         f"⏰ <b>时间记录</b>\n"
         f"├ 开始时间: {user_info.get('created_at', '未知')}\n"
         f"└ 最后活跃: {user_info.get('last_activity_at', '未知')}"
