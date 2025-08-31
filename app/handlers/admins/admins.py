@@ -270,7 +270,8 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
     requests = await get_pending_movie_requests()
     
     if not requests:
-        await cb.message.edit_caption(
+        await safe_edit_message(
+            cb.message,
             caption="🎬 <b>求片审核</b>\n\n暂无待审核的求片请求。",
             reply_markup=admin_review_detail_kb
         )
@@ -323,7 +324,8 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
         page, "movie_review", extra_buttons
     )
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption=text,
         reply_markup=keyboard
     )

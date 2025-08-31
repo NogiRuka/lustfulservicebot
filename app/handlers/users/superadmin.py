@@ -3,6 +3,8 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from loguru import logger
 
+from app.utils.message_utils import safe_edit_message
+
 from app.utils.states import Wait
 from app.database.users import get_user, get_role
 from app.database.business import (
@@ -41,7 +43,8 @@ async def cb_superadmin_manage_center(cb: types.CallbackQuery):
     text += f"👮 当前管理员数量：{admin_count}\n\n"
     text += "请选择管理操作："
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption=text,
         reply_markup=superadmin_manage_center_kb
     )
@@ -56,7 +59,8 @@ async def cb_superadmin_add_admin(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption="➕ <b>添加管理员</b>\n\n请输入要提升为管理员的用户ID：",
         reply_markup=superadmin_action_kb
     )
@@ -187,7 +191,8 @@ async def cb_superadmin_my_admins(cb: types.CallbackQuery):
     admin_users = [a for a in admins if a.role == ROLE_ADMIN]
     
     if not admin_users:
-        await cb.message.edit_caption(
+        await safe_edit_message(
+            cb.message,
             caption="👥 <b>我的管理员</b>\n\n暂无管理员。",
             reply_markup=superadmin_action_kb
         )
@@ -200,7 +205,8 @@ async def cb_superadmin_my_admins(cb: types.CallbackQuery):
         
         text += "💡 使用 /demote [用户ID] 来取消管理员权限"
         
-        await cb.message.edit_caption(
+        await safe_edit_message(
+            cb.message,
             caption=text,
             reply_markup=superadmin_action_kb
         )
@@ -244,7 +250,8 @@ async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
         
         text += "💡 使用 /reply [反馈ID] [回复内容] 进行回复"
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption=text,
         reply_markup=superadmin_action_kb
     )
@@ -285,7 +292,8 @@ async def cb_confirm_promote_admin(cb: types.CallbackQuery, state: FSMContext):
         result_text = "❌ 提升失败，请稍后重试。"
         reply_markup = back_to_main_kb
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption=result_text,
         reply_markup=reply_markup
     )
@@ -593,7 +601,8 @@ async def cb_superadmin_category_manage_page(cb: types.CallbackQuery, page: int 
         page, "category_manage", extra_buttons
     )
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption=text,
         reply_markup=keyboard
     )
@@ -608,7 +617,8 @@ async def cb_add_category_prompt(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption="➕ <b>添加类型</b>\n\n请输入类型名称：",
         reply_markup=superadmin_action_kb
     )
@@ -713,7 +723,8 @@ async def cb_superadmin_system_settings(cb: types.CallbackQuery):
         ]
     )
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption=text,
         reply_markup=settings_kb
     )
@@ -774,7 +785,8 @@ async def cb_view_all_settings_page(cb: types.CallbackQuery, page: int = None):
         page, "settings", extra_buttons
     )
     
-    await cb.message.edit_caption(
+    await safe_edit_message(
+        cb.message,
         caption=text,
         reply_markup=keyboard
     )
