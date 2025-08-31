@@ -202,6 +202,7 @@ async def process_movie_description(msg: types.Message, state: FSMContext):
         description = msg.caption or "[图片描述]"
         file_id = msg.photo[-1].file_id
         file_info = "\n📷 包含图片"
+        await msg.bot.send_photo(chat_id=msg.chat.id, photo=file_id, caption="就是这张😏")
     elif msg.document:
         description = msg.caption or "[文件描述]"
         file_id = msg.document.file_id

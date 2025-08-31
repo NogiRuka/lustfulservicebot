@@ -92,7 +92,31 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
         
         # 媒体链接
         if hasattr(req, 'file_id') and req.file_id:
-            text += f"└ 📎 [查看附件](https://t.me/c/{req.file_id})\n"
+            # 美化的媒体消息发送
+            media_caption = (
+                f"🎬 <b>【{category_name}】{req.title}</b>\n\n"
+                f"🆔 <b>求片ID</b>：<code>{req.id}</code>\n"
+                f"👤 <b>用户</b>：{req.user_id}\n"
+                f"⏰ <b>时间</b>：{humanize_time(req.created_at)}\n"
+                f"🏷️ <b>状态</b>：<code>{status_text}</code>\n\n"
+            )
+            
+            if req.description:
+                media_caption += f"📝 <b>描述</b>：\n{req.description}\n\n"
+            
+            media_caption += "📎 <b>附件预览</b> ⬆️"
+            
+            try:
+                await cb.message.bot.send_photo(
+                    chat_id=cb.from_user.id, 
+                    photo=req.file_id, 
+                    caption=media_caption,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"发送媒体消息失败: {e}")
+            
+            text += f"└ 📎 <b>附件已发送</b> ✅\n"
         else:
             text += f"└─────────────────\n"
         
