@@ -54,9 +54,7 @@ async def cb_superadmin_manage_center(cb: types.CallbackQuery):
 async def cb_dev_changelog_view(cb: types.CallbackQuery):
     """查看开发日志"""
     role = await get_role(cb.from_user.id)
-    if role != ROLE_SUPERADMIN:
-        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
-        return
+    # 所有用户都可以查看开发日志
     
     changelogs = await get_all_dev_changelogs()
     
@@ -91,23 +89,38 @@ async def cb_dev_changelog_view(cb: types.CallbackQuery):
         if len(changelogs) > 10:
             text += f"... 还有 {len(changelogs) - 10} 条记录\n\n"
         
-        text += "💡 管理命令：\n"
-        text += "├ /add_changelog - 添加开发日志\n"
-        text += "├ /edit_changelog [ID] - 编辑日志\n"
-        text += "└ /del_changelog [ID] - 删除日志"
+        if role == ROLE_SUPERADMIN:
+            text += "💡 管理命令：\n"
+            text += "├ /add_changelog - 添加开发日志\n"
+            text += "├ /edit_changelog [ID] - 编辑日志\n"
+            text += "└ /del_changelog [ID] - 删除日志"
     
-    changelog_kb = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="dev_changelog_view"),
-                types.InlineKeyboardButton(text="➕ 添加日志", callback_data="dev_changelog_add")
-            ],
-            [
-                types.InlineKeyboardButton(text="⬅️ 返回其他功能", callback_data="other_functions"),
-                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+    # 根据用户角色显示不同的按钮
+    if role == ROLE_SUPERADMIN:
+        changelog_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="dev_changelog_view"),
+                    types.InlineKeyboardButton(text="➕ 添加日志", callback_data="dev_changelog_add")
+                ],
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回其他功能", callback_data="other_functions"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                ]
             ]
-        ]
-    )
+        )
+    else:
+        changelog_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="dev_changelog_view")
+                ],
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回其他功能", callback_data="other_functions"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                ]
+            ]
+        )
     
     await safe_edit_message(
         cb.message,
