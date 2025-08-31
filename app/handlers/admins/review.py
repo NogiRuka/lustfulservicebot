@@ -624,11 +624,10 @@ async def cb_admin_all_movies(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_router.callback_query(F.data.startswith("all_movie_page_"))
-async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, page: int = None):
+async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext):
     """所有求片分页"""
     # 提取页码
-    if page is None:
-        page = extract_page_from_callback(cb.data, "all_movie")
+    page = extract_page_from_callback(cb.data, "all_movie")
     
     # 删除之前发送的媒体消息
     try:
@@ -644,7 +643,10 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext, p
     except Exception as e:
         logger.warning(f"状态处理失败: {e}")
         # 如果状态处理失败，初始化一个空的媒体消息列表
-        await state.update_data(sent_media_ids=[])
+        try:
+            await state.update_data(sent_media_ids=[])
+        except Exception as e2:
+            logger.error(f"状态初始化也失败: {e2}")
     
     requests = await get_all_movie_requests()
     
@@ -762,11 +764,10 @@ async def cb_admin_all_content(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_router.callback_query(F.data.startswith("all_content_page_"))
-async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext, page: int = None):
+async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext):
     """所有投稿分页"""
     # 提取页码
-    if page is None:
-        page = extract_page_from_callback(cb.data, "all_content")
+    page = extract_page_from_callback(cb.data, "all_content")
     
     # 删除之前发送的媒体消息
     try:
@@ -782,7 +783,10 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext, 
     except Exception as e:
         logger.warning(f"状态处理失败: {e}")
         # 如果状态处理失败，初始化一个空的媒体消息列表
-        await state.update_data(sent_media_ids=[])
+        try:
+            await state.update_data(sent_media_ids=[])
+        except Exception as e2:
+            logger.error(f"状态初始化也失败: {e2}")
     
     submissions = await get_all_content_submissions()
     
