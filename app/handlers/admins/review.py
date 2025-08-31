@@ -252,12 +252,18 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
             media_caption += "📎 <b>附件预览</b> ⬆️"
             
             try:
-                await cb.message.bot.send_photo(
-                    chat_id=cb.from_user.id, 
-                    photo=sub.file_id, 
-                    caption=media_caption,
-                    parse_mode="HTML"
-                )
+                 sent_message = await cb.message.bot.send_photo(
+                     chat_id=cb.from_user.id, 
+                     photo=sub.file_id, 
+                     caption=media_caption,
+                     parse_mode="HTML"
+                 )
+                 # 记录发送的媒体消息ID
+                 if state:
+                     data = await state.get_data()
+                     sent_media_ids = data.get('sent_media_ids', [])
+                     sent_media_ids.append(sent_message.message_id)
+                     await state.update_data(sent_media_ids=sent_media_ids)
             except Exception as e:
                 logger.warning(f"发送媒体消息失败: {e}")
             
@@ -610,17 +616,31 @@ async def cb_delete_media_message(cb: types.CallbackQuery, state: FSMContext):
 # ==================== 所有记录查看 ====================
 
 @review_router.callback_query(F.data == "admin_all_movies")
-async def cb_admin_all_movies(cb: types.CallbackQuery):
+async def cb_admin_all_movies(cb: types.CallbackQuery, state: FSMContext):
     """查看所有求片"""
-    await cb_admin_all_movies_page(cb, 1)
+    # 清空之前的媒体消息记录
+    await state.update_data(sent_media_ids=[])
+    await cb_admin_all_movies_page(cb, 1, state)
 
 
 @review_router.callback_query(F.data.startswith("all_movie_page_"))
-async def cb_admin_all_movies_page(cb: types.CallbackQuery, page: int = None):
+async def cb_admin_all_movies_page(cb: types.CallbackQuery, page: int = None, state: FSMContext = None):
     """所有求片分页"""
     # 提取页码
     if page is None:
         page = extract_page_from_callback(cb.data, "all_movie")
+    
+    # 删除之前发送的媒体消息
+    if state:
+        data = await state.get_data()
+        sent_media_ids = data.get('sent_media_ids', [])
+        for message_id in sent_media_ids:
+            try:
+                await cb.message.bot.delete_message(chat_id=cb.from_user.id, message_id=message_id)
+            except Exception as e:
+                logger.warning(f"删除媒体消息失败: {e}")
+        # 清空已发送的媒体消息ID列表
+        await state.update_data(sent_media_ids=[])
     
     requests = await get_all_movie_requests()
     
@@ -682,12 +702,18 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, page: int = None):
             media_caption += "📎 <b>附件预览</b> ⬆️"
             
             try:
-                await cb.message.bot.send_photo(
+                sent_message = await cb.message.bot.send_photo(
                     chat_id=cb.from_user.id, 
                     photo=req.file_id, 
                     caption=media_caption,
                     parse_mode="HTML"
                 )
+                # 记录发送的媒体消息ID
+                if state:
+                    data = await state.get_data()
+                    sent_media_ids = data.get('sent_media_ids', [])
+                    sent_media_ids.append(sent_message.message_id)
+                    await state.update_data(sent_media_ids=sent_media_ids)
             except Exception as e:
                 logger.warning(f"发送媒体消息失败: {e}")
             
@@ -722,17 +748,31 @@ async def cb_admin_all_movies_page(cb: types.CallbackQuery, page: int = None):
 
 
 @review_router.callback_query(F.data == "admin_all_content")
-async def cb_admin_all_content(cb: types.CallbackQuery):
+async def cb_admin_all_content(cb: types.CallbackQuery, state: FSMContext):
     """查看所有投稿"""
-    await cb_admin_all_content_page(cb, 1)
+    # 清空之前的媒体消息记录
+    await state.update_data(sent_media_ids=[])
+    await cb_admin_all_content_page(cb, 1, state)
 
 
 @review_router.callback_query(F.data.startswith("all_content_page_"))
-async def cb_admin_all_content_page(cb: types.CallbackQuery, page: int = None):
+async def cb_admin_all_content_page(cb: types.CallbackQuery, page: int = None, state: FSMContext = None):
     """所有投稿分页"""
     # 提取页码
     if page is None:
         page = extract_page_from_callback(cb.data, "all_content")
+    
+    # 删除之前发送的媒体消息
+    if state:
+        data = await state.get_data()
+        sent_media_ids = data.get('sent_media_ids', [])
+        for message_id in sent_media_ids:
+            try:
+                await cb.message.bot.delete_message(chat_id=cb.from_user.id, message_id=message_id)
+            except Exception as e:
+                logger.warning(f"删除媒体消息失败: {e}")
+        # 清空已发送的媒体消息ID列表
+        await state.update_data(sent_media_ids=[])
     
     submissions = await get_all_content_submissions()
     
@@ -793,12 +833,18 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, page: int = None):
             media_caption += "📎 <b>附件预览</b> ⬆️"
             
             try:
-                await cb.message.bot.send_photo(
+                sent_message = await cb.message.bot.send_photo(
                     chat_id=cb.from_user.id, 
                     photo=sub.file_id, 
                     caption=media_caption,
                     parse_mode="HTML"
                 )
+                # 记录发送的媒体消息ID
+                if state:
+                    data = await state.get_data()
+                    sent_media_ids = data.get('sent_media_ids', [])
+                    sent_media_ids.append(sent_message.message_id)
+                    await state.update_data(sent_media_ids=sent_media_ids)
             except Exception as e:
                 logger.warning(f"发送媒体消息失败: {e}")
             
