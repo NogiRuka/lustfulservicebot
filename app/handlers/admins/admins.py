@@ -21,6 +21,7 @@ from app.buttons.users import admin_review_center_kb, back_to_main_kb
 from app.utils.message_utils import safe_edit_message
 from app.database.business import is_feature_enabled
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
+import re
 
 admins_router = Router()
 
@@ -309,7 +310,17 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
     text += "/reject_movie [ID] - 拒绝求片"
     
     # 创建分页键盘
-    extra_buttons = [
+    extra_buttons = []
+    
+    # 为当前页面的每个求片添加快速操作按钮
+    for req in page_items:
+        extra_buttons.append([
+            types.InlineKeyboardButton(text=f"✅ 通过 #{req.id}", callback_data=f"approve_movie_{req.id}"),
+            types.InlineKeyboardButton(text=f"❌ 拒绝 #{req.id}", callback_data=f"reject_movie_{req.id}")
+        ])
+    
+    # 添加其他功能按钮
+    extra_buttons.extend([
         [
             types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_movie_detail_{page_items[0].id}" if page_items else "admin_review_movie"),
             types.InlineKeyboardButton(text="🔄 刷新", callback_data="admin_review_movie")
@@ -318,7 +329,7 @@ async def cb_admin_review_movie_page(cb: types.CallbackQuery, page: int = None):
             types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
             types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
         ]
-    ]
+    ])
     
     keyboard = paginator.create_pagination_keyboard(
         page, "movie_review", extra_buttons
@@ -421,65 +432,89 @@ async def cb_reject_movie(cb: types.CallbackQuery):
 @admins_router.callback_query(F.data == "admin_review_content")
 async def cb_admin_review_content(cb: types.CallbackQuery):
     """投稿审核"""
+    await cb_admin_review_content_page(cb, 1)
+
+
+@admins_router.callback_query(F.data.startswith("content_review_page_"))
+async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None):
+    """投稿审核分页"""
+    # 提取页码
+    if page is None:
+        page = extract_page_from_callback(cb.data, "content_review")
+    
     submissions = await get_pending_content_submissions()
     
     if not submissions:
-        await cb.message.edit_caption(
+        await safe_edit_message(
+            cb.message,
             caption="📝 <b>投稿审核</b>\n\n暂无待审核的投稿。",
             reply_markup=admin_review_detail_kb
         )
-    else:
-        text = "📝 <b>投稿审核</b>\n\n"
-        for i, sub in enumerate(submissions[:5], 1):  # 显示5条，避免消息过长
-            text += f"{i}. ID:{sub.id} - {sub.title}\n"
-            text += f"   👤 用户:{sub.user_id}\n"
-            text += f"   📅 时间:{sub.created_at.strftime('%Y-%m-%d %H:%M')}\n"
-            
-            content_preview = sub.content[:80] + ('...' if len(sub.content) > 80 else '')
-            text += f"   📄 内容:{content_preview}\n"
-            
-            if sub.file_id:
-                text += f"   📎 附件:有\n"
-            else:
-                text += f"   📎 附件:无\n"
-            
-            text += "\n"
-        
-        if len(submissions) > 5:
-            text += f"... 还有 {len(submissions) - 5} 条记录\n\n"
-        
-        # 添加快速审核按钮
-        if submissions:
-            first_sub = submissions[0]
-            review_kb = types.InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_content_detail_{first_sub.id}"),
-                        types.InlineKeyboardButton(text="✅ 快速通过", callback_data=f"approve_content_{first_sub.id}")
-                    ],
-                    [
-                        types.InlineKeyboardButton(text="❌ 快速拒绝", callback_data=f"reject_content_{first_sub.id}"),
-                        types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="admin_review_content")
-                    ],
-                    [
-                        types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
-                        types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
-                    ]
-                ]
-            )
-        else:
-            review_kb = admin_review_detail_kb
-            
-        text += "💡 点击按钮进行快速审核，或使用命令:\n"
-        text += "/approve_content [ID] - 通过投稿\n"
-        text += "/reject_content [ID] - 拒绝投稿"
-        
-        await cb.message.edit_caption(
-            caption=text,
-            reply_markup=review_kb
-        )
+        await cb.answer()
+        return
     
+    paginator = Paginator(submissions, page_size=3)
+    page_info = paginator.get_page_info(page)
+    page_items = paginator.get_page_items(page)
+    
+    # 构建页面内容
+    text = format_page_header("📝 <b>投稿审核</b>", page_info)
+    
+    start_num = (page - 1) * paginator.page_size + 1
+    for i, sub in enumerate(page_items, start_num):
+        text += f"{i}. ID:{sub.id} - {sub.title}\n"
+        text += f"   👤 用户:{sub.user_id}\n"
+        text += f"   📅 时间:{sub.created_at.strftime('%Y-%m-%d %H:%M')}\n"
+        
+        content_preview = sub.content[:60] + ('...' if len(sub.content) > 60 else '')
+        text += f"   📄 内容:{content_preview}\n"
+        
+        if sub.file_id:
+            text += f"   📎 附件:有\n"
+        else:
+            text += f"   📎 附件:无\n"
+        
+        text += f"   /approve_content {sub.id} | /reject_content {sub.id}\n\n"
+    
+    text += "💡 快速命令：\n"
+    text += "/approve_content [ID] - 通过投稿\n"
+    text += "/reject_content [ID] - 拒绝投稿"
+    
+    # 创建分页键盘
+    extra_buttons = []
+    
+    # 为当前页面的每个投稿添加快速操作按钮
+    for sub in page_items:
+        extra_buttons.append([
+            types.InlineKeyboardButton(text=f"✅ 通过 #{sub.id}", callback_data=f"approve_content_{sub.id}"),
+            types.InlineKeyboardButton(text=f"❌ 拒绝 #{sub.id}", callback_data=f"reject_content_{sub.id}")
+        ])
+    
+    # 添加其他功能按钮
+    extra_buttons.extend([
+        [
+            types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"review_content_detail_{page_items[0].id}" if page_items else "admin_review_content"),
+            types.InlineKeyboardButton(text="🔄 刷新", callback_data="admin_review_content")
+        ],
+        [
+            types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+        ]
+    ])
+    
+    keyboard = paginator.create_pagination_keyboard(
+        page, "content_review", extra_buttons
+    )
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=keyboard
+    )
     await cb.answer()
+
+
+
 
 
 @admins_router.callback_query(F.data.startswith("review_content_detail_"))
@@ -598,10 +633,10 @@ async def admin_reply_feedback(msg: types.Message):
 # 管理员命令：审核求片
 @admins_router.message(Command("approve_movie"))
 async def admin_approve_movie(msg: types.Message):
-    """通过求片"""
+    """通过求片命令"""
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/approve_movie [求片ID]")
+        await msg.reply("用法：/approve_movie [ID]\n示例：/approve_movie 1")
         return
     
     request_id = int(parts[1])
@@ -613,12 +648,28 @@ async def admin_approve_movie(msg: types.Message):
         await msg.reply("❌ 操作失败，请检查求片ID是否正确")
 
 
+@admins_router.message(F.text.regexp(r'^/approve_movie_\d+$'))
+async def admin_approve_movie_dynamic(msg: types.Message):
+    """动态通过求片命令"""
+    match = re.search(r'/approve_movie_(\d+)', msg.text)
+    if not match:
+        return
+    
+    request_id = int(match.group(1))
+    success = await review_movie_request(request_id, msg.from_user.id, "approved")
+    
+    if success:
+        await msg.reply(f"✅ 已通过求片 {request_id}")
+    else:
+        await msg.reply("❌ 操作失败，请检查求片ID是否正确")
+
+
 @admins_router.message(Command("reject_movie"))
 async def admin_reject_movie(msg: types.Message):
-    """拒绝求片"""
+    """拒绝求片命令"""
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/reject_movie [求片ID]")
+        await msg.reply("用法：/reject_movie [ID]\n示例：/reject_movie 1")
         return
     
     request_id = int(parts[1])
@@ -630,13 +681,29 @@ async def admin_reject_movie(msg: types.Message):
         await msg.reply("❌ 操作失败，请检查求片ID是否正确")
 
 
+@admins_router.message(F.text.regexp(r'^/reject_movie_\d+$'))
+async def admin_reject_movie_dynamic(msg: types.Message):
+    """动态拒绝求片命令"""
+    match = re.search(r'/reject_movie_(\d+)', msg.text)
+    if not match:
+        return
+    
+    request_id = int(match.group(1))
+    success = await review_movie_request(request_id, msg.from_user.id, "rejected")
+    
+    if success:
+        await msg.reply(f"❌ 已拒绝求片 {request_id}")
+    else:
+        await msg.reply("❌ 操作失败，请检查求片ID是否正确")
+
+
 # 管理员命令：审核投稿
 @admins_router.message(Command("approve_content"))
 async def admin_approve_content(msg: types.Message):
-    """通过投稿"""
+    """通过投稿命令"""
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/approve_content [投稿ID]")
+        await msg.reply("用法：/approve_content [ID]\n示例：/approve_content 1")
         return
     
     submission_id = int(parts[1])
@@ -648,15 +715,47 @@ async def admin_approve_content(msg: types.Message):
         await msg.reply("❌ 操作失败，请检查投稿ID是否正确")
 
 
+@admins_router.message(F.text.regexp(r'^/approve_content_\d+$'))
+async def admin_approve_content_dynamic(msg: types.Message):
+    """动态通过投稿命令"""
+    match = re.search(r'/approve_content_(\d+)', msg.text)
+    if not match:
+        return
+    
+    submission_id = int(match.group(1))
+    success = await review_content_submission(submission_id, msg.from_user.id, "approved")
+    
+    if success:
+        await msg.reply(f"✅ 已通过投稿 {submission_id}")
+    else:
+        await msg.reply("❌ 操作失败，请检查投稿ID是否正确")
+
+
 @admins_router.message(Command("reject_content"))
 async def admin_reject_content(msg: types.Message):
-    """拒绝投稿"""
+    """拒绝投稿命令"""
     parts = msg.text.strip().split()
     if len(parts) != 2 or not parts[1].isdigit():
-        await msg.reply("用法：/reject_content [投稿ID]")
+        await msg.reply("用法：/reject_content [ID]\n示例：/reject_content 1")
         return
     
     submission_id = int(parts[1])
+    success = await review_content_submission(submission_id, msg.from_user.id, "rejected")
+    
+    if success:
+        await msg.reply(f"❌ 已拒绝投稿 {submission_id}")
+    else:
+        await msg.reply("❌ 操作失败，请检查投稿ID是否正确")
+
+
+@admins_router.message(F.text.regexp(r'^/reject_content_\d+$'))
+async def admin_reject_content_dynamic(msg: types.Message):
+    """动态拒绝投稿命令"""
+    match = re.search(r'/reject_content_(\d+)', msg.text)
+    if not match:
+        return
+    
+    submission_id = int(match.group(1))
     success = await review_content_submission(submission_id, msg.from_user.id, "rejected")
     
     if success:
