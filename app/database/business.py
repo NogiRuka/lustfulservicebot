@@ -85,7 +85,8 @@ async def create_movie_request(user_id: int, category_id: int, title: str, descr
                 category_id=category_id,
                 title=title,
                 description=description,
-                file_id=file_id
+                file_id=file_id,
+                created_at=datetime.now()  # 使用本地时间而不是数据库服务器时间
             )
             session.add(request)
             await session.commit()
@@ -170,7 +171,8 @@ async def create_content_submission(user_id: int, title: str, content: str, file
                 category_id=category_id,
                 title=title,
                 content=content,
-                file_id=file_id
+                file_id=file_id,
+                created_at=datetime.now()  # 使用本地时间而不是数据库服务器时间
             )
             session.add(submission)
             await session.commit()
@@ -253,7 +255,8 @@ async def create_user_feedback(user_id: int, feedback_type: str, content: str) -
             feedback = UserFeedback(
                 user_id=user_id,
                 feedback_type=feedback_type,
-                content=content
+                content=content,
+                created_at=datetime.now()  # 使用本地时间而不是数据库服务器时间
             )
             session.add(feedback)
             await session.commit()
