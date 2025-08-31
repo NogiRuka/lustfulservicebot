@@ -90,7 +90,7 @@ async def cb_select_category(cb: types.CallbackQuery, state: FSMContext):
         return
     
     # 保存选择的类型
-    await state.update_data(category_id=category_id, category_name=category.name)
+    await state.update_data(message_id=cb.message.message_id, category_id=category_id, category_name=category.name)
     
     await cb.message.edit_caption(
         caption=f"🎬 <b>开始求片</b>\n\n📂 类型：{category.name}\n\n请输入您想要的片名：",
@@ -126,11 +126,19 @@ async def process_movie_title(msg: types.Message, state: FSMContext):
     except:
         pass
     
-    # 发送新消息显示下一步
-    await msg.answer_photo(
-        caption=f"🎬 <b>开始求片</b>\n\n📂 类型：{category_name}\n✅ 片名：{title}\n\n📝 请输入详细描述（可选）或发送图片：",
-        reply_markup=movie_input_kb
-    )
+    # 编辑原消息显示下一步
+    data = await state.get_data()
+    message_id = data.get('message_id')
+    
+    try:
+        await msg.bot.edit_message_caption(
+            chat_id=msg.from_user.id,
+            message_id=message_id,
+            caption=f"🎬 <b>开始求片</b>\n\n📂 类型：{category_name}\n✅ 片名：{title}\n\n📝 请输入详细描述（可选）或发送图片：",
+            reply_markup=movie_input_kb
+        )
+    except Exception as e:
+        logger.error(f"编辑消息失败: {e}")
     
     await state.set_state(Wait.waitMovieDescription)
 
