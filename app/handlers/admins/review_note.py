@@ -15,17 +15,20 @@ review_note_router = Router()
 async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
     """留言通过求片"""
     request_id = int(cb.data.split("_")[-1])
-    
+
     # 保存审核信息到状态
     await state.update_data({
         'review_type': 'movie',
         'review_id': request_id,
         'review_action': 'approved',
-        'message_id': cb.message.message_id
+        'message_id': cb.message.message_id,
+        'chat_id': cb.from_user.id
     })
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
+        chat_id=chat_id,
+        message_id=message_id,
         caption=f"💬 <b>审核留言</b>\n\n请输入通过求片 #{request_id} 的留言（可选）：",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[

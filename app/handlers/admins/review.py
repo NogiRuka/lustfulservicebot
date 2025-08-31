@@ -223,7 +223,7 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, page: int = None
 
 # ==================== 快速审核操作 ====================
 
-@review_router.callback_query(F.data.startswith("approve_movie_"))
+@review_router.callback_query(F.data.regexp(r'^approve_movie_\d+$'))
 async def cb_approve_movie(cb: types.CallbackQuery):
     logger.info(f"cb_approve_movie求片review: {cb.data}")
     """快速通过求片"""
@@ -239,7 +239,7 @@ async def cb_approve_movie(cb: types.CallbackQuery):
         await cb.answer("❌ 操作失败，请检查求片ID是否正确")
 
 
-@review_router.callback_query(F.data.startswith("reject_movie_"))
+@review_router.callback_query(F.data.regexp(r'^reject_movie_\d+$'))
 async def cb_reject_movie(cb: types.CallbackQuery):
     """快速拒绝求片"""
     request_id = int(cb.data.split("_")[-1])
@@ -254,7 +254,7 @@ async def cb_reject_movie(cb: types.CallbackQuery):
         await cb.answer("❌ 操作失败，请检查求片ID是否正确")
 
 
-@review_router.callback_query(F.data.startswith("approve_content_"))
+@review_router.callback_query(F.data.regexp(r'^approve_content_\d+$'))
 async def cb_approve_content(cb: types.CallbackQuery):
     """快速通过投稿"""
     submission_id = int(cb.data.split("_")[-1])
@@ -386,7 +386,7 @@ async def cb_review_content_detail(cb: types.CallbackQuery):
     await cb.answer()
 
 
-@review_router.callback_query(F.data.startswith("reject_content_"))
+@review_router.callback_query(F.data.regexp(r'^reject_content_\d+$'))
 async def cb_reject_content(cb: types.CallbackQuery):
     """快速拒绝投稿"""
     submission_id = int(cb.data.split("_")[-1])
