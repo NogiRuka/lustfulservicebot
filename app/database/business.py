@@ -511,8 +511,7 @@ async def get_system_setting(setting_key: str, default_value: str = None) -> str
         try:
             result = await session.execute(
                 select(SystemSettings).where(
-                    SystemSettings.setting_key == setting_key,
-                    SystemSettings.is_active == True
+                    SystemSettings.setting_key == setting_key
                 )
             )
             setting = result.scalar_one_or_none()
