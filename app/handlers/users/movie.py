@@ -98,12 +98,15 @@ async def cb_select_category(cb: types.CallbackQuery, state: FSMContext):
     )
     
     await state.set_state(Wait.waitMovieTitle)
+    logger.debug(f"用户 {cb.from_user.id} 选择类型 {category.name}，设置状态为 waitMovieTitle")
     await cb.answer()
 
 
 @movie_router.message(StateFilter(Wait.waitMovieTitle))
 async def process_movie_title(msg: types.Message, state: FSMContext):
     """处理片名输入"""
+    logger.debug(f"收到片名输入: {msg.text}, 用户: {msg.from_user.id}, 当前状态: {await state.get_state()}")
+    
     title = msg.text.strip()
     
     if not title:
