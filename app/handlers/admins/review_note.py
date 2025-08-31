@@ -21,14 +21,11 @@ async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
         'review_type': 'movie',
         'review_id': request_id,
         'review_action': 'approved',
-        'message_id': cb.message.message_id,
-        'chat_id': cb.from_user.id
+        'message_id': cb.message.message_id
     })
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
-        chat_id=chat_id,
-        message_id=message_id,
         caption=f"💬 <b>审核留言</b>\n\n请输入通过求片 #{request_id} 的留言（可选）：",
         reply_markup=types.InlineKeyboardMarkup(
             inline_keyboard=[
@@ -147,14 +144,14 @@ async def process_review_note(msg: types.Message, state: FSMContext):
         echo_text = (
             f"💬 <b>审核留言</b>\n\n"
             f"🎯 操作：{action_text}{item_type} #{review_id}\n"
-            f"📝 管理员输入：{review_note}\n\n"
+            f"📝 留言：{review_note}\n\n"
             f"请确认以上信息是否正确？"
         )
     else:
         echo_text = (
             f"💬 <b>审核留言</b>\n\n"
             f"🎯 操作：{action_text}{item_type} #{review_id}\n"
-            f"📝 管理员输入：（空留言）\n\n"
+            f"📝 留言：（空留言）\n\n"
             f"请确认以上信息是否正确？"
         )
     

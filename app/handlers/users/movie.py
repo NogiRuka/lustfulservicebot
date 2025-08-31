@@ -383,12 +383,26 @@ async def cb_movie_request_my_page(cb: types.CallbackQuery, page: int = None):
         status_text = get_status_text(req.status)
         time_text = humanize_time(req.created_at)
         
-        text += f"{i}. {status_emoji} {req.title}\n"
-        text += f"   状态：{status_text} | {time_text}\n"
+        # 美化的卡片式布局
+        text += f"┌─ {i}. {status_emoji} <b>{req.title}</b>\n"
+        text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
+        text += f"├ ⏰ 时间：<i>{time_text}</i>\n"
+        
+        # 显示类型信息（如果有）
+        if hasattr(req, 'category') and req.category:
+            text += f"├ 📂 类型：{req.category.name}\n"
+        
+        # 显示描述（如果有，限制长度）
+        if hasattr(req, 'description') and req.description:
+            desc_preview = req.description[:50] + ('...' if len(req.description) > 50 else '')
+            text += f"├ 📝 描述：{desc_preview}\n"
         
         # 显示审核备注（如果有）
         if hasattr(req, 'review_note') and req.review_note:
-            text += f"   💬 备注：{req.review_note}\n"
+            note_preview = req.review_note[:60] + ('...' if len(req.review_note) > 60 else '')
+            text += f"└ 💬 <b>管理员备注</b>：<blockquote>{note_preview}</blockquote>\n"
+        else:
+            text += f"└─────────────────\n"
         
         text += "\n"
     
