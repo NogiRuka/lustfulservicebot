@@ -101,7 +101,9 @@ async def get_user_movie_requests(user_id: int) -> List[MovieRequest]:
     async for session in get_db():
         try:
             result = await session.execute(
-                select(MovieRequest).where(MovieRequest.user_id == user_id)
+                select(MovieRequest)
+                .options(selectinload(MovieRequest.category))
+                .where(MovieRequest.user_id == user_id)
                 .order_by(MovieRequest.created_at.desc())
             )
             return result.scalars().all()
@@ -115,7 +117,9 @@ async def get_pending_movie_requests() -> List[MovieRequest]:
     async for session in get_db():
         try:
             result = await session.execute(
-                select(MovieRequest).where(MovieRequest.status == "pending")
+                select(MovieRequest)
+                .options(selectinload(MovieRequest.category))
+                .where(MovieRequest.status == "pending")
                 .order_by(MovieRequest.created_at.asc())
             )
             return result.scalars().all()
@@ -182,7 +186,9 @@ async def get_user_content_submissions(user_id: int) -> List[ContentSubmission]:
     async for session in get_db():
         try:
             result = await session.execute(
-                select(ContentSubmission).where(ContentSubmission.user_id == user_id)
+                select(ContentSubmission)
+                .options(selectinload(ContentSubmission.category))
+                .where(ContentSubmission.user_id == user_id)
                 .order_by(ContentSubmission.created_at.desc())
             )
             return result.scalars().all()
@@ -196,7 +202,9 @@ async def get_pending_content_submissions() -> List[ContentSubmission]:
     async for session in get_db():
         try:
             result = await session.execute(
-                select(ContentSubmission).where(ContentSubmission.status == "pending")
+                select(ContentSubmission)
+                .options(selectinload(ContentSubmission.category))
+                .where(ContentSubmission.status == "pending")
                 .order_by(ContentSubmission.created_at.asc())
             )
             return result.scalars().all()
