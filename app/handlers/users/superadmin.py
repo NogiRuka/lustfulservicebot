@@ -48,6 +48,61 @@ async def cb_superadmin_manage_center(cb: types.CallbackQuery):
     await cb.answer()
 
 
+# ==================== 功能开关切换 ====================
+
+@superadmin_router.callback_query(F.data.startswith("toggle_"))
+async def cb_toggle_feature(cb: types.CallbackQuery):
+    """切换功能开关"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    # 提取功能名称
+    feature_key = cb.data.replace("toggle_", "")
+    
+    # 获取当前状态
+    current_value = await get_system_setting(feature_key)
+    if current_value is None:
+        await cb.answer("❌ 功能不存在", show_alert=True)
+        return
+    
+    # 切换状态
+    current_enabled = current_value.lower() in ["true", "1", "yes", "on"]
+    new_value = "false" if current_enabled else "true"
+    
+    # 更新设置
+    success = await set_system_setting(
+        feature_key, 
+        new_value, 
+        "boolean", 
+        f"功能开关 - {feature_key}", 
+        cb.from_user.id
+    )
+    
+    if success:
+        # 获取功能名称
+        feature_names = {
+            "bot_enabled": "🤖 机器人总开关",
+            "system_enabled": "🌐 系统总开关",
+            "movie_request_enabled": "🎬 求片功能",
+            "content_submit_enabled": "📝 投稿功能",
+            "feedback_enabled": "💬 反馈功能",
+            "admin_panel_enabled": "👮 管理面板",
+            "superadmin_panel_enabled": "🛡️ 超管面板"
+        }
+        
+        feature_name = feature_names.get(feature_key, feature_key)
+        status_text = "启用" if new_value == "true" else "禁用"
+        
+        await cb.answer(f"✅ {feature_name} 已{status_text}", show_alert=True)
+        
+        # 刷新页面
+        await cb_superadmin_system_settings(cb)
+    else:
+        await cb.answer("❌ 设置更新失败", show_alert=True)
+
+
 # ==================== 开发日志管理 ====================
 
 @superadmin_router.callback_query(F.data == "dev_changelog_view")
@@ -940,18 +995,61 @@ async def cb_superadmin_system_settings(cb: types.CallbackQuery):
         text += "暂无设置\n\n"
         text += "💡 系统将使用默认设置"
     
-    settings_kb = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(text="🔄 刷新设置", callback_data="superadmin_system_settings"),
-                types.InlineKeyboardButton(text="📋 查看全部", callback_data="view_all_settings")
-            ],
-            [
-                types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
-                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
-            ]
+    # 创建功能开关按钮
+    toggle_buttons = []
+    if settings:
+        # 获取当前设置状态
+        setting_dict = {s.setting_key: s.setting_value.lower() in ["true", "1", "yes", "on"] for s in settings}
+        
+        # 第一行：机器人和系统开关
+        row1 = []
+        if "bot_enabled" in setting_dict:
+            status = "🟢" if setting_dict["bot_enabled"] else "🔴"
+            row1.append(types.InlineKeyboardButton(text=f"{status} 机器人", callback_data="toggle_bot_enabled"))
+        if "system_enabled" in setting_dict:
+            status = "🟢" if setting_dict["system_enabled"] else "🔴"
+            row1.append(types.InlineKeyboardButton(text=f"{status} 系统", callback_data="toggle_system_enabled"))
+        if row1:
+            toggle_buttons.append(row1)
+        
+        # 第二行：核心功能开关
+        row2 = []
+        if "movie_request_enabled" in setting_dict:
+            status = "🟢" if setting_dict["movie_request_enabled"] else "🔴"
+            row2.append(types.InlineKeyboardButton(text=f"{status} 求片", callback_data="toggle_movie_request_enabled"))
+        if "content_submit_enabled" in setting_dict:
+            status = "🟢" if setting_dict["content_submit_enabled"] else "🔴"
+            row2.append(types.InlineKeyboardButton(text=f"{status} 投稿", callback_data="toggle_content_submit_enabled"))
+        if "feedback_enabled" in setting_dict:
+            status = "🟢" if setting_dict["feedback_enabled"] else "🔴"
+            row2.append(types.InlineKeyboardButton(text=f"{status} 反馈", callback_data="toggle_feedback_enabled"))
+        if row2:
+            toggle_buttons.append(row2)
+        
+        # 第三行：管理面板开关
+        row3 = []
+        if "admin_panel_enabled" in setting_dict:
+            status = "🟢" if setting_dict["admin_panel_enabled"] else "🔴"
+            row3.append(types.InlineKeyboardButton(text=f"{status} 管理面板", callback_data="toggle_admin_panel_enabled"))
+        if "superadmin_panel_enabled" in setting_dict:
+            status = "🟢" if setting_dict["superadmin_panel_enabled"] else "🔴"
+            row3.append(types.InlineKeyboardButton(text=f"{status} 超管面板", callback_data="toggle_superadmin_panel_enabled"))
+        if row3:
+            toggle_buttons.append(row3)
+    
+    # 添加管理按钮
+    toggle_buttons.extend([
+        [
+            types.InlineKeyboardButton(text="🔄 刷新设置", callback_data="superadmin_system_settings"),
+            types.InlineKeyboardButton(text="📋 查看全部", callback_data="view_all_settings")
+        ],
+        [
+            types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
         ]
-    )
+    ])
+    
+    settings_kb = types.InlineKeyboardMarkup(inline_keyboard=toggle_buttons)
     
     await safe_edit_message(
         cb.message,
