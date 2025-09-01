@@ -251,10 +251,11 @@ class SubmissionHandler:
             await cb.answer("❌ 分类不存在", show_alert=True)
             return
         
-        # 保存分类信息
+        # 保存分类信息和消息ID
         await state.update_data(
             category_id=category_id,
-            category_name=category.name
+            category_name=category.name,
+            message_id=cb.message.message_id
         )
         
         # 设置等待标题输入状态
@@ -279,18 +280,36 @@ class SubmissionHandler:
         # 获取状态数据
         data = await state.get_data()
         category_name = data.get('category_name', '未知类型')
+        message_id = data.get('message_id')
         
         # 保存标题
         await state.update_data(title=title)
         
+        # 删除用户输入的消息
+        try:
+            await msg.delete()
+        except:
+            pass
+        
         # 设置等待内容输入状态
         await state.set_state(self.config.content_state)
         
-        # 显示内容输入界面
-        await msg.reply(
-            SubmissionUIBuilder.build_content_input_text(self.config, category_name, title),
-            reply_markup=back_to_main_kb
-        )
+        # 编辑原消息显示内容输入界面
+        try:
+            await msg.bot.edit_message_caption(
+                chat_id=msg.from_user.id,
+                message_id=message_id,
+                caption=SubmissionUIBuilder.build_content_input_text(self.config, category_name, title),
+                reply_markup=back_to_main_kb,
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"编辑消息失败: {e}")
+            # 如果编辑失败，发送新消息
+            await msg.reply(
+                SubmissionUIBuilder.build_content_input_text(self.config, category_name, title),
+                reply_markup=back_to_main_kb
+            )
     
     async def handle_content_input(self, msg: types.Message, state: FSMContext):
         """处理内容输入"""
@@ -319,12 +338,30 @@ class SubmissionHandler:
         
         # 获取所有数据
         data = await state.get_data()
+        message_id = data.get('message_id')
         
-        # 显示确认界面
-        await msg.reply(
-            SubmissionUIBuilder.build_confirmation_text(self.config, data),
-            reply_markup=SubmissionUIBuilder.build_confirmation_keyboard(self.config)
-        )
+        # 删除用户输入的消息
+        try:
+            await msg.delete()
+        except:
+            pass
+        
+        # 编辑原消息显示确认界面
+        try:
+            await msg.bot.edit_message_caption(
+                chat_id=msg.from_user.id,
+                message_id=message_id,
+                caption=SubmissionUIBuilder.build_confirmation_text(self.config, data),
+                reply_markup=SubmissionUIBuilder.build_confirmation_keyboard(self.config),
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"编辑消息失败: {e}")
+            # 如果编辑失败，发送新消息
+            await msg.reply(
+                SubmissionUIBuilder.build_confirmation_text(self.config, data),
+                reply_markup=SubmissionUIBuilder.build_confirmation_keyboard(self.config)
+            )
     
     async def handle_edit_content(self, cb: types.CallbackQuery, state: FSMContext):
         """处理编辑内容"""
@@ -339,7 +376,8 @@ class SubmissionHandler:
         
         await cb.message.edit_caption(
             caption=SubmissionUIBuilder.build_content_input_text(self.config, category_name, title),
-            reply_markup=back_to_main_kb
+            reply_markup=back_to_main_kb,
+            parse_mode="HTML"
         )
         await cb.answer()
     
