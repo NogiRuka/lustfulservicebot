@@ -6,7 +6,7 @@ from app.utils.roles import ROLE_USER, ROLE_ADMIN, ROLE_SUPERADMIN
 
 # 常用按钮
 BTN_MY_INFO = InlineKeyboardButton(text="🙋 我的信息", callback_data="common_my_info")
-BTN_SERVER_INFO = InlineKeyboardButton(text="🖥️ 服务器信息", callback_data="common_server_info")
+BTN_SERVER_INFO = InlineKeyboardButton(text="🖥️ 服务信息", callback_data="common_server_info")
 BTN_MOVIE_CENTER = InlineKeyboardButton(text="🎬 求片中心", callback_data="movie_center")
 BTN_CONTENT_CENTER = InlineKeyboardButton(text="📝 内容投稿", callback_data="content_center")
 BTN_FEEDBACK_CENTER = InlineKeyboardButton(text="💬 用户反馈", callback_data="feedback_center")

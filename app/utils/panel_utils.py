@@ -179,12 +179,16 @@ async def get_user_display_link(user_id: int) -> str:
         user_id: 用户ID
     
     Returns:
-        格式化的用户链接或用户ID
+        格式化的用户链接或用户ID（包含用户ID）
     """
     try:
         user = await get_user(user_id)
         if user and user.username:
-            return f"<a href='https://t.me/{user.username}'>@{user.username}</a>"
+            # 显示用户名和用户ID，使用 | 分隔
+            return f"<a href='https://t.me/{user.username}'>@{user.username}</a> | ID:{user_id}"
+        elif user and user.full_name:
+            # 如果没有用户名但有全名，显示全名和用户ID
+            return f"{user.full_name} | ID:{user_id}"
         else:
             return f"用户{user_id}"
     except Exception:
@@ -218,7 +222,7 @@ async def cleanup_sent_media_messages(bot, state):
         logger.error(f"清理媒体消息失败: {e}")
 
 
-async def send_feedback_reply_notification(bot, user_id: int, feedback_id: int, reply_content: str):
+async def send_feedback_reply_notification(bot, user_id: int, feedback_id: int, reply_content: str, original_feedback: str = None):
     """
     发送反馈回复通知给用户
     
@@ -227,11 +231,19 @@ async def send_feedback_reply_notification(bot, user_id: int, feedback_id: int, 
         user_id: 用户ID
         feedback_id: 反馈ID
         reply_content: 回复内容
+        original_feedback: 原始反馈内容
     """
     try:
         notification_text = (
             f"💬 <b>反馈回复通知</b> 💬\n\n"
             f"🆔 <b>反馈ID</b>：{feedback_id}\n"
+        )
+        
+        # 如果有原始反馈内容，则显示
+        if original_feedback:
+            notification_text += f"📝 <b>您的反馈</b>：\n{original_feedback}\n\n"
+        
+        notification_text += (
             f"👨‍💼 <b>管理员回复</b>：\n{reply_content}\n\n"
             f"💡 <b>如需回复</b>：请直接回复此消息，您的回复将转达给管理员\n"
             f"📝 感谢您的反馈，如有其他问题请继续联系我们。"

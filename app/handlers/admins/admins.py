@@ -265,7 +265,7 @@ async def admin_reply_feedback(msg: types.Message):
     
     if success:
         # 发送通知给用户
-        await send_feedback_reply_notification(msg.bot, feedback.user_id, feedback_id, reply_content)
+        await send_feedback_reply_notification(msg.bot, feedback.user_id, feedback_id, reply_content, feedback.content)
         
         # 发送成功消息给管理员
         success_msg = await msg.reply(f"✅ 已回复反馈 {feedback_id}，用户已收到通知")
