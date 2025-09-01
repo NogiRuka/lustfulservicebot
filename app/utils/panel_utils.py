@@ -127,6 +127,9 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         item_id: 项目ID（可选，用于频道同步）
         category_name: 分类名称（可选，如电影、剧集、国产等）
     """
+    from loguru import logger
+    logger.info(f"开始发送审核通知: user_id={user_id}, item_type={item_type}, title={item_title}, status={status}")
+    
     try:
         # 根据类型和状态生成美化的通知文本
         type_config = {
@@ -174,7 +177,7 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         
         # 构建美化的通知消息
         # 如果有分类名称，显示具体分类；否则显示默认类别
-        category_display = f"{config['category']} - {category_name}" if category_name else config['category']
+        category_display = f"{category_name}"
         
         notification_text = (
             f"{title_text}\n"
@@ -211,6 +214,8 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
             )
         
         # 发送通知给用户（带图片或纯文本）
+        logger.info(f"准备发送通知给用户 {user_id}, 是否有图片: {bool(file_id)}")
+        
         if file_id:
             await bot.send_photo(
                 chat_id=user_id,
@@ -218,16 +223,21 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
                 caption=notification_text,
                 parse_mode="HTML"
             )
+            logger.info(f"已发送图片通知给用户 {user_id}")
         else:
             await bot.send_message(
                 chat_id=user_id,
                 text=notification_text,
                 parse_mode="HTML"
             )
+            logger.info(f"已发送文本通知给用户 {user_id}")
         
         # 如果审核通过，同步到频道
         if status == 'approved' and item_type in ['movie', 'content']:
+            logger.info(f"准备同步到频道: {item_type} - {item_title}")
             await sync_to_channel(bot, item_type, item_title, item_content, file_id, user_id, item_id, category_name)
+        else:
+            logger.info(f"跳过频道同步: status={status}, item_type={item_type}")
         
     except Exception as e:
         from loguru import logger
@@ -298,24 +308,16 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
         })
         
         # 构建美化的频道消息
-        channel_decoration = '━━━━━━━━━━━━━━━━━━━━━━━━━━'
-        title_text = f"{config['title_decoration']} <b>优质{config['name']}推荐</b> {config['title_decoration']}"
+        title_text = f"{config['title_decoration']} <b>{config['name']}上新</b> {config['title_decoration']}"
         
         # 如果有分类名称，显示具体分类；否则显示默认类别
         category_display = f"{config['category']} - {category_name}" if category_name else config['category']
         
         channel_text = (
-            f"{title_text}\n"
-            f"{channel_decoration}\n\n"
+            f"{title_text}\n\n"
             f"{config['bg_emoji']} <b>内容分类</b>：{category_display}\n"
             f"{config['emoji']} <b>标题</b>：{item_title}\n"
         )
-        
-        # 添加内容预览（仅投稿类型）
-        if item_content and item_type == 'content':
-            # 限制内容长度，避免消息过长
-            content_preview = item_content[:150] + "..." if len(item_content) > 150 else item_content
-            channel_text += f"📖 <b>内容预览</b>：\n💭 {content_preview}\n"
         
         # 添加项目信息
         current_time = __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')
@@ -323,14 +325,6 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
             f"👤 <b>贡献者</b>：{user_display}\n"
             f"🎯 <b>审核状态</b>：✅ 已通过审核\n"
             f"📅 <b>发布时间</b>：{current_time}\n"
-        )
-        
-        if item_id:
-            channel_text += f"🆔 <b>项目编号</b>：#{item_id}\n"
-        
-        channel_text += (
-            f"\n{channel_decoration}\n"
-            f"🌟 <b>精选推荐</b> | 📢 <b>官方认证</b> | 🔥 <b>优质内容</b>"
         )
         
         # 发送到所有配置的频道（带图片或纯文本）

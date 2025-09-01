@@ -519,7 +519,7 @@ async def cb_review_movie_detail(cb: types.CallbackQuery):
 
 
 @review_router.callback_query(F.data.startswith("review_content_detail_"))
-async def cb_review_content_detail(cb: types.CallbackQuery):
+async def cb_review_content_detail(cb: types.CallbackQuery, state: FSMContext):
     """查看投稿详情"""
     submission_id = int(cb.data.split("_")[-1])
     
@@ -528,7 +528,7 @@ async def cb_review_content_detail(cb: types.CallbackQuery):
     submission = next((s for s in submissions if s.id == submission_id), None)
     
     if not submission:
-        await cb.answer("❌ 投稿不存在或已被处理",)
+        await cb.answer("❌ 投稿不存在或已被处理")
         return
     
     # 获取用户显示链接
@@ -552,13 +552,6 @@ async def cb_review_content_detail(cb: types.CallbackQuery):
     
     detail_text += f"📄 内容：\n{content_display}\n\n"
     
-    if submission.file_id:
-        detail_text += f"📎 附件：有（文件ID: {submission.file_id[:20]}...）\n\n"
-    else:
-        detail_text += f"📎 附件：无\n\n"
-    
-    detail_text += "请选择审核操作："
-    
     # 详情页面按钮
     detail_kb = types.InlineKeyboardMarkup(
         inline_keyboard=[
@@ -573,10 +566,54 @@ async def cb_review_content_detail(cb: types.CallbackQuery):
         ]
     )
     
-    await cb.message.edit_caption(
-        caption=detail_text,
-        reply_markup=detail_kb
-    )
+    # 如果有附件，发送媒体消息
+    if submission.file_id:
+        detail_text += f"📎 附件：有（文件ID: {submission.file_id[:20]}...）\n\n"
+        detail_text += "请选择审核操作："
+        
+        await cb.message.edit_caption(
+            caption=detail_text,
+            reply_markup=detail_kb
+        )
+        
+        # 发送媒体消息
+        try:
+            media_kb = types.InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        types.InlineKeyboardButton(text="✅ 通过", callback_data=f"approve_content_media_{submission.id}"),
+                        types.InlineKeyboardButton(text="❌ 拒绝", callback_data=f"reject_content_media_{submission.id}")
+                    ],
+                    [
+                        types.InlineKeyboardButton(text="🗑️ 删除此消息", callback_data=f"delete_media_message_{submission.id}")
+                    ]
+                ]
+            )
+            
+            media_message = await cb.bot.send_photo(
+                chat_id=cb.from_user.id,
+                photo=submission.file_id,
+                caption=f"📝 投稿附件 - {submission.title}",
+                reply_markup=media_kb
+            )
+            
+            # 保存媒体消息ID
+            data = await state.get_data()
+            sent_media_ids = data.get('sent_media_ids', [])
+            sent_media_ids.append(media_message.message_id)
+            await state.update_data(sent_media_ids=sent_media_ids)
+            
+        except Exception as e:
+            logger.error(f"发送投稿媒体消息失败: {e}")
+    else:
+        detail_text += f"📎 附件：无\n\n"
+        detail_text += "请选择审核操作："
+        
+        await cb.message.edit_caption(
+            caption=detail_text,
+            reply_markup=detail_kb
+        )
+    
     await cb.answer()
 
 
@@ -649,6 +686,42 @@ async def cb_reject_movie_media(cb: types.CallbackQuery):
             logger.warning(f"删除媒体消息失败: {e}")
     else:
         await cb.answer("❌ 操作失败，请检查求片ID是否正确", show_alert=True)
+
+
+@review_router.callback_query(F.data.startswith("approve_content_media_"))
+async def cb_approve_content_media(cb: types.CallbackQuery):
+    """媒体消息快速通过投稿"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    success = await review_content_submission(submission_id, cb.from_user.id, "approved")
+    
+    if success:
+        await cb.answer(f"✅ 已通过投稿 {submission_id}", show_alert=True)
+        # 删除媒体消息
+        try:
+            await cb.message.delete()
+        except Exception as e:
+            logger.warning(f"删除媒体消息失败: {e}")
+    else:
+        await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
+
+
+@review_router.callback_query(F.data.startswith("reject_content_media_"))
+async def cb_reject_content_media(cb: types.CallbackQuery):
+    """媒体消息快速拒绝投稿"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    success = await review_content_submission(submission_id, cb.from_user.id, "rejected")
+    
+    if success:
+        await cb.answer(f"❌ 已拒绝投稿 {submission_id}", show_alert=True)
+        # 删除媒体消息
+        try:
+            await cb.message.delete()
+        except Exception as e:
+            logger.warning(f"删除媒体消息失败: {e}")
+    else:
+        await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
 
 
 @review_router.callback_query(F.data.startswith("approve_movie_note_media_"))
@@ -892,7 +965,7 @@ async def cb_admin_all_content(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_router.callback_query(F.data.startswith("all_content_page_"))
-async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext):
+async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext, page: int = None):
     """所有投稿分页"""
     # 提取页码
     page = extract_page_from_callback(cb.data, "all_content")
