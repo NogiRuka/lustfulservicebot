@@ -357,9 +357,9 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
         
         from loguru import logger
         if success_count > 0:
-            logger.info(f"已同步{type_name}到 {success_count}/{len(SYNC_CHANNELS)} 个频道: {item_title}")
+            logger.info(f"已同步{config['name']}到 {success_count}/{len(SYNC_CHANNELS)} 个频道: {item_title}")
         else:
-            logger.warning(f"同步{type_name}到所有频道都失败: {item_title}")
+            logger.warning(f"同步{config['name']}到所有频道都失败: {item_title}")
         
     except Exception as e:
         from loguru import logger
