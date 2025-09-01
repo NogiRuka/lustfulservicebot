@@ -182,7 +182,7 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         notification_text = (
             f"{title_text}\n"
             f"{result_bg}\n\n"
-            f"{config['icon']} <b>内容类型</b>：{category_display}\n"
+            f"{config['icon']} <b>类型</b>：{category_display}\n"
             f"{config['emoji']} <b>标题</b>：{item_title}\n"
             f"{status_color} <b>审核状态</b>：{status_emoji} {status_text}\n"
         )
@@ -311,11 +311,11 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
         title_text = f"{config['title_decoration']} <b>{config['name']}上新</b> {config['title_decoration']}"
         
         # 如果有分类名称，显示具体分类；否则显示默认类别
-        category_display = f"{config['category']} - {category_name}" if category_name else config['category']
+        category_display = f"{category_name}"
         
         channel_text = (
             f"{title_text}\n\n"
-            f"{config['bg_emoji']} <b>内容分类</b>：{category_display}\n"
+            f"{config['bg_emoji']} <b>类型</b>：{category_display}\n"
             f"{config['emoji']} <b>标题</b>：{item_title}\n"
         )
         
