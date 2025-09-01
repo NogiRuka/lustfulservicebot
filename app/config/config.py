@@ -31,8 +31,18 @@ SUPERADMIN_ID = int(_superadmin_raw) if _superadmin_raw.isdigit() else None
 # 群组设置：从环境变量读取允许的群组
 GROUP = os.getenv("GROUP", "").strip()
 
-# 同步频道设置：用于同步求片和投稿内容
-SYNC_CHANNEL = os.getenv("SYNC_CHANNEL", "").strip()
+# 同步频道设置：用于同步求片和投稿内容（支持多个频道，用逗号分隔）
+_sync_channels_raw = os.getenv("SYNC_CHANNELS", "").strip()
+SYNC_CHANNELS = (
+    [x.strip() for x in _sync_channels_raw.split(",") if x.strip()]
+    if _sync_channels_raw
+    else []
+)
+
+# 兼容旧配置
+_sync_channel_raw = os.getenv("SYNC_CHANNEL", "").strip()
+if _sync_channel_raw and not SYNC_CHANNELS:
+    SYNC_CHANNELS = [_sync_channel_raw]
 
 # Default to local SQLite (async) if not provided
 # 默认使用相对路径的 SQLite 数据库（相对于当前运行目录）

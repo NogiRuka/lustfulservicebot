@@ -201,15 +201,24 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
         item_id: 项目ID（可选）
     """
     try:
-        from app.config.config import SYNC_CHANNEL
+        from app.config.config import SYNC_CHANNELS
         
-        if not SYNC_CHANNEL:
+        if not SYNC_CHANNELS:
             return  # 如果没有配置频道，则不同步
         
-        # 获取用户信息
+        # 获取用户信息（不显示ID）
         user_display = "匿名用户"
         if user_id:
-            user_display = await get_user_display_link(user_id)
+            try:
+                user = await get_user(user_id)
+                if user and user.username:
+                    user_display = f"@{user.username}"
+                elif user and user.full_name:
+                    user_display = user.full_name
+                else:
+                    user_display = f"用户{user_id}"
+            except Exception:
+                user_display = f"用户{user_id}"
         
         # 根据类型生成频道消息
         type_emoji = {
@@ -242,23 +251,33 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
         if item_id:
             channel_text += f"\n🆔 <b>ID</b>：{item_id}"
         
-        # 发送到频道（带图片或纯文本）
-        if file_id:
-            await bot.send_photo(
-                chat_id=SYNC_CHANNEL,
-                photo=file_id,
-                caption=channel_text,
-                parse_mode="HTML"
-            )
-        else:
-            await bot.send_message(
-                chat_id=SYNC_CHANNEL,
-                text=channel_text,
-                parse_mode="HTML"
-            )
+        # 发送到所有配置的频道（带图片或纯文本）
+        success_count = 0
+        for channel in SYNC_CHANNELS:
+            try:
+                if file_id:
+                    await bot.send_photo(
+                        chat_id=channel,
+                        photo=file_id,
+                        caption=channel_text,
+                        parse_mode="HTML"
+                    )
+                else:
+                    await bot.send_message(
+                        chat_id=channel,
+                        text=channel_text,
+                        parse_mode="HTML"
+                    )
+                success_count += 1
+            except Exception as e:
+                from loguru import logger
+                logger.error(f"同步到频道 {channel} 失败: {e}")
         
         from loguru import logger
-        logger.info(f"已同步{type_name}到频道: {item_title}")
+        if success_count > 0:
+            logger.info(f"已同步{type_name}到 {success_count}/{len(SYNC_CHANNELS)} 个频道: {item_title}")
+        else:
+            logger.warning(f"同步{type_name}到所有频道都失败: {item_title}")
         
     except Exception as e:
         from loguru import logger
