@@ -134,9 +134,10 @@ class SubmissionUIBuilder:
         )
     
     @staticmethod
-    def build_my_items_text(config: SubmissionConfig, items: List, paginator: Paginator) -> str:
+    def build_my_items_text(config: SubmissionConfig, items: List, paginator: Paginator, page: int) -> str:
         """构建我的项目列表文本"""
-        text = format_page_header(f"{config.emoji} 我的{config.name}", paginator.current_page, paginator.total_pages)
+        page_info = paginator.get_page_info(page)
+        text = format_page_header(f"{config.emoji} 我的{config.name}", page_info)
         text += "\n\n"
         
         if not items:
@@ -155,20 +156,20 @@ class SubmissionUIBuilder:
         return text
     
     @staticmethod
-    def build_my_items_keyboard(config: SubmissionConfig, paginator: Paginator) -> types.InlineKeyboardMarkup:
+    def build_my_items_keyboard(config: SubmissionConfig, paginator: Paginator, page: int) -> types.InlineKeyboardMarkup:
         """构建我的项目列表键盘"""
         keyboard = []
         
         # 分页按钮
         if paginator.total_pages > 1:
             nav_buttons = []
-            if paginator.has_prev():
+            if page > 1:
                 nav_buttons.append(
-                    types.InlineKeyboardButton(text="⬅️ 上一页", callback_data=f"my_{config.item_type}_page_{paginator.current_page - 1}")
+                    types.InlineKeyboardButton(text="⬅️ 上一页", callback_data=f"my_{config.item_type}_page_{page - 1}")
                 )
-            if paginator.has_next():
+            if page < paginator.total_pages:
                 nav_buttons.append(
-                    types.InlineKeyboardButton(text="➡️ 下一页", callback_data=f"my_{config.item_type}_page_{paginator.current_page + 1}")
+                    types.InlineKeyboardButton(text="➡️ 下一页", callback_data=f"my_{config.item_type}_page_{page + 1}")
                 )
             if nav_buttons:
                 keyboard.append(nav_buttons)
@@ -447,11 +448,11 @@ class SubmissionHandler:
         
         # 创建分页器
         paginator = Paginator(items, page_size=5)
-        page_data = paginator.get_page(page)
+        page_data = paginator.get_page_items(page)
         
         # 构建界面
         await cb.message.edit_caption(
-            caption=SubmissionUIBuilder.build_my_items_text(self.config, page_data, paginator),
-            reply_markup=SubmissionUIBuilder.build_my_items_keyboard(self.config, paginator)
+            caption=SubmissionUIBuilder.build_my_items_text(self.config, page_data, paginator, page),
+            reply_markup=SubmissionUIBuilder.build_my_items_keyboard(self.config, paginator, page)
         )
         await cb.answer()

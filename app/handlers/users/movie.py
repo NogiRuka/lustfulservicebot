@@ -42,7 +42,7 @@ async def cb_movie_request_new(cb: types.CallbackQuery, state: FSMContext):
     await movie_handler.handle_new_submission(cb, state)
 
 
-@movie_router.callback_query(F.data.startswith("select_category_"))
+@movie_router.callback_query(F.data.startswith("select_movie_category_"))
 async def cb_select_category(cb: types.CallbackQuery, state: FSMContext):
     """选择求片类型"""
     category_id = int(cb.data.split("_")[-1])
