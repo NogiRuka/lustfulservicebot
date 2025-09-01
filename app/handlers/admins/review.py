@@ -375,7 +375,8 @@ async def cb_approve_movie(cb: types.CallbackQuery):
         # 发送通知给用户
         if request:
             await send_review_notification(
-                cb.bot, request.user_id, 'movie', request.title, 'approved'
+                cb.bot, request.user_id, 'movie', request.title, 'approved',
+                file_id=request.file_id, item_content=request.description, item_id=request.id
             )
         
         # 刷新审核列表
@@ -401,7 +402,8 @@ async def cb_reject_movie(cb: types.CallbackQuery):
         # 发送通知给用户
         if request:
             await send_review_notification(
-                cb.bot, request.user_id, 'movie', request.title, 'rejected'
+                cb.bot, request.user_id, 'movie', request.title, 'rejected',
+                file_id=request.file_id, item_content=request.description, item_id=request.id
             )
         
         # 刷新审核列表
@@ -427,7 +429,8 @@ async def cb_approve_content(cb: types.CallbackQuery):
         # 发送通知给用户
         if submission:
             await send_review_notification(
-                cb.bot, submission.user_id, 'content', submission.title, 'approved'
+                cb.bot, submission.user_id, 'content', submission.title, 'approved',
+                file_id=submission.file_id, item_content=submission.content, item_id=submission.id
             )
         
         # 刷新审核列表
@@ -576,7 +579,8 @@ async def cb_reject_content(cb: types.CallbackQuery):
         # 发送通知给用户
         if submission:
             await send_review_notification(
-                cb.bot, submission.user_id, 'content', submission.title, 'rejected'
+                cb.bot, submission.user_id, 'content', submission.title, 'rejected',
+                file_id=submission.file_id, item_content=submission.content, item_id=submission.id
             )
         
         # 刷新审核列表

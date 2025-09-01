@@ -226,9 +226,16 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
         
         # 发送通知给用户
         if item:
-            await send_review_notification(
-                cb.bot, item.user_id, review_type, item.title, review_action
-            )
+            if review_type == 'movie':
+                await send_review_notification(
+                    cb.bot, item.user_id, review_type, item.title, review_action,
+                    file_id=item.file_id, item_content=item.description, item_id=item.id
+                )
+            elif review_type == 'content':
+                await send_review_notification(
+                    cb.bot, item.user_id, review_type, item.title, review_action,
+                    file_id=item.file_id, item_content=item.content, item_id=item.id
+                )
         
         # 检查是否为媒体消息
         is_media_message = data.get('is_media_message', False)
@@ -296,9 +303,16 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         
         # 发送通知给用户（包含留言）
         if item:
-            await send_review_notification(
-                cb.bot, item.user_id, review_type, item.title, review_action, review_note
-            )
+            if review_type == 'movie':
+                await send_review_notification(
+                    cb.bot, item.user_id, review_type, item.title, review_action, review_note,
+                    file_id=item.file_id, item_content=item.description, item_id=item.id
+                )
+            elif review_type == 'content':
+                await send_review_notification(
+                    cb.bot, item.user_id, review_type, item.title, review_action, review_note,
+                    file_id=item.file_id, item_content=item.content, item_id=item.id
+                )
         
         # 检查是否为媒体消息
         is_media_message = data.get('is_media_message', False)

@@ -111,7 +111,7 @@ def create_content_submit_text(step: str, category_name: str = None, title: str 
         return "📝 <b>投稿流程</b> 📝\n\n请按照提示完成操作"
 
 
-async def send_review_notification(bot, user_id: int, item_type: str, item_title: str, status: str, review_note: str = None):
+async def send_review_notification(bot, user_id: int, item_type: str, item_title: str, status: str, review_note: str = None, file_id: str = None, item_content: str = None, item_id: int = None):
     """
     发送审核结果通知给用户
     
@@ -122,6 +122,9 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         item_title: 项目标题
         status: 审核状态 ('approved', 'rejected')
         review_note: 审核备注（可选）
+        file_id: 图片文件ID（可选）
+        item_content: 项目内容（可选，用于频道同步）
+        item_id: 项目ID（可选，用于频道同步）
     """
     try:
         # 根据类型和状态生成通知文本
@@ -160,15 +163,106 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         else:
             notification_text += "📝 如有疑问，请联系管理员了解详情。"
         
-        await bot.send_message(
-            chat_id=user_id,
-            text=notification_text,
-            parse_mode="HTML"
-        )
+        # 发送通知给用户（带图片或纯文本）
+        if file_id:
+            await bot.send_photo(
+                chat_id=user_id,
+                photo=file_id,
+                caption=notification_text,
+                parse_mode="HTML"
+            )
+        else:
+            await bot.send_message(
+                chat_id=user_id,
+                text=notification_text,
+                parse_mode="HTML"
+            )
+        
+        # 如果审核通过，同步到频道
+        if status == 'approved' and item_type in ['movie', 'content']:
+            await sync_to_channel(bot, item_type, item_title, item_content, file_id, user_id, item_id)
         
     except Exception as e:
         from loguru import logger
         logger.error(f"发送审核通知失败: {e}")
+
+
+async def sync_to_channel(bot, item_type: str, item_title: str, item_content: str = None, file_id: str = None, user_id: int = None, item_id: int = None):
+    """
+    同步审核通过的内容到频道
+    
+    Args:
+        bot: 机器人实例
+        item_type: 项目类型 ('movie', 'content')
+        item_title: 项目标题
+        item_content: 项目内容（可选）
+        file_id: 图片文件ID（可选）
+        user_id: 用户ID（可选）
+        item_id: 项目ID（可选）
+    """
+    try:
+        from app.config.config import SYNC_CHANNEL
+        
+        if not SYNC_CHANNEL:
+            return  # 如果没有配置频道，则不同步
+        
+        # 获取用户信息
+        user_display = "匿名用户"
+        if user_id:
+            user_display = await get_user_display_link(user_id)
+        
+        # 根据类型生成频道消息
+        type_emoji = {
+            'movie': '🎬',
+            'content': '📝'
+        }.get(item_type, '📋')
+        
+        type_name = {
+            'movie': '求片',
+            'content': '投稿'
+        }.get(item_type, '内容')
+        
+        # 构建频道消息文本
+        channel_text = (
+            f"{type_emoji} <b>新{type_name}通过审核</b>\n\n"
+            f"📝 <b>标题</b>：{item_title}\n"
+        )
+        
+        if item_content and item_type == 'content':
+            # 限制内容长度，避免消息过长
+            content_preview = item_content[:200] + "..." if len(item_content) > 200 else item_content
+            channel_text += f"📄 <b>内容</b>：{content_preview}\n"
+        
+        channel_text += (
+            f"👤 <b>提交者</b>：{user_display}\n"
+            f"✅ <b>状态</b>：已通过审核\n"
+            f"🕐 <b>时间</b>：{__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        )
+        
+        if item_id:
+            channel_text += f"\n🆔 <b>ID</b>：{item_id}"
+        
+        # 发送到频道（带图片或纯文本）
+        if file_id:
+            await bot.send_photo(
+                chat_id=SYNC_CHANNEL,
+                photo=file_id,
+                caption=channel_text,
+                parse_mode="HTML"
+            )
+        else:
+            await bot.send_message(
+                chat_id=SYNC_CHANNEL,
+                text=channel_text,
+                parse_mode="HTML"
+            )
+        
+        from loguru import logger
+        logger.info(f"已同步{type_name}到频道: {item_title}")
+        
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"同步到频道失败: {e}")
 
 
 async def get_user_display_link(user_id: int) -> str:
