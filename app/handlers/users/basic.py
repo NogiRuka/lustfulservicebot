@@ -249,7 +249,7 @@ async def cb_clear_chat_history(cb: types.CallbackQuery):
     await cb.answer("🗑️ 正在清空聊天记录...")
 
 
-# 普通文本消息：防并发回显
+# 普通文本消息：处理用户回复反馈
 @basic_router.message(F.text, IsCommand(), IsBusyFilter())
 async def message(msg: types.Message, state: FSMContext):
     """处理普通文本消息"""
@@ -258,4 +258,85 @@ async def message(msg: types.Message, state: FSMContext):
     if current_state is not None:
         logger.debug(f"用户 {msg.from_user.id} 处于状态 {current_state}，跳过通用消息处理")
         return
+    
+    # 处理用户回复反馈的消息
+    if msg.reply_to_message and msg.reply_to_message.from_user.is_bot:
+        # 检查回复的消息是否是反馈回复通知
+        if "反馈回复通知" in msg.reply_to_message.text:
+            await handle_user_feedback_reply(msg)
+            return
+    
+    # 其他普通消息暂不处理
+    logger.debug(f"用户 {msg.from_user.id} 发送了普通消息，暂不处理")
+
+
+async def handle_user_feedback_reply(msg: types.Message):
+    """处理用户回复反馈的消息"""
+    try:
+        # 从回复的消息中提取反馈ID
+        reply_text = msg.reply_to_message.text
+        import re
+        feedback_id_match = re.search(r'反馈ID：(\d+)', reply_text)
+        
+        if not feedback_id_match:
+            await msg.reply("❌ 无法识别反馈ID，请直接回复反馈通知消息")
+            return
+        
+        feedback_id = int(feedback_id_match.group(1))
+        user_reply = msg.text
+        
+        # 获取用户信息
+        from app.utils.panel_utils import get_user_display_link
+        user_display = await get_user_display_link(msg.from_user.id)
+        
+        # 构建转发给管理员的消息
+        admin_notification = (
+            f"💬 <b>用户反馈回复</b> 💬\n\n"
+            f"🆔 <b>反馈ID</b>：{feedback_id}\n"
+            f"👤 <b>用户</b>：{user_display}\n"
+            f"📝 <b>用户回复</b>：\n{user_reply}\n\n"
+            f"💡 <b>回复方式</b>：/rp {feedback_id} [回复内容]"
+        )
+        
+        # 发送给所有管理员和超管
+        from app.database.business import get_admin_list
+        from app.utils.roles import ROLE_ADMIN, ROLE_SUPERADMIN
+        from app.database.users import get_user
+        
+        admins = await get_admin_list()
+        
+        # 获取超管ID
+        from app.config import SUPERADMIN_ID
+        if SUPERADMIN_ID:
+            try:
+                await msg.bot.send_message(
+                    chat_id=SUPERADMIN_ID,
+                    text=admin_notification,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.error(f"发送消息给超管失败: {e}")
+        
+        # 发送给所有管理员
+        for admin in admins:
+            try:
+                await msg.bot.send_message(
+                    chat_id=admin.chat_id,
+                    text=admin_notification,
+                    parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.error(f"发送消息给管理员 {admin.chat_id} 失败: {e}")
+        
+        # 给用户发送确认消息
+        await msg.reply(
+            f"✅ 您的回复已转达给管理员\n\n"
+            f"🆔 反馈ID：{feedback_id}\n"
+            f"📝 回复内容：{user_reply}\n\n"
+            f"💡 管理员会尽快处理您的回复"
+        )
+        
+    except Exception as e:
+        logger.error(f"处理用户反馈回复失败: {e}")
+        await msg.reply("❌ 处理回复失败，请稍后重试或联系管理员")
     
