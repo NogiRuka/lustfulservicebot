@@ -358,7 +358,7 @@ async def cb_admin_review_content_page(cb: types.CallbackQuery, state: FSMContex
 # ==================== 快速审核操作 ====================
 
 @review_router.callback_query(F.data.regexp(r'^approve_movie_\d+$'))
-async def cb_approve_movie(cb: types.CallbackQuery):
+async def cb_approve_movie(cb: types.CallbackQuery, state: FSMContext):
     logger.info(f"cb_approve_movie求片review: {cb.data}")
     """快速通过求片"""
     request_id = int(cb.data.split("_")[-1])
@@ -380,13 +380,13 @@ async def cb_approve_movie(cb: types.CallbackQuery):
             )
         
         # 刷新审核列表
-        await cb_admin_review_movie(cb)
+        await cb_admin_review_movie(cb, state)
     else:
         await cb.answer("❌ 操作失败，请检查求片ID是否正确")
 
 
 @review_router.callback_query(F.data.regexp(r'^reject_movie_\d+$'))
-async def cb_reject_movie(cb: types.CallbackQuery):
+async def cb_reject_movie(cb: types.CallbackQuery, state: FSMContext):
     """快速拒绝求片"""
     request_id = int(cb.data.split("_")[-1])
     
@@ -407,13 +407,13 @@ async def cb_reject_movie(cb: types.CallbackQuery):
             )
         
         # 刷新审核列表
-        await cb_admin_review_movie(cb)
+        await cb_admin_review_movie(cb, state)
     else:
         await cb.answer("❌ 操作失败，请检查求片ID是否正确")
 
 
 @review_router.callback_query(F.data.regexp(r'^approve_content_\d+$'))
-async def cb_approve_content(cb: types.CallbackQuery):
+async def cb_approve_content(cb: types.CallbackQuery, state: FSMContext):
     """快速通过投稿"""
     submission_id = int(cb.data.split("_")[-1])
     
@@ -434,7 +434,7 @@ async def cb_approve_content(cb: types.CallbackQuery):
             )
         
         # 刷新审核列表
-        await cb_admin_review_content(cb)
+        await cb_admin_review_content(cb, state)
     else:
         await cb.answer("❌ 操作失败，请检查投稿ID是否正确")
 
@@ -563,7 +563,7 @@ async def cb_review_content_detail(cb: types.CallbackQuery):
 
 
 @review_router.callback_query(F.data.regexp(r'^reject_content_\d+$'))
-async def cb_reject_content(cb: types.CallbackQuery):
+async def cb_reject_content(cb: types.CallbackQuery, state: FSMContext):
     """快速拒绝投稿"""
     submission_id = int(cb.data.split("_")[-1])
     
@@ -584,7 +584,7 @@ async def cb_reject_content(cb: types.CallbackQuery):
             )
         
         # 刷新审核列表
-        await cb_admin_review_content(cb)
+        await cb_admin_review_content(cb, state)
     else:
         await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
 
