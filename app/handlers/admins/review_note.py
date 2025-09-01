@@ -226,7 +226,11 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
         
         # 发送通知给用户
         if item:
-            category_name = item.category.name if item.category else None
+            # 通过category_id获取分类名称
+            from app.database.business import get_movie_category_by_id
+            category = await get_movie_category_by_id(item.category_id) if item.category_id else None
+            category_name = category.name if category else None
+            
             if review_type == 'movie':
                 await send_review_notification(
                     cb.bot, item.user_id, review_type, item.title, review_action,
@@ -306,7 +310,11 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         
         # 发送通知给用户（包含留言）
         if item:
-            category_name = item.category.name if item.category else None
+            # 通过category_id获取分类名称
+            from app.database.business import get_movie_category_by_id
+            category = await get_movie_category_by_id(item.category_id) if item.category_id else None
+            category_name = category.name if category else None
+            
             if review_type == 'movie':
                 await send_review_notification(
                     cb.bot, item.user_id, review_type, item.title, review_action, review_note,
