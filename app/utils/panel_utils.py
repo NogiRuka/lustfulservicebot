@@ -127,41 +127,84 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         item_id: 项目ID（可选，用于频道同步）
     """
     try:
-        # 根据类型和状态生成通知文本
-        type_emoji = {
-            'movie': '🎬',
-            'content': '📝',
-            'feedback': '💬'
-        }.get(item_type, '📋')
+        # 根据类型和状态生成美化的通知文本
+        type_config = {
+            'movie': {
+                'emoji': '🎬',
+                'name': '求片',
+                'icon': '🎭',
+                'category': '影视内容'
+            },
+            'content': {
+                'emoji': '📝',
+                'name': '投稿',
+                'icon': '✍️',
+                'category': '原创内容'
+            },
+            'feedback': {
+                'emoji': '💬',
+                'name': '反馈',
+                'icon': '📢',
+                'category': '用户反馈'
+            }
+        }
         
-        type_name = {
-            'movie': '求片',
-            'content': '投稿',
-            'feedback': '反馈'
-        }.get(item_type, '项目')
+        config = type_config.get(item_type, {
+            'emoji': '📋',
+            'name': '项目',
+            'icon': '📄',
+            'category': '其他内容'
+        })
         
         if status == 'approved':
             status_emoji = '✅'
-            status_text = '已通过'
-            title_text = f"🎉 <b>{type_name}审核通过</b> 🎉"
+            status_text = '审核通过'
+            status_color = '🟢'
+            title_decoration = '🎉✨🎉'
+            title_text = f"{title_decoration} <b>{config['name']}审核通过</b> {title_decoration}"
+            result_bg = '━━━━━━━━━━━━━━━━━━━━'
         else:
             status_emoji = '❌'
-            status_text = '已拒绝'
-            title_text = f"📋 <b>{type_name}审核结果</b> 📋"
+            status_text = '审核拒绝'
+            status_color = '🔴'
+            title_decoration = '📋⚠️📋'
+            title_text = f"{title_decoration} <b>{config['name']}审核结果</b> {title_decoration}"
+            result_bg = '━━━━━━━━━━━━━━━━━━━━'
         
+        # 构建美化的通知消息
         notification_text = (
-            f"{title_text}\n\n"
-            f"{type_emoji} <b>{type_name}标题</b>：{item_title}\n"
-            f"{status_emoji} <b>审核结果</b>：{status_text}\n\n"
+            f"{title_text}\n"
+            f"{result_bg}\n\n"
+            f"{config['icon']} <b>内容类型</b>：{config['category']}\n"
+            f"{config['emoji']} <b>标题</b>：{item_title}\n"
+            f"{status_color} <b>审核状态</b>：{status_emoji} {status_text}\n"
         )
         
-        if review_note:
-            notification_text += f"💬 <b>管理员留言</b>：\n{review_note}\n\n"
+        # 添加项目ID（如果有）
+        if item_id:
+            notification_text += f"🆔 <b>项目编号</b>：#{item_id}\n"
         
+        notification_text += f"\n{result_bg}\n"
+        
+        # 添加管理员留言
+        if review_note:
+            notification_text += f"\n💬 <b>管理员留言</b>：\n📄 {review_note}\n\n{result_bg}\n"
+        
+        # 添加结尾消息
         if status == 'approved':
-            notification_text += "💫 感谢您的{type_name}，已成功通过审核！".format(type_name=type_name)
+            notification_text += (
+                f"\n🎊 <b>恭喜您！</b>\n"
+                f"💫 您的{config['name']}已成功通过审核！\n"
+                f"🚀 内容将会在相关频道展示\n"
+                f"🙏 感谢您的优质贡献！"
+            )
         else:
-            notification_text += "📝 如有疑问，请联系管理员了解详情。"
+            notification_text += (
+                f"\n📝 <b>温馨提示</b>：\n"
+                f"🔍 如对审核结果有疑问，请联系管理员\n"
+                f"💡 您可以根据建议修改后重新提交\n"
+                f"🤝 感谢您的理解与配合！"
+            )
         
         # 发送通知给用户（带图片或纯文本）
         if file_id:
@@ -220,36 +263,67 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
             except Exception:
                 user_display = f"用户{user_id}"
         
-        # 根据类型生成频道消息
-        type_emoji = {
-            'movie': '🎬',
-            'content': '📝'
-        }.get(item_type, '📋')
+        # 根据类型生成美化的频道消息
+        type_config = {
+            'movie': {
+                'emoji': '🎬',
+                'name': '求片',
+                'icon': '🎭',
+                'category': '影视内容',
+                'bg_emoji': '🎪',
+                'title_decoration': '🌟🎬🌟'
+            },
+            'content': {
+                'emoji': '📝',
+                'name': '投稿',
+                'icon': '✍️',
+                'category': '原创内容',
+                'bg_emoji': '📚',
+                'title_decoration': '✨📝✨'
+            }
+        }
         
-        type_name = {
-            'movie': '求片',
-            'content': '投稿'
-        }.get(item_type, '内容')
+        config = type_config.get(item_type, {
+            'emoji': '📋',
+            'name': '内容',
+            'icon': '📄',
+            'category': '其他内容',
+            'bg_emoji': '📋',
+            'title_decoration': '⭐📋⭐'
+        })
         
-        # 构建频道消息文本
+        # 构建美化的频道消息
+        channel_decoration = '━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        title_text = f"{config['title_decoration']} <b>优质{config['name']}推荐</b> {config['title_decoration']}"
+        
         channel_text = (
-            f"{type_emoji} <b>新{type_name}通过审核</b>\n\n"
-            f"📝 <b>标题</b>：{item_title}\n"
+            f"{title_text}\n"
+            f"{channel_decoration}\n\n"
+            f"{config['bg_emoji']} <b>内容分类</b>：{config['category']}\n"
+            f"{config['emoji']} <b>标题</b>：{item_title}\n"
         )
         
+        # 添加内容预览（仅投稿类型）
         if item_content and item_type == 'content':
             # 限制内容长度，避免消息过长
-            content_preview = item_content[:200] + "..." if len(item_content) > 200 else item_content
-            channel_text += f"📄 <b>内容</b>：{content_preview}\n"
+            content_preview = item_content[:150] + "..." if len(item_content) > 150 else item_content
+            channel_text += f"📖 <b>内容预览</b>：\n💭 {content_preview}\n"
         
+        # 添加项目信息
+        current_time = __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')
         channel_text += (
-            f"👤 <b>提交者</b>：{user_display}\n"
-            f"✅ <b>状态</b>：已通过审核\n"
-            f"🕐 <b>时间</b>：{__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}"
+            f"👤 <b>贡献者</b>：{user_display}\n"
+            f"🎯 <b>审核状态</b>：✅ 已通过审核\n"
+            f"📅 <b>发布时间</b>：{current_time}\n"
         )
         
         if item_id:
-            channel_text += f"\n🆔 <b>ID</b>：{item_id}"
+            channel_text += f"🆔 <b>项目编号</b>：#{item_id}\n"
+        
+        channel_text += (
+            f"\n{channel_decoration}\n"
+            f"🌟 <b>精选推荐</b> | 📢 <b>官方认证</b> | 🔥 <b>优质内容</b>"
+        )
         
         # 发送到所有配置的频道（带图片或纯文本）
         success_count = 0
