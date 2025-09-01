@@ -226,15 +226,18 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
         
         # 发送通知给用户
         if item:
+            category_name = item.category.name if item.category else None
             if review_type == 'movie':
                 await send_review_notification(
                     cb.bot, item.user_id, review_type, item.title, review_action,
-                    file_id=item.file_id, item_content=item.description, item_id=item.id
+                    file_id=item.file_id, item_content=item.description, item_id=item.id,
+                    category_name=category_name
                 )
             elif review_type == 'content':
                 await send_review_notification(
                     cb.bot, item.user_id, review_type, item.title, review_action,
-                    file_id=item.file_id, item_content=item.content, item_id=item.id
+                    file_id=item.file_id, item_content=item.content, item_id=item.id,
+                    category_name=category_name
                 )
         
         # 检查是否为媒体消息
@@ -303,15 +306,18 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         
         # 发送通知给用户（包含留言）
         if item:
+            category_name = item.category.name if item.category else None
             if review_type == 'movie':
                 await send_review_notification(
                     cb.bot, item.user_id, review_type, item.title, review_action, review_note,
-                    file_id=item.file_id, item_content=item.description, item_id=item.id
+                    file_id=item.file_id, item_content=item.description, item_id=item.id,
+                    category_name=category_name
                 )
             elif review_type == 'content':
                 await send_review_notification(
                     cb.bot, item.user_id, review_type, item.title, review_action, review_note,
-                    file_id=item.file_id, item_content=item.content, item_id=item.id
+                    file_id=item.file_id, item_content=item.content, item_id=item.id,
+                    category_name=category_name
                 )
         
         # 检查是否为媒体消息

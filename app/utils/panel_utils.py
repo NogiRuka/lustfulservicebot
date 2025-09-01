@@ -111,7 +111,7 @@ def create_content_submit_text(step: str, category_name: str = None, title: str 
         return "📝 <b>投稿流程</b> 📝\n\n请按照提示完成操作"
 
 
-async def send_review_notification(bot, user_id: int, item_type: str, item_title: str, status: str, review_note: str = None, file_id: str = None, item_content: str = None, item_id: int = None):
+async def send_review_notification(bot, user_id: int, item_type: str, item_title: str, status: str, review_note: str = None, file_id: str = None, item_content: str = None, item_id: int = None, category_name: str = None):
     """
     发送审核结果通知给用户
     
@@ -125,6 +125,7 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         file_id: 图片文件ID（可选）
         item_content: 项目内容（可选，用于频道同步）
         item_id: 项目ID（可选，用于频道同步）
+        category_name: 分类名称（可选，如电影、剧集、国产等）
     """
     try:
         # 根据类型和状态生成美化的通知文本
@@ -172,10 +173,13 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
             result_bg = '━━━━━━━━━━━━━━━━━━━━'
         
         # 构建美化的通知消息
+        # 如果有分类名称，显示具体分类；否则显示默认类别
+        category_display = f"{config['category']} - {category_name}" if category_name else config['category']
+        
         notification_text = (
             f"{title_text}\n"
             f"{result_bg}\n\n"
-            f"{config['icon']} <b>内容类型</b>：{config['category']}\n"
+            f"{config['icon']} <b>内容类型</b>：{category_display}\n"
             f"{config['emoji']} <b>标题</b>：{item_title}\n"
             f"{status_color} <b>审核状态</b>：{status_emoji} {status_text}\n"
         )
@@ -223,14 +227,14 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
         
         # 如果审核通过，同步到频道
         if status == 'approved' and item_type in ['movie', 'content']:
-            await sync_to_channel(bot, item_type, item_title, item_content, file_id, user_id, item_id)
+            await sync_to_channel(bot, item_type, item_title, item_content, file_id, user_id, item_id, category_name)
         
     except Exception as e:
         from loguru import logger
         logger.error(f"发送审核通知失败: {e}")
 
 
-async def sync_to_channel(bot, item_type: str, item_title: str, item_content: str = None, file_id: str = None, user_id: int = None, item_id: int = None):
+async def sync_to_channel(bot, item_type: str, item_title: str, item_content: str = None, file_id: str = None, user_id: int = None, item_id: int = None, category_name: str = None):
     """
     同步审核通过的内容到频道
     
@@ -242,6 +246,7 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
         file_id: 图片文件ID（可选）
         user_id: 用户ID（可选）
         item_id: 项目ID（可选）
+        category_name: 分类名称（可选，如电影、剧集、国产等）
     """
     try:
         from app.config.config import SYNC_CHANNELS
@@ -296,10 +301,13 @@ async def sync_to_channel(bot, item_type: str, item_title: str, item_content: st
         channel_decoration = '━━━━━━━━━━━━━━━━━━━━━━━━━━'
         title_text = f"{config['title_decoration']} <b>优质{config['name']}推荐</b> {config['title_decoration']}"
         
+        # 如果有分类名称，显示具体分类；否则显示默认类别
+        category_display = f"{config['category']} - {category_name}" if category_name else config['category']
+        
         channel_text = (
             f"{title_text}\n"
             f"{channel_decoration}\n\n"
-            f"{config['bg_emoji']} <b>内容分类</b>：{config['category']}\n"
+            f"{config['bg_emoji']} <b>内容分类</b>：{category_display}\n"
             f"{config['emoji']} <b>标题</b>：{item_title}\n"
         )
         
