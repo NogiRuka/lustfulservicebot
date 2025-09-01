@@ -545,12 +545,14 @@ async def cb_review_content_detail(cb: types.CallbackQuery, state: FSMContext):
     )
     
     # 显示内容（限制长度）
-    if len(submission.content) > 500:
-        content_display = submission.content[:500] + "\n\n... (内容过长，已截断)"
+    if submission.content:
+        if len(submission.content) > 500:
+            content_display = submission.content[:500] + "\n\n... (内容过长，已截断)"
+        else:
+            content_display = submission.content
+        detail_text += f"📄 内容：\n{content_display}\n\n"
     else:
-        content_display = submission.content
-    
-    detail_text += f"📄 内容：\n{content_display}\n\n"
+        detail_text += f"📄 内容：无\n\n"
     
     # 详情页面按钮
     detail_kb = types.InlineKeyboardMarkup(
@@ -560,8 +562,8 @@ async def cb_review_content_detail(cb: types.CallbackQuery, state: FSMContext):
                 types.InlineKeyboardButton(text="❌ 拒绝", callback_data=f"reject_content_{submission.id}")
             ],
             [
-                types.InlineKeyboardButton(text="⬅️ 返回列表", callback_data="admin_review_content"),
-                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                types.InlineKeyboardButton(text="⬅️ 返回列表", callback_data="admin_review_content_cleanup"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main_cleanup")
             ]
         ]
     )
@@ -583,6 +585,10 @@ async def cb_review_content_detail(cb: types.CallbackQuery, state: FSMContext):
                     [
                         types.InlineKeyboardButton(text="✅ 通过", callback_data=f"approve_content_media_{submission.id}"),
                         types.InlineKeyboardButton(text="❌ 拒绝", callback_data=f"reject_content_media_{submission.id}")
+                    ],
+                    [
+                        types.InlineKeyboardButton(text="📝 通过并留言", callback_data=f"approve_content_note_media_{submission.id}"),
+                        types.InlineKeyboardButton(text="📝 拒绝并留言", callback_data=f"reject_content_note_media_{submission.id}")
                     ],
                     [
                         types.InlineKeyboardButton(text="🗑️ 删除此消息", callback_data=f"delete_media_message_{submission.id}")
@@ -724,6 +730,50 @@ async def cb_reject_content_media(cb: types.CallbackQuery):
         await cb.answer("❌ 操作失败，请检查投稿ID是否正确", show_alert=True)
 
 
+@review_router.callback_query(F.data.startswith("approve_content_note_media_"))
+async def cb_approve_content_note_media(cb: types.CallbackQuery, state: FSMContext):
+    """媒体消息通过投稿并留言"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    # 设置状态等待留言输入
+    await state.set_state(Wait.review_note)
+    await state.update_data(
+        review_type="content",
+        item_id=submission_id,
+        review_action="approved",
+        media_message_id=cb.message.message_id
+    )
+    
+    await cb.answer("📝 请输入审核留言：", show_alert=True)
+    await cb.bot.send_message(
+        chat_id=cb.from_user.id,
+        text="📝 <b>请输入审核留言</b>\n\n💡 留言将发送给用户，请输入您的审核意见：",
+        parse_mode="HTML"
+    )
+
+
+@review_router.callback_query(F.data.startswith("reject_content_note_media_"))
+async def cb_reject_content_note_media(cb: types.CallbackQuery, state: FSMContext):
+    """媒体消息拒绝投稿并留言"""
+    submission_id = int(cb.data.split("_")[-1])
+    
+    # 设置状态等待留言输入
+    await state.set_state(Wait.review_note)
+    await state.update_data(
+        review_type="content",
+        item_id=submission_id,
+        review_action="rejected",
+        media_message_id=cb.message.message_id
+    )
+    
+    await cb.answer("📝 请输入审核留言：", show_alert=True)
+    await cb.bot.send_message(
+        chat_id=cb.from_user.id,
+        text="📝 <b>请输入审核留言</b>\n\n💡 留言将发送给用户，请输入您的拒绝理由：",
+        parse_mode="HTML"
+    )
+
+
 @review_router.callback_query(F.data.startswith("approve_movie_note_media_"))
 async def cb_approve_movie_note_media(cb: types.CallbackQuery, state: FSMContext):
     """媒体消息留言通过求片"""
@@ -803,10 +853,32 @@ async def cb_delete_media_message(cb: types.CallbackQuery, state: FSMContext):
     """删除媒体消息"""
     try:
         await cb.message.delete()
-        await state.clear()  # 清除状态
+        await cb.answer("🗑️ 媒体消息已删除")
     except Exception as e:
         logger.warning(f"删除媒体消息失败: {e}")
-        await cb.answer("❌ 删除消息失败", show_alert=True)
+        await cb.answer("❌ 删除失败")
+
+
+@review_router.callback_query(F.data == "admin_review_content_cleanup")
+async def cb_admin_review_content_cleanup(cb: types.CallbackQuery, state: FSMContext):
+    """返回投稿审核列表并清理媒体消息"""
+    # 清理媒体消息
+    await cleanup_sent_media_messages(cb.bot, state)
+    # 返回投稿审核列表
+    await cb_admin_review_content(cb, state)
+
+
+@review_router.callback_query(F.data == "back_to_main_cleanup")
+async def cb_back_to_main_cleanup(cb: types.CallbackQuery, state: FSMContext):
+    """返回主菜单并清理媒体消息"""
+    # 清理媒体消息
+    await cleanup_sent_media_messages(cb.bot, state)
+    # 返回主菜单
+    await cb.message.edit_caption(
+        caption="🌸 欢迎回到主菜单 🌸",
+        reply_markup=back_to_main_kb
+    )
+    await cb.answer()
 
 
 # ==================== 所有记录查看 ====================
