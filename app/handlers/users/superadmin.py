@@ -88,8 +88,8 @@ async def cb_toggle_feature(cb: types.CallbackQuery):
             "movie_request_enabled": "🎬 求片功能",
             "content_submit_enabled": "📝 投稿功能",
             "feedback_enabled": "💬 反馈功能",
-            "admin_panel_enabled": "👮 管理面板",
-            "superadmin_panel_enabled": "🛡️ 超管面板"
+            "admin_panel_enabled": "👮 管理面板"
+            # 超管面板已移除 - 超管只有一个，无需控制自己的面板
         }
         
         feature_name = feature_names.get(feature_key, feature_key)
@@ -977,8 +977,8 @@ async def cb_superadmin_system_settings(cb: types.CallbackQuery):
             "movie_request_enabled": "🎬 求片功能", 
             "content_submit_enabled": "📝 投稿功能",
             "feedback_enabled": "💬 反馈功能", 
-            "admin_panel_enabled": "👮 管理面板", 
-            "superadmin_panel_enabled": "🛡️ 超管面板"
+            "admin_panel_enabled": "👮 管理面板"
+            # 超管面板已移除 - 超管只有一个，无需显示自己的面板开关
         }
         
         for setting in settings:
@@ -1031,9 +1031,7 @@ async def cb_superadmin_system_settings(cb: types.CallbackQuery):
         if "admin_panel_enabled" in setting_dict:
             status = "🟢" if setting_dict["admin_panel_enabled"] else "🔴"
             row3.append(types.InlineKeyboardButton(text=f"{status} 管理面板", callback_data="toggle_admin_panel_enabled"))
-        if "superadmin_panel_enabled" in setting_dict:
-            status = "🟢" if setting_dict["superadmin_panel_enabled"] else "🔴"
-            row3.append(types.InlineKeyboardButton(text=f"{status} 超管面板", callback_data="toggle_superadmin_panel_enabled"))
+        # 超管面板开关已移除 - 超管只有一个，无需控制自己的面板
         if row3:
             toggle_buttons.append(row3)
     
