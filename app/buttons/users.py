@@ -2,23 +2,42 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from app.utils.roles import ROLE_USER, ROLE_ADMIN, ROLE_SUPERADMIN
 
 
+# ==================== 公共按钮常量 ====================
+
+# 常用按钮
+BTN_MY_INFO = InlineKeyboardButton(text="🙋 我的信息", callback_data="common_my_info")
+BTN_SERVER_INFO = InlineKeyboardButton(text="🖥️ 服务器信息", callback_data="common_server_info")
+BTN_MOVIE_CENTER = InlineKeyboardButton(text="🎬 求片中心", callback_data="movie_center")
+BTN_CONTENT_CENTER = InlineKeyboardButton(text="📝 内容投稿", callback_data="content_center")
+BTN_FEEDBACK_CENTER = InlineKeyboardButton(text="💬 用户反馈", callback_data="feedback_center")
+BTN_OTHER_FUNCTIONS = InlineKeyboardButton(text="⚙️ 其他功能", callback_data="other_functions")
+
+# 导航按钮
+BTN_BACK_TO_MAIN = InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+BTN_BACK_TO_MOVIE = InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center")
+BTN_BACK_TO_CONTENT = InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center")
+BTN_BACK_TO_FEEDBACK = InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center")
+BTN_BACK_TO_REVIEW = InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center")
+BTN_BACK_TO_SUPERADMIN = InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="superadmin_manage_center")
+
+# 管理员专用按钮
+BTN_FEEDBACK_BROWSE = InlineKeyboardButton(text="👀 反馈浏览", callback_data="admin_feedback_browse")
+BTN_REVIEW_CENTER = InlineKeyboardButton(text="✅ 审核处理", callback_data="admin_review_center")
+BTN_SUPERADMIN_CENTER = InlineKeyboardButton(text="🛡️ 管理中心", callback_data="superadmin_manage_center")
+BTN_MANUAL_REPLY = InlineKeyboardButton(text="🤖 人工回复", callback_data="superadmin_manual_reply")
+
+
+# ==================== 菜单构建函数 ====================
+
+
 # 用户主菜单（内联键盘）
 def get_user_main_menu() -> InlineKeyboardMarkup:
     """获取用户主菜单"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🙋 我的信息", callback_data="common_my_info"),
-                InlineKeyboardButton(text="🖥️ 服务信息", callback_data="common_server_info"),
-            ],
-            [
-                InlineKeyboardButton(text="🎬 求片中心", callback_data="movie_center"),
-                InlineKeyboardButton(text="📝 内容投稿", callback_data="content_center"),
-            ],
-            [
-                InlineKeyboardButton(text="💬 用户反馈", callback_data="feedback_center"),
-                InlineKeyboardButton(text="⚙️ 其他功能", callback_data="other_functions"),
-            ],
+            [BTN_MY_INFO, BTN_SERVER_INFO],
+            [BTN_MOVIE_CENTER, BTN_CONTENT_CENTER],
+            [BTN_FEEDBACK_CENTER, BTN_OTHER_FUNCTIONS],
         ]
     )
 
@@ -28,22 +47,10 @@ def get_admin_main_menu() -> InlineKeyboardMarkup:
     """获取管理员主菜单"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🙋 我的信息", callback_data="common_my_info"),
-                InlineKeyboardButton(text="🖥️ 服务器信息", callback_data="common_server_info"),
-            ],
-            [
-                InlineKeyboardButton(text="🎬 求片中心", callback_data="movie_center"),
-                InlineKeyboardButton(text="📝 内容投稿", callback_data="content_center"),
-            ],
-            [
-                InlineKeyboardButton(text="💬 用户反馈", callback_data="feedback_center"),
-                InlineKeyboardButton(text="👀 反馈浏览", callback_data="admin_feedback_browse"),
-            ],
-            [
-                InlineKeyboardButton(text="✅ 审核处理", callback_data="admin_review_center"),
-                InlineKeyboardButton(text="⚙️ 其他功能", callback_data="other_functions"),
-            ],
+            [BTN_MY_INFO, BTN_SERVER_INFO],
+            [BTN_MOVIE_CENTER, BTN_CONTENT_CENTER],
+            [BTN_FEEDBACK_CENTER, BTN_FEEDBACK_BROWSE],
+            [BTN_REVIEW_CENTER, BTN_OTHER_FUNCTIONS],
         ]
     )
 
@@ -53,26 +60,11 @@ def get_superadmin_main_menu() -> InlineKeyboardMarkup:
     """获取超管主菜单"""
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="🙋 我的信息", callback_data="common_my_info"),
-                InlineKeyboardButton(text="🖥️ 服务器信息", callback_data="common_server_info"),
-            ],
-            [
-                InlineKeyboardButton(text="🎬 求片中心", callback_data="movie_center"),
-                InlineKeyboardButton(text="📝 内容投稿", callback_data="content_center"),
-            ],
-            [
-                InlineKeyboardButton(text="💬 用户反馈", callback_data="feedback_center"),
-                InlineKeyboardButton(text="👀 反馈浏览", callback_data="admin_feedback_browse"),
-            ],
-            [
-                InlineKeyboardButton(text="✅ 审核处理", callback_data="admin_review_center"),
-                InlineKeyboardButton(text="🛡️ 管理中心", callback_data="superadmin_manage_center"),
-            ],
-            [
-                InlineKeyboardButton(text="🤖 人工回复", callback_data="superadmin_manual_reply"),
-                InlineKeyboardButton(text="⚙️ 其他功能", callback_data="other_functions"),
-            ],
+            [BTN_MY_INFO, BTN_SERVER_INFO],
+            [BTN_MOVIE_CENTER, BTN_CONTENT_CENTER],
+            [BTN_FEEDBACK_CENTER, BTN_FEEDBACK_BROWSE],
+            [BTN_REVIEW_CENTER, BTN_SUPERADMIN_CENTER],
+            [BTN_MANUAL_REPLY, BTN_OTHER_FUNCTIONS],
         ]
     )
 
@@ -95,19 +87,14 @@ movie_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="🎬 开始求片", callback_data="movie_request_new"),
             InlineKeyboardButton(text="📋 我的求片", callback_data="movie_request_my"),
         ],
-        [
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_MAIN],
     ]
 )
 
 # 求片输入菜单（带返回上一级）
 movie_input_kb = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="movie_center"),
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_MOVIE, BTN_BACK_TO_MAIN],
     ]
 )
 
@@ -119,19 +106,14 @@ content_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="📝 开始投稿", callback_data="content_submit_new"),
             InlineKeyboardButton(text="📋 我的投稿", callback_data="content_submit_my"),
         ],
-        [
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_MAIN],
     ]
 )
 
 # 内容投稿输入菜单（带返回上一级）
 content_input_kb = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="content_center"),
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_CONTENT, BTN_BACK_TO_MAIN],
     ]
 )
 
@@ -149,7 +131,7 @@ feedback_center_kb = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(text="📋 我的反馈", callback_data="feedback_my"),
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+            BTN_BACK_TO_MAIN,
         ],
     ]
 )
@@ -157,10 +139,7 @@ feedback_center_kb = InlineKeyboardMarkup(
 # 反馈输入菜单（带返回上一级）
 feedback_input_kb = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="feedback_center"),
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_FEEDBACK, BTN_BACK_TO_MAIN],
     ]
 )
 
@@ -176,19 +155,14 @@ admin_review_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="📋 所有求片", callback_data="admin_all_movies"),
             InlineKeyboardButton(text="📄 所有投稿", callback_data="admin_all_content"),
         ],
-        [
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_MAIN],
     ]
 )
 
 # 审核详情菜单（带返回上一级）
 admin_review_detail_kb = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_REVIEW, BTN_BACK_TO_MAIN],
     ]
 )
 
@@ -204,19 +178,14 @@ superadmin_manage_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="📂 类型管理", callback_data="superadmin_category_manage"),
             InlineKeyboardButton(text="⚙️ 系统设置", callback_data="superadmin_system_settings"),
         ],
-        [
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_MAIN],
     ]
 )
 
 # 超管操作菜单（带返回上一级）
 superadmin_action_kb = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="superadmin_manage_center"),
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_SUPERADMIN, BTN_BACK_TO_MAIN],
     ]
 )
 
@@ -230,18 +199,16 @@ other_functions_kb = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(text="🗑️ 清空记录", callback_data="clear_chat_history"),
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+            BTN_BACK_TO_MAIN,
         ],
     ]
 )
 
 
-# 返回按钮
+# 返回主菜单键盘
 back_to_main_kb = InlineKeyboardMarkup(
     inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-        ],
+        [BTN_BACK_TO_MAIN],
     ]
 )
 
