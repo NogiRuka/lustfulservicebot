@@ -22,7 +22,9 @@ class SubmissionConfig:
                  content_state,
                  title_field: str,
                  content_field: str,
-                 content_label: str = "内容"):
+                 content_label: str = "内容",
+                 new_callback: str = None,
+                 my_callback: str = None):
         self.item_type = item_type
         self.emoji = emoji
         self.name = name
@@ -35,6 +37,9 @@ class SubmissionConfig:
         self.title_field = title_field
         self.content_field = content_field
         self.content_label = content_label
+        # 回调数据配置
+        self.new_callback = new_callback or f"{item_type}_request_new"
+        self.my_callback = my_callback or f"{item_type}_request_my"
 
 
 class SubmissionUIBuilder:
@@ -221,8 +226,8 @@ class SubmissionUIBuilder:
         # 功能按钮
         keyboard.extend([
             [
-                types.InlineKeyboardButton(text=f"🔙 返回{config.name}中心", callback_data=f"{config.item_type}_center"),
-                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                types.InlineKeyboardButton(text=f"➕ 新{config.name}", callback_data=config.new_callback),
+                types.InlineKeyboardButton(text="🔙 返回中心", callback_data=f"{config.item_type}_center")
             ]
         ])
         
@@ -456,8 +461,8 @@ class SubmissionHandler:
                 success_kb = types.InlineKeyboardMarkup(
                     inline_keyboard=[
                         [
-                            types.InlineKeyboardButton(text=f"➕ 继续{self.config.name}", callback_data=f"{self.config.item_type}_request_new"),
-                            types.InlineKeyboardButton(text=f"📋 我的{self.config.name}", callback_data=f"{self.config.item_type}_request_my")
+                            types.InlineKeyboardButton(text=f"➕ 继续{self.config.name}", callback_data=self.config.new_callback),
+                            types.InlineKeyboardButton(text=f"📋 我的{self.config.name}", callback_data=self.config.my_callback)
                         ],
                         [
                             types.InlineKeyboardButton(text=f"⬅️ 返回{self.config.name}中心", callback_data=f"{self.config.item_type}_center"),

@@ -23,7 +23,9 @@ content_config = SubmissionConfig(
     content_state=Wait.waitContentBody,
     title_field='标题',
     content_field='body',
-    content_label='内容'
+    content_label='内容',
+    new_callback='content_submit_new',
+    my_callback='content_submit_my'
 )
 
 # 投稿处理器
