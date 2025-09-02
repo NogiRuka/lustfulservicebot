@@ -138,7 +138,6 @@ class SubmissionUIBuilder:
         """构建我的项目列表文本"""
         page_info = paginator.get_page_info(page)
         text = format_page_header(f"{config.emoji} 我的{config.name}", page_info)
-        text += "\n"
         
         if not items:
             text += f"📋 您还没有{config.name}记录\n\n💡 点击下方按钮开始{config.name}"
