@@ -138,7 +138,7 @@ class SubmissionUIBuilder:
         """构建我的项目列表文本"""
         page_info = paginator.get_page_info(page)
         text = format_page_header(f"{config.emoji} 我的{config.name}", page_info)
-        text += "\n\n"
+        text += "\n"
         
         if not items:
             text += f"📋 您还没有{config.name}记录\n\n💡 点击下方按钮开始{config.name}"
@@ -207,8 +207,8 @@ class SubmissionUIBuilder:
         # 功能按钮
         keyboard.extend([
             [
-                types.InlineKeyboardButton(text=f"➕ 新{config.name}", callback_data=f"{config.item_type}_request_new"),
-                types.InlineKeyboardButton(text="🔙 返回中心", callback_data=f"{config.item_type}_center")
+                types.InlineKeyboardButton(text=f"🔙 返回{config.name}中心", callback_data=f"{config.item_type}_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
             ]
         ])
         
