@@ -226,8 +226,8 @@ class SubmissionUIBuilder:
         # 功能按钮
         keyboard.extend([
             [
-                types.InlineKeyboardButton(text=f"➕ 新{config.name}", callback_data=config.new_callback),
-                types.InlineKeyboardButton(text="🔙 返回中心", callback_data=f"{config.item_type}_center")
+                types.InlineKeyboardButton(text=f"🔙 返回{config.name}中心", callback_data=f"{config.item_type}_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
             ]
         ])
         
