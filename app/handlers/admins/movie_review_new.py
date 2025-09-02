@@ -88,6 +88,42 @@ async def cb_reject_movie_media(cb: types.CallbackQuery, state: FSMContext):
     await movie_review_handler.handle_reject(cb, state, item_id)
 
 
+@movie_review_router.callback_query(F.data.startswith("approve_movie_note_"))
+async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
+    """通过求片并留言"""
+    item_id = int(cb.data.split("_")[-1])
+    await state.set_state(Wait.waitReviewNote)
+    await state.update_data(action="approve", item_id=item_id, item_type="movie")
+    
+    await cb.message.edit_caption(
+        caption="✅ <b>通过求片并留言</b>\n\n请输入留言内容：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="🔙 返回", callback_data=f"review_movie_detail_{item_id}")]
+            ]
+        )
+    )
+    await cb.answer()
+
+
+@movie_review_router.callback_query(F.data.startswith("reject_movie_note_"))
+async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
+    """拒绝求片并留言"""
+    item_id = int(cb.data.split("_")[-1])
+    await state.set_state(Wait.waitReviewNote)
+    await state.update_data(action="reject", item_id=item_id, item_type="movie")
+    
+    await cb.message.edit_caption(
+        caption="❌ <b>拒绝求片并留言</b>\n\n请输入拒绝原因：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="🔙 返回", callback_data=f"review_movie_detail_{item_id}")]
+            ]
+        )
+    )
+    await cb.answer()
+
+
 @movie_review_router.callback_query(F.data.startswith("approve_movie_note_media_"))
 async def cb_approve_movie_note_media(cb: types.CallbackQuery, state: FSMContext):
     """从媒体消息通过求片并留言"""

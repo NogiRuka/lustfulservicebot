@@ -88,6 +88,42 @@ async def cb_reject_content_media(cb: types.CallbackQuery, state: FSMContext):
     await content_review_handler.handle_reject(cb, state, item_id)
 
 
+@content_review_router.callback_query(F.data.startswith("approve_content_note_"))
+async def cb_approve_content_note(cb: types.CallbackQuery, state: FSMContext):
+    """通过投稿并留言"""
+    item_id = int(cb.data.split("_")[-1])
+    await state.set_state(Wait.waitReviewNote)
+    await state.update_data(action="approve", item_id=item_id, item_type="content")
+    
+    await cb.message.edit_caption(
+        caption="✅ <b>通过投稿并留言</b>\n\n请输入留言内容：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="🔙 返回", callback_data=f"review_content_detail_{item_id}")]
+            ]
+        )
+    )
+    await cb.answer()
+
+
+@content_review_router.callback_query(F.data.startswith("reject_content_note_"))
+async def cb_reject_content_note(cb: types.CallbackQuery, state: FSMContext):
+    """拒绝投稿并留言"""
+    item_id = int(cb.data.split("_")[-1])
+    await state.set_state(Wait.waitReviewNote)
+    await state.update_data(action="reject", item_id=item_id, item_type="content")
+    
+    await cb.message.edit_caption(
+        caption="❌ <b>拒绝投稿并留言</b>\n\n请输入拒绝原因：",
+        reply_markup=types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [types.InlineKeyboardButton(text="🔙 返回", callback_data=f"review_content_detail_{item_id}")]
+            ]
+        )
+    )
+    await cb.answer()
+
+
 @content_review_router.callback_query(F.data.startswith("approve_content_note_media_"))
 async def cb_approve_content_note_media(cb: types.CallbackQuery, state: FSMContext):
     """从媒体消息通过投稿并留言"""
