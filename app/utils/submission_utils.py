@@ -143,15 +143,45 @@ class SubmissionUIBuilder:
         if not items:
             text += f"📋 您还没有{config.name}记录\n\n💡 点击下方按钮开始{config.name}"
         else:
-            for item in items:
+            start_num = (page - 1) * paginator.page_size + 1
+            for i, item in enumerate(items, start_num):
+                status_emoji = {
+                    "pending": "⏳",
+                    "approved": "✅", 
+                    "rejected": "❌"
+                }.get(item.status, "❓")
+                
+                # 使用中文状态和人性化时间
                 status_text = get_status_text(item.status)
-                text += (
-                    f"🆔 ID: {item.id}\n"
-                    f"📝 {config.title_field}: {item.title}\n"
-                    f"📅 时间: {humanize_time(item.created_at)}\n"
-                    f"📊 状态: {status_text}\n"
-                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
-                )
+                time_text = humanize_time(item.created_at)
+                
+                # 美化的卡片式布局
+                text += f"┌─ {i}. {status_emoji} <b>{item.title}</b>\n"
+                text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
+                text += f"├ ⏰ 时间：<i>{time_text}</i>\n"
+                
+                # 显示类型信息（如果有）
+                if hasattr(item, 'category') and item.category:
+                    text += f"├ 📂 类型：{item.category.name}\n"
+                
+                # 显示内容预览（如果有，限制长度）
+                if config.item_type == 'movie':
+                    if hasattr(item, 'description') and item.description:
+                        desc_preview = item.description[:50] + ('...' if len(item.description) > 50 else '')
+                        text += f"├ 📝 描述：{desc_preview}\n"
+                else:
+                    if hasattr(item, 'content') and item.content:
+                        content_preview = item.content[:50] + ('...' if len(item.content) > 50 else '')
+                        text += f"├ 📄 内容：{content_preview}\n"
+                
+                # 显示审核备注（如果有）
+                if hasattr(item, 'review_note') and item.review_note:
+                    note_preview = item.review_note[:60] + ('...' if len(item.review_note) > 60 else '')
+                    text += f"└ 💬 <b>管理员备注</b>：<blockquote>{note_preview}</blockquote>\n"
+                else:
+                    text += f"└─────────────────\n"
+                
+                text += "\n"
         
         return text
     
