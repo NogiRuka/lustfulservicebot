@@ -408,9 +408,23 @@ class SubmissionHandler:
                 )
             
             if success:
+                # 构建成功页面的功能按钮
+                success_kb = types.InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            types.InlineKeyboardButton(text=f"➕ 继续{self.config.name}", callback_data=f"{self.config.item_type}_request_new"),
+                            types.InlineKeyboardButton(text=f"📋 我的{self.config.name}", callback_data=f"{self.config.item_type}_request_my")
+                        ],
+                        [
+                            types.InlineKeyboardButton(text=f"⬅️ 返回{self.config.name}中心", callback_data=f"{self.config.item_type}_center"),
+                            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                        ]
+                    ]
+                )
+                
                 await cb.message.edit_caption(
                     caption=f"✅ {self.config.name}提交成功！\n\n📋 您的{self.config.name}已提交，请等待管理员审核。",
-                    reply_markup=back_to_main_kb
+                    reply_markup=success_kb
                 )
                 await state.clear()
             else:
