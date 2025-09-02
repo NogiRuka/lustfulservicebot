@@ -36,8 +36,8 @@ async def cb_content_center(cb: types.CallbackQuery):
     await content_handler.handle_center(cb)
 
 
-@content_router.callback_query(F.data == "content_request_new")
-async def cb_content_request_new(cb: types.CallbackQuery, state: FSMContext):
+@content_router.callback_query(F.data == "content_submit_new")
+async def cb_content_submit_new(cb: types.CallbackQuery, state: FSMContext):
     """开始投稿 - 选择类型"""
     await content_handler.handle_new_submission(cb, state)
     

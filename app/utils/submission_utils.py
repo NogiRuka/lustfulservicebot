@@ -87,17 +87,32 @@ class SubmissionUIBuilder:
     @staticmethod
     def build_content_input_text(config: SubmissionConfig, category_name: str, title: str) -> str:
         """构建内容输入文本"""
-        return (
-            f"{config.emoji} <b>开始{config.name}</b> {config.emoji}\n\n"
-            f"📂 <b>类型</b>：{category_name}\n"
-            f"✅ <b>{config.title_field}</b>：{title}\n\n"
-            f"📝 <b>请输入{config.content_label}</b>\n"
-            f"├ 可以发送豆瓣链接或其他\n"
-            f"├ 可以描述剧情、演员、年份等信息\n"
-            f"├ 也可以发送相关图片\n"
-            f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
-            f"💡 <i>详细信息有助于更快找到资源</i>"
-        )
+        if config.item_type == 'movie':
+            # 求片的提示信息
+            return (
+                f"{config.emoji} <b>开始{config.name}</b> {config.emoji}\n\n"
+                f"📂 <b>类型</b>：{category_name}\n"
+                f"✅ <b>{config.title_field}</b>：{title}\n\n"
+                f"📝 <b>请输入{config.content_label}</b>\n"
+                f"├ 可以发送豆瓣链接或其他\n"
+                f"├ 可以描述剧情、演员、年份等信息\n"
+                f"├ 也可以发送相关图片\n"
+                f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
+                f"💡 <i>详细信息有助于更快找到资源</i>"
+            )
+        else:
+            # 投稿的提示信息
+            return (
+                f"{config.emoji} <b>开始{config.name}</b> {config.emoji}\n\n"
+                f"📂 <b>类型</b>：【{category_name}】\n"
+                f"✅ <b>{config.title_field}</b>：{title}\n\n"
+                f"📄 <b>请输入{config.content_label}</b>\n"
+                f"├ 可以发送磁力链接\n"
+                f"├ 可以发送网盘链接\n"
+                f"├ 可以发送资源描述\n"
+                f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
+                f"💡 <i>丰富的内容更容易通过审核</i>"
+             )
     
     @staticmethod
     def build_confirmation_text(config: SubmissionConfig, data: Dict[str, Any]) -> str:

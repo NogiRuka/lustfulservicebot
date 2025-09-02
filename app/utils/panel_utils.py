@@ -41,74 +41,8 @@ def create_info_panel_text(user_info: dict) -> str:
     return info_text
 
 
-def create_movie_request_text(step: str, category_name: str = None, title: str = None) -> str:
-    """
-    创建求片流程的提示文本
-    
-    Args:
-        step: 当前步骤 ('select_category', 'input_title', 'input_description')
-        category_name: 类型名称（可选）
-        title: 片名（可选）
-    
-    Returns:
-        格式化的提示文本
-    """
-    if step == "select_category":
-        return "🎬 <b>开始求片</b> 🎬\n\n📂 请选择您要求片的类型："
-    
-    elif step == "input_title":
-        return f"🎬 <b>开始求片</b> 🎬\n\n📂 <b>类型</b>：{category_name or '未知类型'}\n\n📝 请输入您想要的片名："
-    
-    elif step == "input_description":
-        return (
-            f"🎬 <b>开始求片</b> 🎬\n\n"
-            f"📂 <b>类型</b>：{category_name or '未知类型'}\n"
-            f"✅ <b>片名</b>：{title or '未知'}\n\n"
-            f"📝 <b>请输入详细描述</b>\n"
-            f"├ 可以发送豆瓣链接或其他\n"
-            f"├ 可以描述剧情、演员、年份等信息\n"
-            f"├ 也可以发送相关图片\n"
-            f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
-            f"💡 <i>详细信息有助于更快找到资源</i>"
-        )
-    
-    else:
-        return "🎬 <b>求片流程</b> 🎬\n\n请按照提示完成操作"
-
-
-def create_content_submit_text(step: str, category_name: str = None, title: str = None) -> str:
-    """
-    创建内容投稿流程的提示文本
-    
-    Args:
-        step: 当前步骤 ('select_category', 'input_title', 'input_content')
-        category_name: 类型名称（可选）
-        title: 标题（可选）
-    
-    Returns:
-        格式化的提示文本
-    """
-    if step == "select_category":
-        return "📝 <b>开始投稿</b> 📝\n\n📂 请选择内容类型："
-    
-    elif step == "input_title":
-        return f"📝 <b>开始投稿</b> 📝\n\n📂 <b>类型</b>：【{category_name or '通用内容'}】\n\n📝 请输入投稿标题："
-    
-    elif step == "input_content":
-        return (
-            f"📝 <b>开始投稿</b> 📝\n\n"
-            f"📂 <b>类型</b>：【{category_name or '通用内容'}】\n"
-            f"✅ <b>标题</b>：{title or '未知'}\n\n"
-            f"📄 <b>请输入投稿内容</b>\n"
-            f"├ 可以发送磁力链接\n"
-            f"├ 可以发送网盘链接\n"
-            f"├ 可以发送资源描述\n"
-            f"└ 仅限一条消息（文字或一张图片+说明文字）\n\n"
-            f"💡 <i>丰富的内容更容易通过审核</i>"
-        )
-    
-    else:
-        return "📝 <b>投稿流程</b> 📝\n\n请按照提示完成操作"
+# 注意：求片和投稿的提示文本已统一移至 submission_utils.py 中的 SubmissionUIBuilder 类
+# 这样可以保持代码的一致性和可维护性
 
 
 async def send_review_notification(bot, user_id: int, item_type: str, item_title: str, status: str, review_note: str = None, file_id: str = None, item_content: str = None, item_id: int = None, category_name: str = None):
