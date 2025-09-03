@@ -74,45 +74,56 @@ class BrowseUIBuilder:
     async def build_item_display_text_async(config: BrowseConfig, items: List[Any], page_info: Dict) -> str:
         """构建项目显示文本（异步版本，用于获取用户信息）"""
         text = format_page_header(f"{config.emoji} <b>所有{config.name}</b>", page_info)
-        text += "\n\n"
         
         if not items:
-            text += f"{config.emoji} 暂无{config.name}记录"
+            text += f"\n\n{config.emoji} 暂无{config.name}记录。"
             return text
         
         start_num = (page_info['current_page'] - 1) * page_info['page_size'] + 1
         for i, item in enumerate(items, start_num):
-            # 构建美化的卡片式显示
-            text += f"┌{'─' * 38}┐\n"
-            text += f"│ {config.emoji} <b>{getattr(item, config.title_field)}</b>\n"
-            text += f"│\n"
-            text += f"│ 🆔 ID: <code>{item.id}</code>\n"
+            # 获取类型信息
+            category_name = "未知类型"
+            if hasattr(item, 'category') and item.category:
+                category_name = item.category.name
             
-            # 获取用户显示
+            # 状态显示
+            status_text = get_status_text(item.status)
+            
+            # 获取用户显示链接
             try:
                 user_display = await get_user_display_link(item.user_id)
-                text += f"│ 👤 用户: {user_display}\n"
             except Exception as e:
-                text += f"│ 👤 用户: [用户{item.user_id}]\n"
+                user_display = f"[用户{item.user_id}]"
             
-            text += f"│ 📅 时间: {humanize_time(item.created_at)}\n"
-            text += f"│ 📊 状态: {get_status_text(item.status)}\n"
+            # 美化的卡片式布局（与审核界面保持一致）
+            title = getattr(item, config.title_field)
+            text += f"\n┌─ {i}. {config.emoji} <b>【{category_name}】{title}</b>\n"
+            text += f"├ 🆔 ID：<code>{item.id}</code>\n"
+            text += f"├ 👤 用户：{user_display}\n"
+            text += f"├ ⏰ 时间：<i>{humanize_time(item.created_at)}</i>\n"
+            text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
             
             # 显示内容预览
             content = getattr(item, config.content_field, None)
             if content:
-                preview = content[:30] + "..." if len(content) > 30 else content
-                text += f"│ 📄 内容: {preview}\n"
-            else:
-                text += f"│ 📄 内容: 无\n"
+                preview = content[:60] + ('...' if len(content) > 60 else '')
+                if config.name == "求片":
+                    text += f"├ 📝 描述：{preview}\n"
+                else:
+                    text += f"├ 📄 内容：{preview}\n"
             
             # 附件信息
             if hasattr(item, 'file_id') and item.file_id:
-                text += f"│ 📎 附件: ✅ 有\n"
+                text += f"└ 📎 <b>附件已发送</b> ✅\n"
             else:
-                text += f"│ 📎 附件: ❌ 无\n"
+                # 显示审核备注（如果有）
+                if hasattr(item, 'review_note') and item.review_note:
+                    note_preview = item.review_note[:60] + ('...' if len(item.review_note) > 60 else '')
+                    text += f"└ 💬 <b>审核备注</b>：<blockquote>{note_preview}</blockquote>\n"
+                else:
+                    text += f"└─────────────────\n"
             
-            text += f"└{'─' * 38}┘\n\n"
+            text += "\n"
         
         return text
     
@@ -207,27 +218,39 @@ class BrowseHandler:
         for item in items:
             if hasattr(item, 'file_id') and item.file_id:
                 try:
-                    # 构建媒体消息文本
+                    # 构建媒体消息文本（与审核界面保持一致）
                     user_display = await get_user_display_link(item.user_id)
                     status_text = get_status_text(item.status)
                     
+                    # 获取类型信息
+                    category_name = "未知类型"
+                    if hasattr(item, 'category') and item.category:
+                        category_name = item.category.name
+                    
+                    title = getattr(item, self.config.title_field)
                     media_text = (
-                        f"{self.config.emoji} <b>{getattr(item, self.config.title_field)}</b>\n\n"
-                        f"🆔 ID: {item.id}\n"
-                        f"👤 用户: {user_display}\n"
-                        f"📅 时间: {humanize_time(item.created_at)}\n"
-                        f"📊 状态: {status_text}\n"
+                        f"{self.config.emoji} <b>【{category_name}】{title}</b>\n\n"
+                        f"🆔 <b>{self.config.name}ID</b>：<code>{item.id}</code>\n"
+                        f"👤 <b>用户</b>：{user_display}\n"
+                        f"⏰ <b>时间</b>：<i>{humanize_time(item.created_at)}</i>\n"
+                        f"🏷️ <b>状态</b>：<code>{status_text}</code>\n"
                     )
                     
                     # 添加内容信息
                     content = getattr(item, self.config.content_field, None)
                     if content:
                         preview = content[:100] + "..." if len(content) > 100 else content
-                        media_text += f"📄 内容: {preview}\n\n"
+                        if self.config.name == "求片":
+                            media_text += f"📝 <b>描述</b>：{preview}\n\n"
+                        else:
+                            media_text += f"📄 <b>内容</b>：{preview}\n\n"
                     else:
-                        media_text += f"📄 内容: 无\n\n"
+                        if self.config.name == "求片":
+                            media_text += f"📝 <b>描述</b>：无\n\n"
+                        else:
+                            media_text += f"📄 <b>内容</b>：无\n\n"
                     
-                    media_text += f"💡 这是用户提交的附件"
+                    media_text += f"📎 <b>附件内容</b> ⬇️"
                     
                     # 发送媒体消息
                     media_msg = await cb.message.answer_photo(
