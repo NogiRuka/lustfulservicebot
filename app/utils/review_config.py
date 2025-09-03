@@ -307,6 +307,22 @@ class ReviewHandler:
         # 清理之前发送的媒体消息
         await cleanup_sent_media_messages(cb.bot, state)
         
+        # 检测是否来自review_center（数据浏览页面）
+        from_review_center = False
+        if hasattr(cb, 'message') and hasattr(cb.message, 'reply_markup'):
+            # 检查当前消息的按钮中是否有"返回审核中心"按钮
+            if cb.message.reply_markup and cb.message.reply_markup.inline_keyboard:
+                for row in cb.message.reply_markup.inline_keyboard:
+                    for button in row:
+                        if button.callback_data == "admin_review_center":
+                            from_review_center = True
+                            break
+                    if from_review_center:
+                        break
+        
+        # 在状态中设置from_review_center标记
+        await state.update_data(from_review_center=from_review_center)
+        
         # 获取项目详情
         item = await self.config.get_item_by_id_function(item_id)
         if not item:

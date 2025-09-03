@@ -278,12 +278,21 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
             await cleanup_sent_media_messages(cb.bot, state)
             
             # 刷新原来的主面板并发送新的媒体消息
-            if item_type == 'movie':
-                from app.handlers.admins.movie_review_new import movie_review_handler
-                await movie_review_handler.handle_review_list(cb, state)
-            elif item_type == 'content':
-                from app.handlers.admins.content_review_new import content_review_handler
-                await content_review_handler.handle_review_list(cb, state)
+            # 检查是否来自数据浏览页面（review_center）
+            from_review_center = data.get('from_review_center', False)
+            
+            if from_review_center:
+                # 如果来自数据浏览页面，返回审核中心
+                from app.handlers.admins.review_center import cb_admin_review_center
+                await cb_admin_review_center(cb, state)
+            else:
+                # 否则返回具体的审核列表
+                if item_type == 'movie':
+                    from app.handlers.admins.movie_review_new import movie_review_handler
+                    await movie_review_handler.handle_review_list(cb, state)
+                elif item_type == 'content':
+                    from app.handlers.admins.content_review_new import content_review_handler
+                    await content_review_handler.handle_review_list(cb, state)
         else:
             # 普通消息显示结果页面
             result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{type_text} #{item_id}\n💬 留言：无\n\n审核结果已保存。"
@@ -380,12 +389,21 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
             await cleanup_sent_media_messages(cb.bot, state)
             
             # 刷新原来的主面板并发送新的媒体消息
-            if item_type == 'movie':
-                from app.handlers.admins.movie_review_new import movie_review_handler
-                await movie_review_handler.handle_review_list(cb, state)
-            elif item_type == 'content':
-                from app.handlers.admins.content_review_new import content_review_handler
-                await content_review_handler.handle_review_list(cb, state)
+            # 检查是否来自数据浏览页面（review_center）
+            from_review_center = data.get('from_review_center', False)
+            
+            if from_review_center:
+                # 如果来自数据浏览页面，返回审核中心
+                from app.handlers.admins.review_center import cb_admin_review_center
+                await cb_admin_review_center(cb, state)
+            else:
+                # 否则返回具体的审核列表
+                if item_type == 'movie':
+                    from app.handlers.admins.movie_review_new import movie_review_handler
+                    await movie_review_handler.handle_review_list(cb, state)
+                elif item_type == 'content':
+                    from app.handlers.admins.content_review_new import content_review_handler
+                    await content_review_handler.handle_review_list(cb, state)
         else:
             # 普通消息显示结果页面
             result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{type_text} #{item_id}\n💬 留言：{review_note}\n\n审核结果已保存，用户将看到您的留言。"
