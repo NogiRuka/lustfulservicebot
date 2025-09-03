@@ -93,7 +93,12 @@ async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
     """通过求片并留言"""
     item_id = int(cb.data.split("_")[-1])
     await state.set_state(Wait.waitReviewNote)
-    await state.update_data(action="approve", item_id=item_id, item_type="movie")
+    await state.update_data(
+        action="approve", 
+        item_id=item_id, 
+        item_type="movie",
+        message_id=cb.message.message_id
+    )
     
     await cb.message.edit_caption(
         caption="✅ <b>通过求片并留言</b>\n\n请输入留言内容：",
@@ -111,7 +116,12 @@ async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
     """拒绝求片并留言"""
     item_id = int(cb.data.split("_")[-1])
     await state.set_state(Wait.waitReviewNote)
-    await state.update_data(action="reject", item_id=item_id, item_type="movie")
+    await state.update_data(
+        action="reject", 
+        item_id=item_id, 
+        item_type="movie",
+        message_id=cb.message.message_id
+    )
     
     await cb.message.edit_caption(
         caption="❌ <b>拒绝求片并留言</b>\n\n请输入拒绝原因：",

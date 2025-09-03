@@ -130,28 +130,29 @@ async def process_review_note(msg: types.Message, state: FSMContext):
     review_note = msg.text.strip()
     data = await state.get_data()
     
-    review_type = data.get('review_type')
-    review_id = data.get('review_id')
-    review_action = data.get('review_action')
+    # 兼容新旧数据格式
+    action = data.get('action') or data.get('review_action')
+    item_id = data.get('item_id') or data.get('review_id')
+    item_type = data.get('item_type') or data.get('review_type')
     message_id = data.get('message_id')
     
     # 留言现在可以为空，不需要检查
     
     # 在面板回显管理员输入的内容
-    action_text = "通过" if review_action == "approved" else "拒绝"
-    item_type = "求片" if review_type == "movie" else "投稿"
+    action_text = "通过" if action == "approve" or action == "approved" else "拒绝"
+    type_text = "求片" if item_type == "movie" else "投稿"
     
     if review_note.strip():
         echo_text = (
             f"💬 <b>审核留言</b>\n\n"
-            f"🎯 操作：{action_text}{item_type} #{review_id}\n"
+            f"🎯 操作：{action_text}{type_text} #{item_id}\n"
             f"📝 留言：{review_note}\n\n"
             f"请确认以上信息是否正确？"
         )
     else:
         echo_text = (
             f"💬 <b>审核留言</b>\n\n"
-            f"🎯 操作：{action_text}{item_type} #{review_id}\n"
+            f"🎯 操作：{action_text}{type_text} #{item_id}\n"
             f"📝 留言：（空留言）\n\n"
             f"请确认以上信息是否正确？"
         )
@@ -163,7 +164,7 @@ async def process_review_note(msg: types.Message, state: FSMContext):
                 types.InlineKeyboardButton(text="✏️ 重新编辑", callback_data="edit_review_note")
             ],
             [
-                types.InlineKeyboardButton(text="❌ 取消审核", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content")
+                types.InlineKeyboardButton(text="❌ 取消审核", callback_data=f"admin_review_{item_type}" if item_type == "movie" else "admin_review_content")
             ]
         ]
     )
@@ -173,12 +174,24 @@ async def process_review_note(msg: types.Message, state: FSMContext):
     
     # 在面板回显
     try:
-        await msg.bot.edit_message_caption(
-            chat_id=msg.from_user.id,
-            message_id=message_id,
-            caption=echo_text,
-            reply_markup=confirm_kb
-        )
+        # 如果没有message_id，尝试使用当前消息的reply_to_message
+        if not message_id and msg.reply_to_message:
+            message_id = msg.reply_to_message.message_id
+        
+        if message_id:
+            await msg.bot.edit_message_caption(
+                chat_id=msg.from_user.id,
+                message_id=message_id,
+                caption=echo_text,
+                reply_markup=confirm_kb
+            )
+        else:
+            # 如果没有message_id，发送新消息
+            await msg.answer_photo(
+                photo=DEFAULT_WELCOME_PHOTO,
+                caption=echo_text,
+                reply_markup=confirm_kb
+            )
     except Exception as e:
         logger.error(f"编辑消息失败: {e}")
         # 如果编辑失败，发送新消息
