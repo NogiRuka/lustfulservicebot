@@ -350,62 +350,42 @@ class ReviewHandler:
         success = await self.config.review_function(item_id, cb.from_user.id, "approved", note)
         
         if success:
-            # 如果是媒体消息审核，编辑媒体消息
+            # 发送审核通知
+            await self._send_review_notification(cb, item_id, "approved")
+            
+            # 如果是媒体消息审核，只显示alert并删除媒体消息
             if "media" in cb.data:
-                await cb.message.edit_caption(
-                    caption=f"✅ {self.config.name}审核通过！\n\n📋 <a href='tg://user?id={cb.from_user.id}'>返回审核列表</a>",
-                    reply_markup=types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                        ]
-                    )
-                )
+                await cb.answer(f"✅ {self.config.name}已通过")
+                # 删除已发送的媒体消息并刷新主面板
+                await cleanup_sent_media_messages(cb.bot, state)
+                await self.handle_review_list(cb, state)
             else:
-                await cb.message.edit_caption(
-                    caption=f"✅ {self.config.name}审核通过！",
-                    reply_markup=types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                        ]
-                    )
-                )
-            # 清理媒体消息
-            await cleanup_sent_media_messages(cb.bot, state)
+                await cb.answer(f"✅ {self.config.name}已通过")
+                # 刷新审核列表
+                await self.handle_review_list(cb, state)
         else:
-            await cb.answer("❌ 操作失败", show_alert=True)
-        
-        await cb.answer()
+            await cb.answer(f"❌ 操作失败，请检查{self.config.name}ID是否正确", show_alert=True)
     
     async def handle_reject(self, cb: types.CallbackQuery, state: FSMContext, item_id: int, note: str = None):
         """处理拒绝审核"""
         success = await self.config.review_function(item_id, cb.from_user.id, "rejected", note)
         
         if success:
-            # 如果是媒体消息审核，编辑媒体消息
+            # 发送审核通知
+            await self._send_review_notification(cb, item_id, "rejected")
+            
+            # 如果是媒体消息审核，只显示alert并删除媒体消息
             if "media" in cb.data:
-                await cb.message.edit_caption(
-                    caption=f"❌ {self.config.name}审核拒绝！\n\n📋 <a href='tg://user?id={cb.from_user.id}'>返回审核列表</a>",
-                    reply_markup=types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                        ]
-                    )
-                )
+                await cb.answer(f"❌ {self.config.name}已拒绝")
+                # 删除已发送的媒体消息并刷新主面板
+                await cleanup_sent_media_messages(cb.bot, state)
+                await self.handle_review_list(cb, state)
             else:
-                await cb.message.edit_caption(
-                    caption=f"❌ {self.config.name}审核拒绝！",
-                    reply_markup=types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                        ]
-                    )
-                )
-            # 清理媒体消息
-            await cleanup_sent_media_messages(cb.bot, state)
+                await cb.answer(f"❌ {self.config.name}已拒绝")
+                # 刷新审核列表
+                await self.handle_review_list(cb, state)
         else:
-            await cb.answer("❌ 操作失败", show_alert=True)
-        
-        await cb.answer()
+            await cb.answer(f"❌ 操作失败，请检查{self.config.name}ID是否正确", show_alert=True)
     
     async def handle_cleanup(self, cb: types.CallbackQuery, state: FSMContext):
         """处理清理并返回列表"""
@@ -431,3 +411,30 @@ class ReviewHandler:
         except Exception as e:
             logger.error(f"删除媒体消息失败: {e}")
             await cb.answer("❌ 删除失败")
+    
+    async def _send_review_notification(self, cb: types.CallbackQuery, item_id: int, status: str):
+        """发送审核通知"""
+        try:
+            # 获取项目信息
+            item = await self.config.get_item_by_id_function(item_id)
+            if not item:
+                return
+            
+            # 获取分类名称
+            category_name = None
+            if hasattr(item, 'category_id') and item.category_id:
+                from app.database.business import get_movie_category_by_id
+                category = await get_movie_category_by_id(item.category_id)
+                category_name = category.name if category else None
+            
+            # 发送通知
+            await send_review_notification(
+                cb.bot, item.user_id, self.config.item_type, 
+                getattr(item, self.config.title_field), status,
+                file_id=getattr(item, 'file_id', None),
+                item_content=getattr(item, self.config.content_field, None),
+                item_id=item.id,
+                category_name=category_name
+            )
+        except Exception as e:
+            logger.error(f"发送审核通知失败: {e}")
