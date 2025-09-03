@@ -26,6 +26,9 @@ class Wait(StatesGroup):
     # 审核留言状态
     waitReviewNote = State()
     
+    # 回复用户状态
+    waitReplyMessage = State()
+    
     # 超管添加管理员状态
     waitAdminUserId = State()
     waitCategoryName = State()
