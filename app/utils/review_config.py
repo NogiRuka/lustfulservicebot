@@ -81,7 +81,7 @@ class ReviewUIBuilder:
             
             # 美化的卡片式布局
             title = getattr(item, config.title_field)
-            text += f"\n┌─ {i}. {config.emoji} <b>【{category_name}】{title}</b>\n"
+            text += f"┌─ {i}. {config.emoji} <b>【{category_name}】{title}</b>\n"
             text += f"├ 🆔 ID：<code>{item.id}</code>\n"
             text += f"├ 👤 用户：{user_display}\n"
             text += f"├ ⏰ 时间：<i>{humanize_time(item.created_at)}</i>\n"
@@ -132,7 +132,7 @@ class ReviewUIBuilder:
         
         # 使用分页器创建键盘
         keyboard = paginator.create_pagination_keyboard(
-            page, config.page_callback_prefix.rstrip('_'), extra_buttons
+            page, config.page_callback_prefix.rstrip('_page_'), extra_buttons
         )
         
         return keyboard
@@ -304,6 +304,9 @@ class ReviewHandler:
     
     async def handle_detail(self, cb: types.CallbackQuery, state: FSMContext, item_id: int):
         """处理详情查看"""
+        # 清理之前发送的媒体消息
+        await cleanup_sent_media_messages(cb.bot, state)
+        
         # 获取项目详情
         item = await self.config.get_item_by_id_function(item_id)
         if not item:
@@ -323,31 +326,49 @@ class ReviewHandler:
                     parse_mode="HTML"
                 )
                 # 保存媒体消息ID
-                await state.update_data(media_message_id=media_msg.message_id)
+                data = await state.get_data()
+                sent_media_ids = data.get('sent_media_ids', [])
+                sent_media_ids.append(media_msg.message_id)
+                await state.update_data(
+                    sent_media_ids=sent_media_ids,
+                    chat_id=cb.from_user.id
+                )
             except Exception as e:
                 logger.error(f"发送媒体消息失败: {e}")
         
         # 编辑原消息
-        await cb.message.edit_caption(
+        from app.utils.message_utils import safe_edit_message
+        await safe_edit_message(
+            cb.message,
             caption=detail_text,
-            reply_markup=ReviewUIBuilder.build_detail_keyboard(self.config, item_id),
-            parse_mode="HTML"
+            reply_markup=ReviewUIBuilder.build_detail_keyboard(self.config, item_id)
         )
         await cb.answer()
     
     async def handle_approve(self, cb: types.CallbackQuery, state: FSMContext, item_id: int, note: str = None):
         """处理通过审核"""
-        success = await self.config.review_function(item_id, "approved", note)
+        success = await self.config.review_function(item_id, cb.from_user.id, "approved", note)
         
         if success:
-            await cb.message.edit_caption(
-                caption=f"✅ {self.config.name}审核通过！",
-                reply_markup=types.InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                    ]
+            # 如果是媒体消息审核，编辑媒体消息
+            if "media" in cb.data:
+                await cb.message.edit_caption(
+                    caption=f"✅ {self.config.name}审核通过！\n\n📋 <a href='tg://user?id={cb.from_user.id}'>返回审核列表</a>",
+                    reply_markup=types.InlineKeyboardMarkup(
+                        inline_keyboard=[
+                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
+                        ]
+                    )
                 )
-            )
+            else:
+                await cb.message.edit_caption(
+                    caption=f"✅ {self.config.name}审核通过！",
+                    reply_markup=types.InlineKeyboardMarkup(
+                        inline_keyboard=[
+                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
+                        ]
+                    )
+                )
             # 清理媒体消息
             await cleanup_sent_media_messages(cb.bot, state)
         else:
@@ -357,17 +378,28 @@ class ReviewHandler:
     
     async def handle_reject(self, cb: types.CallbackQuery, state: FSMContext, item_id: int, note: str = None):
         """处理拒绝审核"""
-        success = await self.config.review_function(item_id, "rejected", note)
+        success = await self.config.review_function(item_id, cb.from_user.id, "rejected", note)
         
         if success:
-            await cb.message.edit_caption(
-                caption=f"❌ {self.config.name}审核拒绝！",
-                reply_markup=types.InlineKeyboardMarkup(
-                    inline_keyboard=[
-                        [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                    ]
+            # 如果是媒体消息审核，编辑媒体消息
+            if "media" in cb.data:
+                await cb.message.edit_caption(
+                    caption=f"❌ {self.config.name}审核拒绝！\n\n📋 <a href='tg://user?id={cb.from_user.id}'>返回审核列表</a>",
+                    reply_markup=types.InlineKeyboardMarkup(
+                        inline_keyboard=[
+                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
+                        ]
+                    )
                 )
-            )
+            else:
+                await cb.message.edit_caption(
+                    caption=f"❌ {self.config.name}审核拒绝！",
+                    reply_markup=types.InlineKeyboardMarkup(
+                        inline_keyboard=[
+                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
+                        ]
+                    )
+                )
             # 清理媒体消息
             await cleanup_sent_media_messages(cb.bot, state)
         else:
