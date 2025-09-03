@@ -67,6 +67,7 @@ async def cb_admin_all_movies(cb: types.CallbackQuery, state: FSMContext):
 @review_center_router.callback_query(F.data.startswith("all_movie_page_"))
 async def cb_admin_all_movies_page(cb: types.CallbackQuery, state: FSMContext):
     """所有求片分页"""
+    await cleanup_sent_media_messages(cb.bot, state)
     page = extract_page_from_callback(cb.data, "all_movie")
     await _show_all_movies_page(cb, state, page)
 
@@ -109,18 +110,8 @@ async def _show_all_movies_page(cb: types.CallbackQuery, state: FSMContext, page
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
         )
     
-    # 构建键盘
+    # 构建键盘（简化版，只保留导航按钮）
     keyboard = []
-    
-    # 项目按钮
-    for i, request in enumerate(page_data, start_num):
-        title = request.title[:20] + "..." if len(request.title) > 20 else request.title
-        keyboard.append([
-            types.InlineKeyboardButton(
-                text=f"{i}. {title}",
-                callback_data=f"preview_movie_detail_{request.id}"
-            )
-        ])
     
     # 分页按钮
     if paginator.total_pages > 1:
@@ -144,7 +135,8 @@ async def _show_all_movies_page(cb: types.CallbackQuery, state: FSMContext, page
     
     # 返回按钮
     keyboard.append([
-        types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center")
+        types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center_cleanup"),
+        types.InlineKeyboardButton(text="🏠 返回主菜单", callback_data="back_to_main_cleanup")
     ])
     
     await cb.message.edit_caption(
@@ -586,6 +578,29 @@ async def process_reply_message(msg: types.Message, state: FSMContext):
     await state.clear()
 
 
+# ==================== 清理功能 ====================
+
+@review_center_router.callback_query(F.data == "admin_review_center_cleanup")
+async def cb_admin_review_center_cleanup(cb: types.CallbackQuery, state: FSMContext):
+    """清理媒体消息并返回审核中心"""
+    await cleanup_sent_media_messages(cb.bot, state)
+    await cb_admin_review_center(cb, state)
+
+
+@review_center_router.callback_query(F.data == "back_to_main_cleanup")
+async def cb_back_to_main_cleanup(cb: types.CallbackQuery, state: FSMContext):
+    """清理媒体消息并返回主菜单"""
+    await cleanup_sent_media_messages(cb.bot, state)
+    
+    # 返回主菜单
+    from app.buttons.users import back_to_main_kb
+    await cb.message.edit_caption(
+        caption="🏠 <b>主菜单</b>\n\n请选择您需要的功能：",
+        reply_markup=back_to_main_kb
+    )
+    await cb.answer()
+
+
 # ==================== 所有投稿管理 ====================
 
 @review_center_router.callback_query(F.data == "admin_all_content")
@@ -598,6 +613,7 @@ async def cb_admin_all_content(cb: types.CallbackQuery, state: FSMContext):
 @review_center_router.callback_query(F.data.startswith("all_content_page_"))
 async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext):
     """所有投稿分页"""
+    await cleanup_sent_media_messages(cb.bot, state)
     page = extract_page_from_callback(cb.data, "all_content")
     await _show_all_content_page(cb, state, page)
 
@@ -640,18 +656,8 @@ async def _show_all_content_page(cb: types.CallbackQuery, state: FSMContext, pag
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
         )
     
-    # 构建键盘
+    # 构建键盘（简化版，只保留导航按钮）
     keyboard = []
-    
-    # 项目按钮
-    for i, submission in enumerate(page_data, start_num):
-        title = submission.title[:20] + "..." if len(submission.title) > 20 else submission.title
-        keyboard.append([
-            types.InlineKeyboardButton(
-                text=f"{i}. {title}",
-                callback_data=f"preview_content_detail_{submission.id}"
-            )
-        ])
     
     # 分页按钮
     if paginator.total_pages > 1:
@@ -675,7 +681,8 @@ async def _show_all_content_page(cb: types.CallbackQuery, state: FSMContext, pag
     
     # 返回按钮
     keyboard.append([
-        types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center")
+        types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center_cleanup"),
+        types.InlineKeyboardButton(text="🏠 返回主菜单", callback_data="back_to_main_cleanup")
     ])
     
     await cb.message.edit_caption(
