@@ -60,82 +60,71 @@ class ReviewUIBuilder:
     async def build_review_list_text(config: ReviewConfig, items: List, paginator: Paginator, page: int) -> str:
         """构建审核列表文本"""
         page_info = paginator.get_page_info(page)
-        text = format_page_header(f"{config.emoji} <b>{config.name}审核</b>", page_info)
+        text = format_page_header(f"{config.emoji} {config.name}审核", page_info)
+        text += "\n\n"
         
         if not items:
-            text += f"\n\n{config.emoji} 暂无待审核的{config.name}请求。"
+            text += f"{config.emoji} 暂无待审核的{config.name}请求"
             return text
         
-        start_num = (page - 1) * paginator.page_size + 1
-        for i, item in enumerate(items, start_num):
-            # 获取类型信息
-            category_name = "未知类型"
-            if hasattr(item, 'category') and item.category:
-                category_name = item.category.name
-            
-            # 状态显示
-            status_text = get_status_text(item.status)
-            
-            # 获取用户显示链接
+        for item in items:
             user_display = await get_user_display_link(item.user_id)
-            
-            # 美化的卡片式布局
             title = getattr(item, config.title_field)
-            text += f"┌─ {i}. {config.emoji} <b>【{category_name}】{title}</b>\n"
-            text += f"├ 🆔 ID：<code>{item.id}</code>\n"
-            text += f"├ 👤 用户：{user_display}\n"
-            text += f"├ ⏰ 时间：<i>{humanize_time(item.created_at)}</i>\n"
-            text += f"├ 🏷️ 状态：<code>{status_text}</code>\n"
-            
-            # 内容预览
-            content = getattr(item, config.content_field, None)
-            if content:
-                content_preview = content[:60] + ('...' if len(content) > 60 else '')
-                text += f"├ 📝 {config.content_field}：{content_preview}\n"
-            
-            # 媒体信息
-            if hasattr(item, 'file_id') and item.file_id:
-                text += f"└ 📎 <b>附件已发送</b> ✅\n"
-            else:
-                text += f"└─────────────────\n"
+            text += (
+                f"🆔 ID: {item.id}\n"
+                f"{config.emoji} {config.title_field}: {title}\n"
+                f"👤 用户: {user_display}\n"
+                f"📅 时间: {humanize_time(item.created_at)}\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            )
         
         return text
     
     @staticmethod
     def build_review_list_keyboard(config: ReviewConfig, items: List, paginator: Paginator, page: int) -> types.InlineKeyboardMarkup:
         """构建审核列表键盘"""
-        extra_buttons = []
+        keyboard = []
         
-        # 为当前页面的每个项目添加快速操作按钮
+        # 详情按钮（每行2个）
         if items:
-            for item in items:
-                extra_buttons.append([
-                    types.InlineKeyboardButton(text=f"✅ 通过 #{item.id}", callback_data=f"{config.approve_callback_prefix}{item.id}"),
-                    types.InlineKeyboardButton(text=f"❌ 拒绝 #{item.id}", callback_data=f"{config.reject_callback_prefix}{item.id}")
-                ])
-                extra_buttons.append([
-                    types.InlineKeyboardButton(text=f"💬 留言通过 #{item.id}", callback_data=f"approve_{config.item_type}_note_{item.id}"),
-                    types.InlineKeyboardButton(text=f"💬 留言拒绝 #{item.id}", callback_data=f"reject_{config.item_type}_note_{item.id}")
-                ])
+            detail_buttons = []
+            for i, item in enumerate(items):
+                detail_buttons.append(
+                    types.InlineKeyboardButton(
+                        text=f"📋 详情 {item.id}",
+                        callback_data=f"{config.detail_callback_prefix}{item.id}"
+                    )
+                )
+                if (i + 1) % 2 == 0 or i == len(items) - 1:
+                    keyboard.append(detail_buttons)
+                    detail_buttons = []
         
-        # 添加其他功能按钮
-        extra_buttons.extend([
-            [
-                types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"{config.detail_callback_prefix}{items[0].id}" if items else config.list_callback),
-                types.InlineKeyboardButton(text="🔄 刷新", callback_data=config.list_callback)
-            ],
-            [
-                types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
-                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
-            ]
+        # 分页按钮
+        if paginator.total_pages > 1:
+            nav_buttons = []
+            if paginator.has_prev(page):
+                nav_buttons.append(
+                    types.InlineKeyboardButton(
+                        text="⬅️ 上一页", 
+                        callback_data=f"{config.page_callback_prefix}{page - 1}"
+                    )
+                )
+            if paginator.has_next(page):
+                nav_buttons.append(
+                    types.InlineKeyboardButton(
+                        text="➡️ 下一页", 
+                        callback_data=f"{config.page_callback_prefix}{page + 1}"
+                    )
+                )
+            if nav_buttons:
+                keyboard.append(nav_buttons)
+        
+        # 返回按钮
+        keyboard.append([
+            types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center")
         ])
         
-        # 使用分页器创建键盘
-        keyboard = paginator.create_pagination_keyboard(
-            page, config.page_callback_prefix.rstrip('_page_'), extra_buttons
-        )
-        
-        return keyboard
+        return types.InlineKeyboardMarkup(inline_keyboard=keyboard)
     
     @staticmethod
     async def build_detail_text(config: ReviewConfig, item: Any) -> str:
@@ -213,36 +202,30 @@ class ReviewHandler:
         # 清理之前发送的媒体消息
         await cleanup_sent_media_messages(cb.bot, state)
         
-        # 清空媒体消息记录
-        await state.update_data(sent_media_ids=[])
-        
         # 获取待审核的项目
         items = await self.config.get_pending_items_function()
         
         if not items:
-            from app.buttons.users import admin_review_center_kb
             await cb.message.edit_caption(
-                caption=f"{self.config.emoji} <b>{self.config.name}审核</b>\n\n暂无待审核的{self.config.name}请求。",
-                reply_markup=admin_review_center_kb
+                caption=f"📋 <b>{self.config.name}审核</b>\n\n{self.config.emoji} 暂无待审核的{self.config.name}请求",
+                reply_markup=types.InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center")]
+                    ]
+                )
             )
             await cb.answer()
             return
         
         # 创建分页器
-        paginator = Paginator(items, page_size=3)  # 使用原来的页面大小
+        paginator = Paginator(items, page_size=5)
         page_data = paginator.get_page_items(page)
         
         # 构建界面
         text = await ReviewUIBuilder.build_review_list_text(self.config, page_data, paginator, page)
-        
-        # 处理媒体消息
-        await self._send_media_messages(cb, state, page_data)
-        
         keyboard = ReviewUIBuilder.build_review_list_keyboard(self.config, page_data, paginator, page)
         
-        from app.utils.message_utils import safe_edit_message
-        await safe_edit_message(
-            cb.message,
+        await cb.message.edit_caption(
             caption=text,
             reply_markup=keyboard
         )
@@ -347,65 +330,79 @@ class ReviewHandler:
     
     async def handle_approve(self, cb: types.CallbackQuery, state: FSMContext, item_id: int, note: str = None):
         """处理通过审核"""
-        success = await self.config.review_function(item_id, cb.from_user.id, "approved", note)
+        # 使用ReviewActionHandler处理审核
+        from app.utils.review_utils import ReviewActionHandler
+        
+        if note:
+            success = await ReviewActionHandler.handle_review_with_note(
+                self.config.item_type, item_id, cb.from_user.id, "approved", note
+            )
+        else:
+            success = await ReviewActionHandler.handle_quick_review(
+                self.config.item_type, item_id, cb.from_user.id, "approved"
+            )
         
         if success:
-            # 如果是媒体消息审核，编辑媒体消息
-            if "media" in cb.data:
-                await cb.message.edit_caption(
-                    caption=f"✅ {self.config.name}审核通过！\n\n📋 <a href='tg://user?id={cb.from_user.id}'>返回审核列表</a>",
-                    reply_markup=types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                        ]
-                    )
-                )
-            else:
-                await cb.message.edit_caption(
-                    caption=f"✅ {self.config.name}审核通过！",
-                    reply_markup=types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                        ]
-                    )
-                )
-            # 清理媒体消息
-            await cleanup_sent_media_messages(cb.bot, state)
+            # 发送审核通知
+            await self._send_review_notification(cb, item_id, "approved")
+            
+            await cb.answer(f"✅ {self.config.name}已通过")
+            # 刷新审核列表
+            await self.handle_review_list(cb, state)
         else:
-            await cb.answer("❌ 操作失败", show_alert=True)
-        
-        await cb.answer()
+            await cb.answer(f"❌ 操作失败，请检查{self.config.name}ID是否正确")
+    
+    async def _send_review_notification(self, cb: types.CallbackQuery, item_id: int, status: str):
+        """发送审核通知"""
+        try:
+            # 获取项目信息
+            item = await self.config.get_item_by_id_function(item_id)
+            if not item:
+                return
+            
+            # 获取分类名称
+            category_name = None
+            if hasattr(item, 'category_id') and item.category_id:
+                from app.database.business import get_movie_category_by_id
+                category = await get_movie_category_by_id(item.category_id)
+                category_name = category.name if category else None
+            
+            # 发送通知
+            from app.utils.panel_utils import send_review_notification
+            await send_review_notification(
+                cb.bot, item.user_id, self.config.item_type, 
+                getattr(item, self.config.title_field), status,
+                file_id=getattr(item, 'file_id', None),
+                item_content=getattr(item, self.config.content_field, None),
+                item_id=item.id,
+                category_name=category_name
+            )
+        except Exception as e:
+            logger.error(f"发送审核通知失败: {e}")
     
     async def handle_reject(self, cb: types.CallbackQuery, state: FSMContext, item_id: int, note: str = None):
         """处理拒绝审核"""
-        success = await self.config.review_function(item_id, cb.from_user.id, "rejected", note)
+        # 使用ReviewActionHandler处理审核
+        from app.utils.review_utils import ReviewActionHandler
+        
+        if note:
+            success = await ReviewActionHandler.handle_review_with_note(
+                self.config.item_type, item_id, cb.from_user.id, "rejected", note
+            )
+        else:
+            success = await ReviewActionHandler.handle_quick_review(
+                self.config.item_type, item_id, cb.from_user.id, "rejected"
+            )
         
         if success:
-            # 如果是媒体消息审核，编辑媒体消息
-            if "media" in cb.data:
-                await cb.message.edit_caption(
-                    caption=f"❌ {self.config.name}审核拒绝！\n\n📋 <a href='tg://user?id={cb.from_user.id}'>返回审核列表</a>",
-                    reply_markup=types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                        ]
-                    )
-                )
-            else:
-                await cb.message.edit_caption(
-                    caption=f"❌ {self.config.name}审核拒绝！",
-                    reply_markup=types.InlineKeyboardMarkup(
-                        inline_keyboard=[
-                            [types.InlineKeyboardButton(text="📋 返回列表", callback_data=self.config.list_callback)]
-                        ]
-                    )
-                )
-            # 清理媒体消息
-            await cleanup_sent_media_messages(cb.bot, state)
+            # 发送审核通知
+            await self._send_review_notification(cb, item_id, "rejected")
+            
+            await cb.answer(f"❌ {self.config.name}已拒绝")
+            # 刷新审核列表
+            await self.handle_review_list(cb, state)
         else:
-            await cb.answer("❌ 操作失败", show_alert=True)
-        
-        await cb.answer()
+            await cb.answer(f"❌ 操作失败，请检查{self.config.name}ID是否正确")
     
     async def handle_cleanup(self, cb: types.CallbackQuery, state: FSMContext):
         """处理清理并返回列表"""
