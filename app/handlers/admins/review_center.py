@@ -149,7 +149,60 @@ async def _show_all_movies_page(cb: types.CallbackQuery, state: FSMContext, page
         caption=text,
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=keyboard)
     )
+    
+    # 发送有媒体的项目
+    await _send_media_messages_for_movies(cb, state, page_data)
+    
     await cb.answer()
+
+
+async def _send_media_messages_for_movies(cb: types.CallbackQuery, state: FSMContext, items: list):
+    """为有媒体的求片项目发送媒体消息"""
+    data = await state.get_data()
+    sent_media_ids = data.get('sent_media_ids', [])
+    
+    for item in items:
+        if hasattr(item, 'file_id') and item.file_id:
+            try:
+                # 构建媒体消息文本
+                user_display = await get_user_display_link(item.user_id)
+                status_text = get_status_text(item.status)
+                
+                media_text = (
+                    f"🎬 <b>{item.title}</b>\n\n"
+                    f"🆔 ID: {item.id}\n"
+                    f"👤 用户: {user_display}\n"
+                    f"📅 时间: {humanize_time(item.created_at)}\n"
+                    f"📊 状态: {status_text}\n"
+                    f"📝 描述: {item.description or '无'}\n\n"
+                    f"💡 点击下方按钮进行操作"
+                )
+                
+                # 构建媒体消息键盘
+                media_keyboard = types.InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            types.InlineKeyboardButton(text="📋 详情", callback_data=f"review_movie_detail_{item.id}")
+                        ]
+                    ]
+                )
+                
+                # 发送媒体消息
+                media_msg = await cb.message.answer_photo(
+                    photo=item.file_id,
+                    caption=media_text,
+                    reply_markup=media_keyboard,
+                    parse_mode="HTML"
+                )
+                
+                # 保存媒体消息ID
+                sent_media_ids.append(media_msg.message_id)
+                
+            except Exception as e:
+                logger.error(f"发送求片媒体消息失败: {e}")
+    
+    # 更新状态中的媒体消息ID列表
+    await state.update_data(sent_media_ids=sent_media_ids, chat_id=cb.from_user.id)
 
 
 # ==================== 所有投稿管理 ====================
@@ -248,4 +301,57 @@ async def _show_all_content_page(cb: types.CallbackQuery, state: FSMContext, pag
         caption=text,
         reply_markup=types.InlineKeyboardMarkup(inline_keyboard=keyboard)
     )
+    
+    # 发送有媒体的项目
+    await _send_media_messages_for_content(cb, state, page_data)
+    
     await cb.answer()
+
+
+async def _send_media_messages_for_content(cb: types.CallbackQuery, state: FSMContext, items: list):
+    """为有媒体的投稿项目发送媒体消息"""
+    data = await state.get_data()
+    sent_media_ids = data.get('sent_media_ids', [])
+    
+    for item in items:
+        if hasattr(item, 'file_id') and item.file_id:
+            try:
+                # 构建媒体消息文本
+                user_display = await get_user_display_link(item.user_id)
+                status_text = get_status_text(item.status)
+                
+                media_text = (
+                    f"📝 <b>{item.title}</b>\n\n"
+                    f"🆔 ID: {item.id}\n"
+                    f"👤 用户: {user_display}\n"
+                    f"📅 时间: {humanize_time(item.created_at)}\n"
+                    f"📊 状态: {status_text}\n"
+                    f"📄 内容: {item.content or '无'}\n\n"
+                    f"💡 点击下方按钮进行操作"
+                )
+                
+                # 构建媒体消息键盘
+                media_keyboard = types.InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            types.InlineKeyboardButton(text="📋 详情", callback_data=f"review_content_detail_{item.id}")
+                        ]
+                    ]
+                )
+                
+                # 发送媒体消息
+                media_msg = await cb.message.answer_photo(
+                    photo=item.file_id,
+                    caption=media_text,
+                    reply_markup=media_keyboard,
+                    parse_mode="HTML"
+                )
+                
+                # 保存媒体消息ID
+                sent_media_ids.append(media_msg.message_id)
+                
+            except Exception as e:
+                logger.error(f"发送投稿媒体消息失败: {e}")
+    
+    # 更新状态中的媒体消息ID列表
+    await state.update_data(sent_media_ids=sent_media_ids, chat_id=cb.from_user.id)
