@@ -270,12 +270,20 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
         is_media_message = data.get('is_media_message', False)
         
         if is_media_message:
-            # 媒体消息直接删除
+            # 媒体消息审核完成：alert提示 + 删除媒体消息 + 刷新主面板
             await cb.answer(f"✅ 已{action_text}{type_text} {item_id}（无留言）", show_alert=True)
-            try:
-                await cb.message.delete()
-            except Exception as e:
-                logger.warning(f"删除媒体消息失败: {e}")
+            
+            # 删除所有已发送的媒体消息
+            from app.utils.panel_utils import cleanup_sent_media_messages
+            await cleanup_sent_media_messages(cb.bot, state)
+            
+            # 刷新原来的主面板并发送新的媒体消息
+            if item_type == 'movie':
+                from app.handlers.admins.movie_review_new import movie_review_handler
+                await movie_review_handler.handle_review_list(cb, state)
+            elif item_type == 'content':
+                from app.handlers.admins.content_review_new import content_review_handler
+                await content_review_handler.handle_review_list(cb, state)
         else:
             # 普通消息显示结果页面
             result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{type_text} #{item_id}\n💬 留言：无\n\n审核结果已保存。"
@@ -363,13 +371,21 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         is_media_message = data.get('is_media_message', False)
         
         if is_media_message:
-            # 媒体消息直接删除
+            # 媒体消息审核完成：alert提示 + 删除媒体消息 + 刷新主面板
             note_preview = review_note[:30] + ('...' if len(review_note) > 30 else '') if review_note else "无留言"
             await cb.answer(f"✅ 已{action_text}{type_text} {item_id}（{note_preview}）", show_alert=True)
-            try:
-                await cb.message.delete()
-            except Exception as e:
-                logger.warning(f"删除媒体消息失败: {e}")
+            
+            # 删除所有已发送的媒体消息
+            from app.utils.panel_utils import cleanup_sent_media_messages
+            await cleanup_sent_media_messages(cb.bot, state)
+            
+            # 刷新原来的主面板并发送新的媒体消息
+            if item_type == 'movie':
+                from app.handlers.admins.movie_review_new import movie_review_handler
+                await movie_review_handler.handle_review_list(cb, state)
+            elif item_type == 'content':
+                from app.handlers.admins.content_review_new import content_review_handler
+                await content_review_handler.handle_review_list(cb, state)
         else:
             # 普通消息显示结果页面
             result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{type_text} #{item_id}\n💬 留言：{review_note}\n\n审核结果已保存，用户将看到您的留言。"
