@@ -459,22 +459,62 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                     from app.handlers.admins.content_review_new import content_review_handler
                     await content_review_handler.handle_review_list(cb, state)
         else:
-            # 普通消息显示结果页面
-            result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{type_text} #{item_id}\n💬 留言：{review_note}\n\n审核结果已保存，用户将看到您的留言。"
+            # 检查是否为单独发送的媒体消息
+            is_standalone_media = hasattr(cb.message, 'photo') or hasattr(cb.message, 'video') or hasattr(cb.message, 'document')
             
-            result_kb = types.InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [
-                        types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{item_type}" if item_type == "movie" else "admin_review_content"),
-                        types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            if is_standalone_media:
+                # 单独的媒体消息：alert提示 + 删除消息 + 刷新主消息
+                note_preview = review_note[:30] + ('...' if len(review_note) > 30 else '') if review_note else "无留言"
+                await cb.answer(f"✅ 已{action_text}{type_text} {item_id}（{note_preview}）", show_alert=True)
+                
+                # 删除当前媒体消息
+                try:
+                    await cb.message.delete()
+                except Exception as e:
+                    logger.warning(f"删除媒体消息失败: {e}")
+                
+                # 从状态中移除已删除的媒体消息ID
+                data = await state.get_data()
+                sent_media_ids = data.get('sent_media_ids', [])
+                if cb.message.message_id in sent_media_ids:
+                    sent_media_ids.remove(cb.message.message_id)
+                    await state.update_data(sent_media_ids=sent_media_ids)
+                
+                # 检测并同步主消息的媒体消息状态
+                from_review_center = data.get('from_review_center', False)
+                if from_review_center:
+                    # 重新发送当前页面的媒体消息（排除已审核的）
+                    if item_type == 'movie':
+                        from app.handlers.admins.review_center import _send_media_messages_for_movies
+                        from app.database.business import get_all_movie_requests
+                        all_requests = await get_all_movie_requests()
+                        # 获取当前页面的数据，排除已审核的项目
+                        current_page_data = [r for r in all_requests[:5] if r.id != item_id] if all_requests else []
+                        await _send_media_messages_for_movies(cb, state, current_page_data)
+                    elif item_type == 'content':
+                        from app.handlers.admins.review_center import _send_media_messages_for_content
+                        from app.database.business import get_all_content_submissions
+                        all_submissions = await get_all_content_submissions()
+                        # 获取当前页面的数据，排除已审核的项目
+                        current_page_data = [s for s in all_submissions[:5] if s.id != item_id] if all_submissions else []
+                        await _send_media_messages_for_content(cb, state, current_page_data)
+            else:
+                # 主消息显示结果页面
+                result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{type_text} #{item_id}\n💬 留言：{review_note}\n\n审核结果已保存，用户将看到您的留言。"
+                
+                result_kb = types.InlineKeyboardMarkup(
+                    inline_keyboard=[
+                        [
+                            types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{item_type}" if item_type == "movie" else "admin_review_content"),
+                            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                        ]
                     ]
-                ]
-            )
-            
-            await cb.message.edit_caption(
-                caption=result_text,
-                reply_markup=result_kb
-            )
+                )
+                
+                await cb.message.edit_caption(
+                    caption=result_text,
+                    reply_markup=result_kb
+                )
     else:
         await cb.answer("❌ 审核失败，请重试", show_alert=True)
     
