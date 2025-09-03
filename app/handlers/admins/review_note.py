@@ -274,7 +274,7 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
             result_kb = types.InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
-                        types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{review_type}" if review_type == "movie" else "admin_review_content"),
+                        types.InlineKeyboardButton(text="🔄 返回审核", callback_data=f"admin_review_{item_type}" if item_type == "movie" else "admin_review_content"),
                         types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
                     ]
                 ]
@@ -296,23 +296,32 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
     """确认提交审核留言"""
     data = await state.get_data()
     
-    review_type = data.get('review_type')
-    review_id = data.get('review_id')
-    review_action = data.get('review_action')
+    # 兼容新旧数据格式
+    action = data.get('action') or data.get('review_action')
+    item_id = data.get('item_id') or data.get('review_id')
+    item_type = data.get('item_type') or data.get('review_type')
     review_note = data.get('review_note')
+    
+    # 转换action格式
+    if action == 'approve':
+        review_action = 'approved'
+    elif action == 'reject':
+        review_action = 'rejected'
+    else:
+        review_action = action  # 兼容旧格式
     
     # 先获取项目信息用于通知
     item = None
-    if review_type == 'movie':
+    if item_type == 'movie':
         requests = await get_pending_movie_requests()
-        item = next((r for r in requests if r.id == review_id), None)
-        success = await review_movie_request(review_id, cb.from_user.id, review_action, review_note)
-        item_type = "求片"
-    elif review_type == 'content':
+        item = next((r for r in requests if r.id == item_id), None)
+        success = await review_movie_request(item_id, cb.from_user.id, review_action, review_note)
+        type_text = "求片"
+    elif item_type == 'content':
         submissions = await get_pending_content_submissions()
-        item = next((s for s in submissions if s.id == review_id), None)
-        success = await review_content_submission(review_id, cb.from_user.id, review_action, review_note)
-        item_type = "投稿"
+        item = next((s for s in submissions if s.id == item_id), None)
+        success = await review_content_submission(item_id, cb.from_user.id, review_action, review_note)
+        type_text = "投稿"
     else:
         await cb.answer("❌ 审核类型错误", show_alert=True)
         await state.clear()
@@ -328,15 +337,15 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
             category = await get_movie_category_by_id(item.category_id) if item.category_id else None
             category_name = category.name if category else None
             
-            if review_type == 'movie':
+            if item_type == 'movie':
                 await send_review_notification(
-                    cb.bot, item.user_id, review_type, item.title, review_action, review_note,
+                    cb.bot, item.user_id, item_type, item.title, review_action, review_note,
                     file_id=item.file_id, item_content=item.description, item_id=item.id,
                     category_name=category_name
                 )
-            elif review_type == 'content':
+            elif item_type == 'content':
                 await send_review_notification(
-                    cb.bot, item.user_id, review_type, item.title, review_action, review_note,
+                    cb.bot, item.user_id, item_type, item.title, review_action, review_note,
                     file_id=item.file_id, item_content=item.content, item_id=item.id,
                     category_name=category_name
                 )
@@ -347,14 +356,14 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         if is_media_message:
             # 媒体消息直接删除
             note_preview = review_note[:30] + ('...' if len(review_note) > 30 else '') if review_note else "无留言"
-            await cb.answer(f"✅ 已{action_text}{item_type} {review_id}（{note_preview}）", show_alert=True)
+            await cb.answer(f"✅ 已{action_text}{type_text} {item_id}（{note_preview}）", show_alert=True)
             try:
                 await cb.message.delete()
             except Exception as e:
                 logger.warning(f"删除媒体消息失败: {e}")
         else:
             # 普通消息显示结果页面
-            result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{item_type} #{review_id}\n💬 留言：{review_note}\n\n审核结果已保存，用户将看到您的留言。"
+            result_text = f"✅ <b>审核完成！</b>\n\n🎯 操作：{action_text}{type_text} #{item_id}\n💬 留言：{review_note}\n\n审核结果已保存，用户将看到您的留言。"
             
             result_kb = types.InlineKeyboardMarkup(
                 inline_keyboard=[
