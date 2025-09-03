@@ -91,7 +91,7 @@ class ReviewUIBuilder:
             content = getattr(item, config.content_field, None)
             if content:
                 content_preview = content[:60] + ('...' if len(content) > 60 else '')
-                text += f"├ 📝 {config.content_field}：{content_preview}\n"
+                text += f"├ 📝 描述：{content_preview}\n"
             
             # 媒体信息
             if hasattr(item, 'file_id') and item.file_id:
@@ -154,9 +154,9 @@ class ReviewUIBuilder:
         # 内容字段
         content = getattr(item, config.content_field, None)
         if content:
-            detail_text += f"📄 {config.content_field}：\n{content}\n\n"
+            detail_text += f"📄 描述：\n{content}\n\n"
         else:
-            detail_text += f"📄 {config.content_field}：无\n\n"
+            detail_text += f"📄 描述：无\n\n"
         
         # 附件信息
         if hasattr(item, 'file_id') and item.file_id:
