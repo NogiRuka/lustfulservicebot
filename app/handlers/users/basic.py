@@ -88,37 +88,9 @@ async def cb_user_toggle_busy(cb: types.CallbackQuery):
 
 @basic_router.callback_query(F.data == "back_to_main")
 async def cb_back_to_main(cb: types.CallbackQuery):
-    role = await get_role(cb.from_user.id)
-    title, kb = get_panel_for_role(role)
-    
-    # 使用复用的面板样式函数
-    welcome_text = create_welcome_panel_text(title, role)
-    welcome_photo = DEFAULT_WELCOME_PHOTO
-    
-    # 检查当前消息是否有图片
-    if cb.message.photo:
-        # 如果有图片，编辑caption
-        await cb.message.edit_caption(
-            caption=welcome_text,
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
-    else:
-        # 如果没有图片，删除当前消息并发送新的带图片消息
-        try:
-            await cb.message.delete()
-        except:
-            pass  # 忽略删除失败的错误
-        
-        await cb.bot.send_photo(
-            chat_id=cb.from_user.id,
-            photo=welcome_photo,
-            caption=welcome_text,
-            reply_markup=kb,
-            parse_mode="HTML"
-        )
-    
-    await cb.answer()
+    """返回主菜单"""
+    from app.utils.panel_utils import return_to_main_menu
+    await return_to_main_menu(cb)
 
 
 @basic_router.callback_query(F.data == "common_my_info")

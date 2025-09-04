@@ -426,3 +426,58 @@ async def send_admin_message_notification(bot, user_id: int, item_type: str, ite
 # DEFAULT_WELCOME_PHOTO = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
 
 DEFAULT_WELCOME_PHOTO = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true"
+
+
+async def return_to_main_menu(cb, additional_logic_func=None):
+    """
+    通用的返回主菜单函数
+    
+    Args:
+        cb: CallbackQuery对象
+        additional_logic_func: 可选的额外逻辑函数，在返回主菜单前执行
+    """
+    from app.database.users import get_role
+    from app.buttons.users import get_panel_for_role
+    
+    try:
+        # 执行额外逻辑（如果有）
+        if additional_logic_func:
+            await additional_logic_func(cb)
+        
+        # 获取用户角色和对应面板
+        role = await get_role(cb.from_user.id)
+        title, kb = get_panel_for_role(role)
+        
+        # 使用复用的面板样式函数
+        welcome_text = create_welcome_panel_text(title, role)
+        welcome_photo = DEFAULT_WELCOME_PHOTO
+        
+        # 检查当前消息是否有图片
+        if cb.message.photo:
+            # 如果有图片，编辑caption
+            await cb.message.edit_caption(
+                caption=welcome_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+        else:
+            # 如果没有图片，删除当前消息并发送新的带图片消息
+            try:
+                await cb.message.delete()
+            except:
+                pass  # 忽略删除失败的错误
+            
+            await cb.bot.send_photo(
+                chat_id=cb.from_user.id,
+                photo=welcome_photo,
+                caption=welcome_text,
+                reply_markup=kb,
+                parse_mode="HTML"
+            )
+        
+        await cb.answer()
+        
+    except Exception as e:
+        from loguru import logger
+        logger.error(f"返回主菜单失败: {e}")
+        await cb.answer("❌ 返回主菜单失败，请稍后重试")

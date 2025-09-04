@@ -410,14 +410,14 @@ class ReviewHandler:
     
     async def handle_back_to_main_cleanup(self, cb: types.CallbackQuery, state: FSMContext):
         """处理清理并返回主菜单"""
-        from app.buttons.users import back_to_main_kb
+        from app.utils.panel_utils import return_to_main_menu
         
-        await cleanup_sent_media_messages(cb.bot, state)
-        await cb.message.edit_caption(
-            caption="🌸 欢迎回到主菜单 🌸",
-            reply_markup=back_to_main_kb
-        )
-        await cb.answer()
+        # 定义清理逻辑函数
+        async def cleanup_logic(cb):
+            await cleanup_sent_media_messages(cb.bot, state)
+        
+        # 使用通用函数，传入清理逻辑
+        await return_to_main_menu(cb, cleanup_logic)
     
     async def handle_delete_media_message(self, cb: types.CallbackQuery, state: FSMContext, item_id: int):
         """处理删除媒体消息"""

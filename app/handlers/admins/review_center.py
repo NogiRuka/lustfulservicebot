@@ -8,10 +8,12 @@ from app.database.business import (
     get_all_movie_requests, get_all_content_submissions,
     get_movie_request_by_id, get_content_submission_by_id
 )
+from app.database.users import get_role
+from app.buttons.panels import get_panel_for_role
 from app.buttons.users import admin_review_center_kb, back_to_main_kb
 from app.utils.pagination import Paginator, format_page_header, extract_page_from_callback
 from app.utils.time_utils import humanize_time, get_status_text
-from app.utils.panel_utils import get_user_display_link, cleanup_sent_media_messages
+from app.utils.panel_utils import get_user_display_link, cleanup_sent_media_messages, create_welcome_panel_text, DEFAULT_WELCOME_PHOTO
 from app.utils.states import Wait
 from app.utils.browse_config import (
     MOVIE_BROWSE_CONFIG, CONTENT_BROWSE_CONFIG, BrowseHandler
@@ -504,15 +506,14 @@ async def cb_admin_review_center_cleanup(cb: types.CallbackQuery, state: FSMCont
 @review_center_router.callback_query(F.data == "back_to_main_cleanup")
 async def cb_back_to_main_cleanup(cb: types.CallbackQuery, state: FSMContext):
     """清理媒体消息并返回主菜单"""
-    await cleanup_sent_media_messages(cb.bot, state)
+    from app.utils.panel_utils import return_to_main_menu
     
-    # 返回主菜单
-    from app.buttons.users import back_to_main_kb
-    await cb.message.edit_caption(
-        caption="🏠 <b>主菜单</b>\n\n请选择您需要的功能：",
-        reply_markup=back_to_main_kb
-    )
-    await cb.answer()
+    # 定义清理逻辑函数
+    async def cleanup_logic(cb):
+        await cleanup_sent_media_messages(cb.bot, state)
+    
+    # 使用通用函数，传入清理逻辑
+    await return_to_main_menu(cb, cleanup_logic)
 
 
 # ==================== 所有投稿管理 ====================
