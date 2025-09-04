@@ -1,9 +1,9 @@
-from sqlalchemy import select, delete, func, update
+from sqlalchemy import select, delete, func, update, desc, asc
 from sqlalchemy.orm import selectinload
 from app.database.schema import User, MovieRequest, ContentSubmission, UserFeedback, AdminAction, MovieCategory, SystemSettings, DevChangelog
 from app.database.db import get_db
 from loguru import logger
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 
 
@@ -33,6 +33,257 @@ async def promote_user_to_admin(admin_id: int, target_id: int) -> bool:
             logger.error(f"提升管理员失败: {e}")
             await session.rollback()
             return False
+
+
+# ==================== 高级浏览功能 ====================
+
+async def get_movie_requests_advanced(
+    offset: int = 0,
+    limit: int = 10,
+    sort_field: str = "created_at",
+    sort_order: str = "asc",
+    status_filter: str = None
+) -> Dict[str, Any]:
+    """高级求片请求查询"""
+    async for session in get_db():
+        try:
+            # 构建基础查询
+            query = select(MovieRequest).options(selectinload(MovieRequest.category))
+            
+            # 状态过滤
+            if status_filter:
+                query = query.where(MovieRequest.status == status_filter)
+            
+            # 排序
+            sort_column = getattr(MovieRequest, sort_field, MovieRequest.created_at)
+            if sort_order.lower() == "desc":
+                query = query.order_by(desc(sort_column))
+            else:
+                query = query.order_by(asc(sort_column))
+            
+            # 获取总数
+            count_query = select(func.count(MovieRequest.id))
+            if status_filter:
+                count_query = count_query.where(MovieRequest.status == status_filter)
+            
+            total_result = await session.execute(count_query)
+            total_count = total_result.scalar()
+            
+            # 分页查询
+            query = query.offset(offset).limit(limit)
+            result = await session.execute(query)
+            items = result.scalars().all()
+            
+            return {
+                'items': items,
+                'total': total_count
+            }
+            
+        except Exception as e:
+            logger.error(f"高级求片请求查询失败: {e}")
+            return {'items': [], 'total': 0}
+
+
+async def get_content_submissions_advanced(
+    offset: int = 0,
+    limit: int = 10,
+    sort_field: str = "created_at",
+    sort_order: str = "asc",
+    status_filter: str = None
+) -> Dict[str, Any]:
+    """高级投稿查询"""
+    async for session in get_db():
+        try:
+            # 构建基础查询
+            query = select(ContentSubmission).options(selectinload(ContentSubmission.category))
+            
+            # 状态过滤
+            if status_filter:
+                query = query.where(ContentSubmission.status == status_filter)
+            
+            # 排序
+            sort_column = getattr(ContentSubmission, sort_field, ContentSubmission.created_at)
+            if sort_order.lower() == "desc":
+                query = query.order_by(desc(sort_column))
+            else:
+                query = query.order_by(asc(sort_column))
+            
+            # 获取总数
+            count_query = select(func.count(ContentSubmission.id))
+            if status_filter:
+                count_query = count_query.where(ContentSubmission.status == status_filter)
+            
+            total_result = await session.execute(count_query)
+            total_count = total_result.scalar()
+            
+            # 分页查询
+            query = query.offset(offset).limit(limit)
+            result = await session.execute(query)
+            items = result.scalars().all()
+            
+            return {
+                'items': items,
+                'total': total_count
+            }
+            
+        except Exception as e:
+            logger.error(f"高级投稿查询失败: {e}")
+            return {'items': [], 'total': 0}
+
+
+async def get_user_feedback_advanced(
+    offset: int = 0,
+    limit: int = 10,
+    sort_field: str = "created_at",
+    sort_order: str = "asc",
+    status_filter: str = None,
+    type_filter: str = None
+) -> Dict[str, Any]:
+    """高级反馈查询"""
+    async for session in get_db():
+        try:
+            # 构建基础查询
+            query = select(UserFeedback)
+            
+            # 状态过滤
+            if status_filter:
+                query = query.where(UserFeedback.status == status_filter)
+            
+            # 类型过滤
+            if type_filter:
+                query = query.where(UserFeedback.feedback_type == type_filter)
+            
+            # 排序
+            sort_column = getattr(UserFeedback, sort_field, UserFeedback.created_at)
+            if sort_order.lower() == "desc":
+                query = query.order_by(desc(sort_column))
+            else:
+                query = query.order_by(asc(sort_column))
+            
+            # 获取总数
+            count_query = select(func.count(UserFeedback.id))
+            if status_filter:
+                count_query = count_query.where(UserFeedback.status == status_filter)
+            if type_filter:
+                count_query = count_query.where(UserFeedback.feedback_type == type_filter)
+            
+            total_result = await session.execute(count_query)
+            total_count = total_result.scalar()
+            
+            # 分页查询
+            query = query.offset(offset).limit(limit)
+            result = await session.execute(query)
+            items = result.scalars().all()
+            
+            return {
+                'items': items,
+                'total': total_count
+            }
+            
+        except Exception as e:
+            logger.error(f"高级反馈查询失败: {e}")
+            return {'items': [], 'total': 0}
+
+
+async def get_users_advanced(
+    offset: int = 0,
+    limit: int = 10,
+    sort_field: str = "created_at",
+    sort_order: str = "asc",
+    role_filter: str = None
+) -> Dict[str, Any]:
+    """高级用户查询"""
+    async for session in get_db():
+        try:
+            # 构建基础查询
+            query = select(User)
+            
+            # 角色过滤
+            if role_filter:
+                query = query.where(User.role == role_filter)
+            
+            # 排序
+            sort_column = getattr(User, sort_field, User.created_at)
+            if sort_order.lower() == "desc":
+                query = query.order_by(desc(sort_column))
+            else:
+                query = query.order_by(asc(sort_column))
+            
+            # 获取总数
+            count_query = select(func.count(User.id))
+            if role_filter:
+                count_query = count_query.where(User.role == role_filter)
+            
+            total_result = await session.execute(count_query)
+            total_count = total_result.scalar()
+            
+            # 分页查询
+            query = query.offset(offset).limit(limit)
+            result = await session.execute(query)
+            items = result.scalars().all()
+            
+            return {
+                'items': items,
+                'total': total_count
+            }
+            
+        except Exception as e:
+            logger.error(f"高级用户查询失败: {e}")
+            return {'items': [], 'total': 0}
+
+
+async def get_admin_actions_advanced(
+    offset: int = 0,
+    limit: int = 10,
+    sort_field: str = "created_at",
+    sort_order: str = "asc",
+    action_type_filter: str = None,
+    admin_id_filter: int = None
+) -> Dict[str, Any]:
+    """高级管理员操作记录查询"""
+    async for session in get_db():
+        try:
+            # 构建基础查询
+            query = select(AdminAction)
+            
+            # 操作类型过滤
+            if action_type_filter:
+                query = query.where(AdminAction.action_type == action_type_filter)
+            
+            # 管理员过滤
+            if admin_id_filter:
+                query = query.where(AdminAction.admin_id == admin_id_filter)
+            
+            # 排序
+            sort_column = getattr(AdminAction, sort_field, AdminAction.created_at)
+            if sort_order.lower() == "desc":
+                query = query.order_by(desc(sort_column))
+            else:
+                query = query.order_by(asc(sort_column))
+            
+            # 获取总数
+            count_query = select(func.count(AdminAction.id))
+            if action_type_filter:
+                count_query = count_query.where(AdminAction.action_type == action_type_filter)
+            if admin_id_filter:
+                count_query = count_query.where(AdminAction.admin_id == admin_id_filter)
+            
+            total_result = await session.execute(count_query)
+            total_count = total_result.scalar()
+            
+            # 分页查询
+            query = query.offset(offset).limit(limit)
+            result = await session.execute(query)
+            items = result.scalars().all()
+            
+            return {
+                'items': items,
+                'total': total_count
+            }
+            
+        except Exception as e:
+            logger.error(f"高级管理员操作记录查询失败: {e}")
+            return {'items': [], 'total': 0}
 
 
 async def demote_admin_to_user(admin_id: int, target_id: int) -> bool:
