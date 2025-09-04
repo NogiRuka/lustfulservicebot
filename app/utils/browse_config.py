@@ -154,8 +154,8 @@ class BrowseUIBuilder:
         
         # 返回按钮
         keyboard.append([
-            types.InlineKeyboardButton(text="🔙 返回审核中心", callback_data="admin_review_center_cleanup"),
-            types.InlineKeyboardButton(text="🏠 返回主菜单", callback_data="back_to_main_cleanup")
+            types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center_cleanup"),
+            types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main_cleanup")
         ])
         
         return types.InlineKeyboardMarkup(inline_keyboard=keyboard)
