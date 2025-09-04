@@ -322,6 +322,66 @@ class AdvancedBrowser:
         
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
     
+    def create_visible_fields_keyboard(
+        self, 
+        callback_prefix: str,
+        current_fields: List[str] = None
+    ) -> InlineKeyboardMarkup:
+        """创建显示字段选择键盘"""
+        keyboard = []
+        
+        # 可选字段定义
+        all_fields = {
+            'id': 'ID',
+            'title': '标题',
+            'content': '内容',
+            'status': '状态',
+            'created_at': '创建时间',
+            'updated_at': '更新时间',
+            'reviewed_at': '审核时间',
+            'replied_at': '回复时间',
+            'user_id': '用户ID',
+            'username': '用户名',
+            'full_name': '姓名',
+            'role': '角色',
+            'feedback_type': '反馈类型',
+            'action_type': '操作类型',
+            'description': '描述',
+            'admin_id': '管理员ID'
+        }
+        
+        if current_fields is None:
+            current_fields = ['id', 'title', 'status', 'created_at']
+        
+        # 字段选择按钮（每行2个）
+        row = []
+        for field, name in all_fields.items():
+            is_selected = field in current_fields
+            text = f"✅ {name}" if is_selected else f"⬜ {name}"
+            
+            row.append(InlineKeyboardButton(
+                text=text,
+                callback_data=f"{callback_prefix}_toggle_field_{field}"
+            ))
+            
+            if len(row) == 2:
+                keyboard.append(row)
+                row = []
+        
+        # 添加剩余的按钮
+        if row:
+            keyboard.append(row)
+        
+        # 返回按钮
+        keyboard.append([
+            InlineKeyboardButton(
+                text="↩️ 返回设置",
+                callback_data=f"{callback_prefix}_back_to_settings"
+            )
+        ])
+        
+        return InlineKeyboardMarkup(inline_keyboard=keyboard)
+    
     def format_item_display(
         self, 
         item: Any, 

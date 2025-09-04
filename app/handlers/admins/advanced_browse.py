@@ -313,6 +313,44 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
             browser.update_config(user_id, sort_field=field)
             data = await browser.get_page_data(user_id, 1)
             
+        elif "_set_fields" in callback_data:
+            # 设置显示字段
+            prefix = callback_data.split("_set_fields")[0]
+            state = browser.get_user_state(user_id)
+            keyboard = browser.create_visible_fields_keyboard(prefix, state.config.visible_fields)
+            await callback.message.edit_text(
+                "🏷️ 选择显示字段：",
+                reply_markup=keyboard
+            )
+            await callback.answer()
+            return
+            
+        elif "_toggle_field_" in callback_data:
+            # 切换字段显示状态
+            field_name = callback_data.split("_toggle_field_")[1]
+            state = browser.get_user_state(user_id)
+            current_fields = state.config.visible_fields.copy() if state.config.visible_fields else ['id', 'title', 'status', 'created_at']
+            
+            if field_name in current_fields:
+                # 移除字段（但至少保留一个字段）
+                if len(current_fields) > 1:
+                    current_fields.remove(field_name)
+            else:
+                # 添加字段
+                current_fields.append(field_name)
+            
+            browser.update_config(user_id, visible_fields=current_fields)
+            
+            # 更新键盘显示
+            prefix = callback_data.split("_toggle_field_")[0]
+            keyboard = browser.create_visible_fields_keyboard(prefix, current_fields)
+            await callback.message.edit_text(
+                "🏷️ 选择显示字段：",
+                reply_markup=keyboard
+            )
+            await callback.answer()
+            return
+            
         elif "_back_to_" in callback_data:
             # 返回操作
             if "_back_to_browse" in callback_data:
