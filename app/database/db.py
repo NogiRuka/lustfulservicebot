@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
     AsyncSession,
@@ -29,6 +31,19 @@ async def get_db():
 
 async def init_db() -> None:
     """Create all tables if they do not exist (for SQLite learning mode)."""
+    # 自动创建数据库目录
+    if DATABASE_URL_ASYNC.startswith('sqlite'):
+        # 从数据库URL中提取文件路径
+        db_path = DATABASE_URL_ASYNC.replace('sqlite+aiosqlite:///', '')
+        if db_path.startswith('./'):
+            db_path = db_path[2:]  # 移除 './'
+        
+        # 创建数据库文件的目录
+        db_dir = Path(db_path).parent
+        if db_dir != Path('.'):
+            os.makedirs(db_dir, exist_ok=True)
+            print(f"数据库目录已创建: {db_dir}")
+    
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     

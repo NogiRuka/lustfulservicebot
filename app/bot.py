@@ -13,8 +13,7 @@ from app.middlewares import AntiFloodMiddleware, AddUser, UpdateLastAcivity, Gro
 from app.config import BOT_TOKEN, ADMINS_ID, SUPERADMIN_ID, BOT_NICKNAME
 from app.handlers.users import users_routers
 from app.handlers.admins import admin_routers
-from app.handlers.superadmins import superadmin_routers
-from app.utils.filters import IsAdmin, ChatTypeFilter, HasRole
+from app.utils.filters import ChatTypeFilter, HasRole
 from app.utils.roles import ROLE_ADMIN, ROLE_SUPERADMIN
 from app.database.db import init_db
 
@@ -41,13 +40,7 @@ for router in admin_routers:
     )
     dp.include_router(router)
 
-# ===== 路由：超管（唯一） =====
-for router in superadmin_routers:
-    router.message.filter(ChatTypeFilter(chat_type=["private"]))
-    router.message.filter(
-        HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_SUPERADMIN])
-    )
-    dp.include_router(router)
+# 超管路由现在包含在admin_routers中
 
 # ===== 路由：用户（通用） =====
 for router in users_routers:
