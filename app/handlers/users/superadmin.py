@@ -109,8 +109,13 @@ async def cb_toggle_feature(cb: types.CallbackQuery):
 @superadmin_router.callback_query(F.data == "dev_changelog_view")
 async def cb_dev_changelog_view(cb: types.CallbackQuery):
     """查看开发日志"""
+    # 检查开发日志功能开关
+    if not await is_feature_enabled("dev_changelog_enabled"):
+        await cb.answer("❌ 开发日志功能已关闭", show_alert=True)
+        return
+    
     role = await get_role(cb.from_user.id)
-    # 所有用户都可以查看开发日志
+    # 所有用户都可以查看开发日志（如果功能启用）
     
     changelogs = await get_all_dev_changelogs()
     

@@ -52,10 +52,7 @@ async def init_default_settings() -> None:
         
         # 优先级2：系统配置项
         "system_enabled": "true",
-        "page_size": "5",
-        
-        # 兼容性保留
-        "superadmin_panel_enabled": "true"
+        "page_size": "5"
     }
     
     # 设置类型映射
