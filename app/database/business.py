@@ -453,7 +453,8 @@ async def create_movie_category(name: str, description: str = None, creator_id: 
                 name=name,
                 description=description,
                 created_by=creator_id or 0,  # 如果creator_id为None，使用0作为系统创建
-                sort_order=sort_order
+                sort_order=sort_order,
+                is_active=True  # 显式设置为启用状态
             )
             session.add(category)
             await session.commit()
@@ -470,7 +471,7 @@ async def get_all_movie_categories(active_only: bool = True) -> List[MovieCatego
         try:
             query = select(MovieCategory).order_by(MovieCategory.sort_order, MovieCategory.created_at)
             if active_only:
-                # SQLite兼容的布尔查询：直接与1比较或使用!=0
+                # SQLite兼容查询：虽然使用了布尔字段，但SQLite中仍需整数比较
                 query = query.where(MovieCategory.is_active != 0)
             result = await session.execute(query)
             return result.scalars().all()
