@@ -81,15 +81,16 @@ async def cb_toggle_feature(cb: types.CallbackQuery):
     )
     
     if success:
-        # 获取功能名称
+        # 获取功能名称（按优先级排序）
         feature_names = {
-            "bot_enabled": "🤖 机器人总开关",
+            "bot_enabled": "🤖 机器人开关",
+            "movie_request_enabled": "🎬 求片开关",
+            "content_submit_enabled": "📝 投稿开关",
+            "feedback_enabled": "💬 反馈开关",
+            "admin_panel_enabled": "👮 审核开关",
+            "dev_changelog_enabled": "📋 开发日志开关",
             "system_enabled": "🌐 系统总开关",
-            "movie_request_enabled": "🎬 求片功能",
-            "content_submit_enabled": "📝 投稿功能",
-            "feedback_enabled": "💬 反馈功能",
-            "admin_panel_enabled": "👮 管理面板"
-            # 超管面板已移除 - 超管只有一个，无需控制自己的面板
+            "page_size": "📄 每页显示条数"
         }
         
         feature_name = feature_names.get(feature_key, feature_key)
@@ -970,49 +971,57 @@ async def cb_superadmin_system_settings(cb: types.CallbackQuery):
     text += f"📊 <b>设置概览</b>：共 {len(settings)} 项配置\n\n"
     
     if settings:
-        text += "🔧 <b>核心功能开关</b>\n"
-        important_keys = {
-            "bot_enabled": "🤖 机器人总开关",
-            "system_enabled": "🌐 系统总开关", 
-            "movie_request_enabled": "🎬 求片功能", 
-            "content_submit_enabled": "📝 投稿功能",
-            "feedback_enabled": "💬 反馈功能", 
-            "admin_panel_enabled": "👮 管理面板"
-            # 超管面板已移除 - 超管只有一个，无需显示自己的面板开关
+        # 按优先级分组显示
+        text += "🔥 <b>【优先级1】核心功能开关</b>\n"
+        core_switches = {
+            "bot_enabled": "🤖 机器人开关",
+            "movie_request_enabled": "🎬 求片开关", 
+            "content_submit_enabled": "📝 投稿开关",
+            "feedback_enabled": "💬 反馈开关",
+            "admin_panel_enabled": "👮 审核开关",
+            "dev_changelog_enabled": "📋 开发日志开关"
         }
         
         for setting in settings:
-            if setting.setting_key in important_keys:
+            if setting.setting_key in core_switches:
                 status = "✅ 启用" if setting.setting_value.lower() in ["true", "1", "yes", "on"] else "❌ 禁用"
-                name = important_keys[setting.setting_key]
+                name = core_switches[setting.setting_key]
                 text += f"├ {name}：{status}\n"
         
-        text += "\n💡 <b>管理命令</b>：\n"
-        text += "├ /set_setting [键名] [值] - 设置功能开关\n"
-        text += "├ /toggle_feature [功能名] - 快速切换功能\n"
+        text += "\n⚙️ <b>【优先级2】系统配置项</b>\n"
+        config_items = {
+            "page_size": "📄 每页显示条数",
+            "system_enabled": "🌐 系统总开关"
+        }
+        
+        for setting in settings:
+            if setting.setting_key in config_items:
+                name = config_items[setting.setting_key]
+                text += f"├ {name}：{setting.setting_value}\n"
+        
+        text += "\n💡 <b>快捷命令</b>：\n"
+        text += "├ /toggle_feature [功能名] - 快速切换开关\n"
+        text += "├ /set_setting [键名] [值] - 修改配置项\n"
         text += "└ /view_settings - 查看所有设置"
     else:
         text += "暂无设置\n\n"
         text += "💡 系统将使用默认设置"
     
-    # 创建功能开关按钮
+    # 创建功能开关按钮（按优先级排序）
     toggle_buttons = []
     if settings:
         # 获取当前设置状态
         setting_dict = {s.setting_key: s.setting_value.lower() in ["true", "1", "yes", "on"] for s in settings}
         
-        # 第一行：机器人和系统开关
+        # 第一行：机器人开关（最高优先级）
         row1 = []
         if "bot_enabled" in setting_dict:
             status = "🟢" if setting_dict["bot_enabled"] else "🔴"
             row1.append(types.InlineKeyboardButton(text=f"{status} 机器人", callback_data="toggle_bot_enabled"))
-        if "system_enabled" in setting_dict:
-            status = "🟢" if setting_dict["system_enabled"] else "🔴"
-            row1.append(types.InlineKeyboardButton(text=f"{status} 系统", callback_data="toggle_system_enabled"))
         if row1:
             toggle_buttons.append(row1)
         
-        # 第二行：核心功能开关
+        # 第二行：求片和投稿开关
         row2 = []
         if "movie_request_enabled" in setting_dict:
             status = "🟢" if setting_dict["movie_request_enabled"] else "🔴"
@@ -1020,20 +1029,27 @@ async def cb_superadmin_system_settings(cb: types.CallbackQuery):
         if "content_submit_enabled" in setting_dict:
             status = "🟢" if setting_dict["content_submit_enabled"] else "🔴"
             row2.append(types.InlineKeyboardButton(text=f"{status} 投稿", callback_data="toggle_content_submit_enabled"))
-        if "feedback_enabled" in setting_dict:
-            status = "🟢" if setting_dict["feedback_enabled"] else "🔴"
-            row2.append(types.InlineKeyboardButton(text=f"{status} 反馈", callback_data="toggle_feedback_enabled"))
         if row2:
             toggle_buttons.append(row2)
         
-        # 第三行：管理面板开关
+        # 第三行：反馈和审核开关
         row3 = []
+        if "feedback_enabled" in setting_dict:
+            status = "🟢" if setting_dict["feedback_enabled"] else "🔴"
+            row3.append(types.InlineKeyboardButton(text=f"{status} 反馈", callback_data="toggle_feedback_enabled"))
         if "admin_panel_enabled" in setting_dict:
             status = "🟢" if setting_dict["admin_panel_enabled"] else "🔴"
-            row3.append(types.InlineKeyboardButton(text=f"{status} 管理面板", callback_data="toggle_admin_panel_enabled"))
-        # 超管面板开关已移除 - 超管只有一个，无需控制自己的面板
+            row3.append(types.InlineKeyboardButton(text=f"{status} 审核", callback_data="toggle_admin_panel_enabled"))
         if row3:
             toggle_buttons.append(row3)
+        
+        # 第四行：开发日志开关
+        row4 = []
+        if "dev_changelog_enabled" in setting_dict:
+            status = "🟢" if setting_dict["dev_changelog_enabled"] else "🔴"
+            row4.append(types.InlineKeyboardButton(text=f"{status} 开发日志", callback_data="toggle_dev_changelog_enabled"))
+        if row4:
+            toggle_buttons.append(row4)
     
     # 添加管理按钮
     toggle_buttons.extend([
