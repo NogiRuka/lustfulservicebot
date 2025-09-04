@@ -19,9 +19,9 @@ from app.database.business import (
     get_users_advanced,
     get_admin_actions_advanced
 )
-from app.utils.filters import IsAdmin
+from app.utils.filters import HasRole
 from app.utils.roles import ROLE_ADMIN, ROLE_SUPERADMIN
-from app.config import ADMINS_ID
+from app.config import ADMINS_ID, SUPERADMIN_ID
 
 router = Router()
 
@@ -41,7 +41,7 @@ action_browser = AdvancedBrowser(
 )
 
 
-@router.message(Command("browse_requests"), IsAdmin(ADMINS_ID))
+@router.message(Command("browse_requests"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def browse_requests_command(message: Message):
     """浏览求片请求命令"""
     user_id = str(message.from_user.id)
@@ -83,7 +83,7 @@ async def browse_requests_command(message: Message):
         await message.answer("❌ 浏览求片请求失败，请稍后重试")
 
 
-@router.message(Command("browse_submissions"), IsAdmin(ADMINS_ID))
+@router.message(Command("browse_submissions"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def browse_submissions_command(message: Message):
     """浏览投稿命令"""
     user_id = str(message.from_user.id)
@@ -125,7 +125,7 @@ async def browse_submissions_command(message: Message):
         await message.answer("❌ 浏览投稿失败，请稍后重试")
 
 
-@router.message(Command("browse_feedback"), IsAdmin(ADMINS_ID))
+@router.message(Command("browse_feedback"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def browse_feedback_command(message: Message):
     """浏览反馈命令"""
     user_id = str(message.from_user.id)
@@ -167,7 +167,7 @@ async def browse_feedback_command(message: Message):
         await message.answer("❌ 浏览反馈失败，请稍后重试")
 
 
-@router.message(Command("browse_users"), IsAdmin(ADMINS_ID))
+@router.message(Command("browse_users"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def browse_users_command(message: Message):
     """浏览用户命令"""
     user_id = str(message.from_user.id)
