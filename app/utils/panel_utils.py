@@ -437,7 +437,7 @@ async def return_to_main_menu(cb, additional_logic_func=None):
         additional_logic_func: 可选的额外逻辑函数，在返回主菜单前执行
     """
     from app.database.users import get_role
-    from app.buttons.users import get_panel_for_role
+    from app.buttons.panels import get_panel_for_role
     
     try:
         # 执行额外逻辑（如果有）
