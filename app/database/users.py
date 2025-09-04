@@ -125,17 +125,17 @@ async def get_busy(chat_id: int) -> bool:
 
 
 async def update_last_acitivity(chat_id: int) -> None:
-    """更新用户最近活跃时间为当前。"""
+    """更新用户最近活跃时间为当前本地时间。"""
     async for session in get_db():
         try:
             await session.execute(
                 update(User)
                 .filter_by(chat_id=chat_id)
-                .values(last_activity_at=func.now())
+                .values(last_activity_at=datetime.now())
             )
             await session.commit()
         except Exception as e:
-            logger.error(f"Error updating last activity: {e}")
+            logger.error(f"更新用户最后活动时间失败: {e}")
             await session.rollback()
 
 

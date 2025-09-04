@@ -167,7 +167,7 @@ async def review_movie_request(request_id: int, reviewer_id: int, status: str, r
                 .where(MovieRequest.id == request_id)
                 .values(
                     status=status,
-                    reviewed_at=func.now(),
+                    reviewed_at=datetime.now(),
                     reviewed_by=reviewer_id,
                     review_note=review_note
                 )
@@ -283,7 +283,7 @@ async def review_content_submission(submission_id: int, reviewer_id: int, status
                 .where(ContentSubmission.id == submission_id)
                 .values(
                     status=status,
-                    reviewed_at=func.now(),
+                    reviewed_at=datetime.now(),
                     reviewed_by=reviewer_id,
                     review_note=review_note
                 )
@@ -363,7 +363,7 @@ async def reply_user_feedback(feedback_id: int, admin_id: int, reply_content: st
                 .where(UserFeedback.id == feedback_id)
                 .values(
                     status="resolved",
-                    replied_at=func.now(),
+                    replied_at=datetime.now(),
                     replied_by=admin_id,
                     reply_content=reply_content
                 )
@@ -565,7 +565,7 @@ async def set_system_setting(setting_key: str, setting_value: str, setting_type:
                 await session.execute(
                     update(SystemSettings).where(SystemSettings.setting_key == setting_key).values(
                         setting_value=setting_value,
-                        updated_at=func.now(),
+                        updated_at=datetime.now(),
                         updated_by=updater_id
                     )
                 )
