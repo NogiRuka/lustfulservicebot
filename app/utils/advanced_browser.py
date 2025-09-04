@@ -336,10 +336,10 @@ class AdvancedBrowser:
             available_fields = {
                 'id': 'ID',
                 'title': '标题',
-                'content': '内容',
+                'description': '描述',
                 'status': '状态',
                 'created_at': '创建时间',
-                'updated_at': '更新时间',
+                'reviewed_at': '审核时间',
                 'user_id': '用户ID'
             }
         elif "submissions" in callback_prefix:
