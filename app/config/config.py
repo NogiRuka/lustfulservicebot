@@ -46,5 +46,5 @@ if _sync_channel_raw and not SYNC_CHANNELS:
 
 # Default to local SQLite (async) if not provided
 # 默认使用相对路径的 SQLite 数据库（相对于当前运行目录）
-_default_sqlite_url = "sqlite+aiosqlite:///./jessy.db"
+_default_sqlite_url = "sqlite+aiosqlite:///./db/lustfulservice.db"
 DATABASE_URL_ASYNC = os.getenv("DATABASE_URL_ASYNC", _default_sqlite_url)
