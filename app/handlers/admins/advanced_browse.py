@@ -240,7 +240,30 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
     callback_data = callback.data
     
     try:
-        if "_page_" in callback_data:
+        if "_set_page_size" in callback_data:
+            # 设置每页条数
+            prefix = callback_data.split("_set_page_size")[0]
+            keyboard = browser.create_page_size_keyboard(prefix)
+            await callback.message.edit_text(
+                "📊 选择每页显示条数：",
+                reply_markup=keyboard
+            )
+            await callback.answer()
+            return
+            
+        elif "_page_size_" in callback_data:
+            # 设置具体页面大小
+            try:
+                page_size_str = callback_data.split("_page_size_")[1]
+                page_size = int(page_size_str)
+                browser.update_config(user_id, page_size=page_size)
+                data = await browser.get_page_data(user_id, 1)
+            except (ValueError, IndexError) as e:
+                logger.error(f"解析页面大小失败: {callback_data}, 错误: {e}")
+                await callback.answer("❌ 页面大小设置失败")
+                return
+            
+        elif "_page_" in callback_data:
             # 页面跳转
             try:
                 page_str = callback_data.split("_page_")[1]
@@ -264,29 +287,6 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
         elif "_refresh" in callback_data:
             # 刷新当前页
             data = await browser.get_page_data(user_id)
-            
-        elif "_set_page_size" in callback_data:
-            # 设置每页条数
-            prefix = callback_data.split("_set_page_size")[0]
-            keyboard = browser.create_page_size_keyboard(prefix)
-            await callback.message.edit_text(
-                "📊 选择每页显示条数：",
-                reply_markup=keyboard
-            )
-            await callback.answer()
-            return
-            
-        elif "_page_size_" in callback_data:
-            # 设置具体页面大小
-            try:
-                page_size_str = callback_data.split("_page_size_")[1]
-                page_size = int(page_size_str)
-                browser.update_config(user_id, page_size=page_size)
-                data = await browser.get_page_data(user_id, 1)
-            except (ValueError, IndexError) as e:
-                logger.error(f"解析页面大小失败: {callback_data}, 错误: {e}")
-                await callback.answer("❌ 页面大小设置失败")
-                return
             
         elif "_toggle_sort_order" in callback_data:
             # 切换排序顺序
