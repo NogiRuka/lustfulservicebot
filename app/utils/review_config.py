@@ -121,12 +121,12 @@ class ReviewUIBuilder:
         # 添加其他功能按钮
         extra_buttons.extend([
             [
-                types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"{config.detail_callback_prefix}{items[0].id}" if items else config.list_callback),
-                types.InlineKeyboardButton(text="🔄 刷新", callback_data=config.list_callback)
+                types.InlineKeyboardButton(text="📋 查看详情", callback_data=f"{config.detail_callback_prefix}{items[0].id}" if items else config.cleanup_callback),
+                types.InlineKeyboardButton(text="🔄 刷新", callback_data=config.cleanup_callback)
             ],
             [
-                types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center"),
-                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+                types.InlineKeyboardButton(text="⬅️ 返回上一级", callback_data="admin_review_center_cleanup"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main_cleanup")
             ]
         ])
         
