@@ -78,6 +78,8 @@ async def get_admin_list() -> List[User]:
 
 async def create_movie_request(user_id: int, category_id: int, title: str, description: str = None, file_id: str = None) -> bool:
     """创建求片请求"""
+    from app.database.users import update_user_stats
+    
     async for session in get_db():
         try:
             request = MovieRequest(
@@ -89,6 +91,10 @@ async def create_movie_request(user_id: int, category_id: int, title: str, descr
             )
             session.add(request)
             await session.commit()
+            
+            # 更新用户求片统计
+            await update_user_stats(user_id, 'requests')
+            
             return True
         except Exception as e:
             logger.error(f"创建求片请求失败: {e}")
@@ -195,6 +201,8 @@ async def review_movie_request(request_id: int, reviewer_id: int, status: str, r
 
 async def create_content_submission(user_id: int, title: str, content: str, file_id: str = None, category_id: int = None) -> bool:
     """创建内容投稿"""
+    from app.database.users import update_user_stats
+    
     async for session in get_db():
         try:
             submission = ContentSubmission(
@@ -206,6 +214,10 @@ async def create_content_submission(user_id: int, title: str, content: str, file
             )
             session.add(submission)
             await session.commit()
+            
+            # 更新用户投稿统计
+            await update_user_stats(user_id, 'submissions')
+            
             return True
         except Exception as e:
             logger.error(f"创建内容投稿失败: {e}")
@@ -311,6 +323,8 @@ async def review_content_submission(submission_id: int, reviewer_id: int, status
 
 async def create_user_feedback(user_id: int, feedback_type: str, content: str) -> bool:
     """创建用户反馈"""
+    from app.database.users import update_user_stats
+    
     async for session in get_db():
         try:
             feedback = UserFeedback(
@@ -320,6 +334,10 @@ async def create_user_feedback(user_id: int, feedback_type: str, content: str) -
             )
             session.add(feedback)
             await session.commit()
+            
+            # 更新用户反馈统计
+            await update_user_stats(user_id, 'feedback')
+            
             return True
         except Exception as e:
             logger.error(f"创建用户反馈失败: {e}")
