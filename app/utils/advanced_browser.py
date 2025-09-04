@@ -330,32 +330,67 @@ class AdvancedBrowser:
         """创建显示字段选择键盘"""
         keyboard = []
         
-        # 可选字段定义
-        all_fields = {
-            'id': 'ID',
-            'title': '标题',
-            'content': '内容',
-            'status': '状态',
-            'created_at': '创建时间',
-            'updated_at': '更新时间',
-            'reviewed_at': '审核时间',
-            'replied_at': '回复时间',
-            'user_id': '用户ID',
-            'username': '用户名',
-            'full_name': '姓名',
-            'role': '角色',
-            'feedback_type': '反馈类型',
-            'action_type': '操作类型',
-            'description': '描述',
-            'admin_id': '管理员ID'
-        }
+        # 根据回调前缀确定数据类型
+        if "requests" in callback_prefix:
+            # 求片请求字段
+            available_fields = {
+                'id': 'ID',
+                'title': '标题',
+                'content': '内容',
+                'status': '状态',
+                'created_at': '创建时间',
+                'updated_at': '更新时间',
+                'user_id': '用户ID'
+            }
+        elif "submissions" in callback_prefix:
+            # 投稿内容字段
+            available_fields = {
+                'id': 'ID',
+                'title': '标题',
+                'content': '内容',
+                'status': '状态',
+                'created_at': '创建时间',
+                'updated_at': '更新时间',
+                'reviewed_at': '审核时间',
+                'user_id': '用户ID'
+            }
+        elif "feedback" in callback_prefix:
+            # 用户反馈字段
+            available_fields = {
+                'id': 'ID',
+                'feedback_type': '反馈类型',
+                'content': '内容',
+                'status': '状态',
+                'created_at': '创建时间',
+                'replied_at': '回复时间',
+                'user_id': '用户ID'
+            }
+        elif "users" in callback_prefix:
+            # 用户信息字段
+            available_fields = {
+                'id': 'ID',
+                'username': '用户名',
+                'full_name': '姓名',
+                'role': '角色',
+                'created_at': '创建时间',
+                'last_activity_at': '最后活跃'
+            }
+        else:
+            # 默认字段（管理员操作等）
+            available_fields = {
+                'id': 'ID',
+                'action_type': '操作类型',
+                'description': '描述',
+                'created_at': '创建时间',
+                'admin_id': '管理员ID'
+            }
         
         if current_fields is None:
-            current_fields = ['id', 'title', 'status', 'created_at']
+            current_fields = list(available_fields.keys())[:4]  # 默认前4个字段
         
         # 字段选择按钮（每行2个）
         row = []
-        for field, name in all_fields.items():
+        for field, name in available_fields.items():
             is_selected = field in current_fields
             text = f"✅ {name}" if is_selected else f"⬜ {name}"
             
