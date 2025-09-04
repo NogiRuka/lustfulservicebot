@@ -34,6 +34,9 @@ async def init_db() -> None:
     
     # 初始化默认系统设置
     await init_default_settings()
+    
+    # 初始化默认类型数据
+    await init_default_categories()
 
 
 async def init_default_settings() -> None:
@@ -71,3 +74,57 @@ async def init_default_settings() -> None:
                 f"系统默认设置 - {key}", 
                 updater_id=None
             )
+
+
+async def init_default_categories() -> None:
+    """初始化默认类型数据"""
+    from app.database.business import get_all_movie_categories, create_movie_category
+    
+    # 检查是否已有类型数据
+    existing_categories = await get_all_movie_categories(active_only=False)
+    if existing_categories:
+        return  # 如果已有数据，保持现有数据不变
+    
+    # 默认类型数据（适用于求片和投稿）
+    # 注意：这些是新数据库的默认类型，现有数据库已有类型数据会被保留
+    default_categories = [
+        {
+            "name": "电影",
+            "description": "院线电影、网络电影等",
+            "sort_order": 1
+        },
+        {
+            "name": "剧集",
+            "description": "电视剧、网剧等连续剧集",
+            "sort_order": 2
+        },
+        {
+            "name": "动漫",
+            "description": "动画片、动漫剧集等",
+            "sort_order": 3
+        },
+        {
+            "name": "纪录片",
+            "description": "纪录片类求片和投稿",
+            "sort_order": 4
+        },
+        {
+            "name": "综艺",
+            "description": "综艺节目类求片和投稿",
+            "sort_order": 5
+        },
+        {
+            "name": "其他",
+            "description": "其他类型的求片和投稿",
+            "sort_order": 99
+        }
+    ]
+    
+    # 创建默认类型（使用系统用户ID 0）
+    for category_data in default_categories:
+        await create_movie_category(
+            name=category_data["name"],
+            description=category_data["description"],
+            creator_id=0,  # 系统创建
+            sort_order=category_data["sort_order"]
+        )

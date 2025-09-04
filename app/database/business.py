@@ -445,14 +445,15 @@ async def get_server_stats() -> dict:
 
 # ==================== 求片类型管理 ====================
 
-async def create_movie_category(name: str, description: str = None, creator_id: int = None) -> bool:
+async def create_movie_category(name: str, description: str = None, creator_id: int = None, sort_order: int = 0) -> bool:
     """创建求片类型"""
     async for session in get_db():
         try:
             category = MovieCategory(
                 name=name,
                 description=description,
-                created_by=creator_id
+                created_by=creator_id or 0,  # 如果creator_id为None，使用0作为系统创建
+                sort_order=sort_order
             )
             session.add(category)
             await session.commit()
