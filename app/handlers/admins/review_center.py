@@ -36,6 +36,17 @@ content_browse_handler = BrowseHandler(CONTENT_BROWSE_CONFIG)
 @review_center_router.callback_query(F.data == "admin_review_center")
 async def cb_admin_review_center(cb: types.CallbackQuery, state: FSMContext):
     """审核中心"""
+    # 检查审核功能开关
+    from app.database.business import is_feature_enabled
+    from app.database.users import get_role
+    from app.utils.roles import ROLE_SUPERADMIN
+    
+    role = await get_role(cb.from_user.id)
+    # 超管不受功能开关限制，普通管理员需要检查开关
+    if role != ROLE_SUPERADMIN and not await is_feature_enabled("admin_panel_enabled"):
+        await cb.answer("❌ 审核功能已关闭", show_alert=True)
+        return
+    
     # 删除之前发送的媒体消息
     try:
         data = await state.get_data()
@@ -75,6 +86,17 @@ async def cb_admin_review_center(cb: types.CallbackQuery, state: FSMContext):
 @review_center_router.callback_query(F.data == "admin_all_movies")
 async def cb_admin_all_movies(cb: types.CallbackQuery, state: FSMContext):
     """所有求片管理"""
+    # 检查审核功能开关
+    from app.database.business import is_feature_enabled
+    from app.database.users import get_role
+    from app.utils.roles import ROLE_SUPERADMIN
+    
+    role = await get_role(cb.from_user.id)
+    # 超管不受功能开关限制，普通管理员需要检查开关
+    if role != ROLE_SUPERADMIN and not await is_feature_enabled("admin_panel_enabled"):
+        await cb.answer("❌ 审核功能已关闭", show_alert=True)
+        return
+    
     await movie_browse_handler.handle_browse_list(cb, state, 1)
 
 
@@ -498,6 +520,17 @@ async def cb_back_to_main_cleanup(cb: types.CallbackQuery, state: FSMContext):
 @review_center_router.callback_query(F.data == "admin_all_content")
 async def cb_admin_all_content(cb: types.CallbackQuery, state: FSMContext):
     """所有投稿管理"""
+    # 检查审核功能开关
+    from app.database.business import is_feature_enabled
+    from app.database.users import get_role
+    from app.utils.roles import ROLE_SUPERADMIN
+    
+    role = await get_role(cb.from_user.id)
+    # 超管不受功能开关限制，普通管理员需要检查开关
+    if role != ROLE_SUPERADMIN and not await is_feature_enabled("admin_panel_enabled"):
+        await cb.answer("❌ 审核功能已关闭", show_alert=True)
+        return
+    
     await content_browse_handler.handle_browse_list(cb, state, 1)
 
 
