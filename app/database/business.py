@@ -85,8 +85,7 @@ async def create_movie_request(user_id: int, category_id: int, title: str, descr
                 category_id=category_id,
                 title=title,
                 description=description,
-                file_id=file_id,
-                created_at=datetime.now()  # 使用本地时间而不是数据库服务器时间
+                file_id=file_id
             )
             session.add(request)
             await session.commit()
@@ -168,7 +167,7 @@ async def review_movie_request(request_id: int, reviewer_id: int, status: str, r
                 .where(MovieRequest.id == request_id)
                 .values(
                     status=status,
-                    reviewed_at=datetime.now(),
+                    reviewed_at=func.now(),
                     reviewed_by=reviewer_id,
                     review_note=review_note
                 )
@@ -203,8 +202,7 @@ async def create_content_submission(user_id: int, title: str, content: str, file
                 category_id=category_id,
                 title=title,
                 content=content,
-                file_id=file_id,
-                created_at=datetime.now()  # 使用本地时间而不是数据库服务器时间
+                file_id=file_id
             )
             session.add(submission)
             await session.commit()
@@ -285,7 +283,7 @@ async def review_content_submission(submission_id: int, reviewer_id: int, status
                 .where(ContentSubmission.id == submission_id)
                 .values(
                     status=status,
-                    reviewed_at=datetime.now(),
+                    reviewed_at=func.now(),
                     reviewed_by=reviewer_id,
                     review_note=review_note
                 )
@@ -318,8 +316,7 @@ async def create_user_feedback(user_id: int, feedback_type: str, content: str) -
             feedback = UserFeedback(
                 user_id=user_id,
                 feedback_type=feedback_type,
-                content=content,
-                created_at=datetime.now()  # 使用本地时间而不是数据库服务器时间
+                content=content
             )
             session.add(feedback)
             await session.commit()
@@ -366,7 +363,7 @@ async def reply_user_feedback(feedback_id: int, admin_id: int, reply_content: st
                 .where(UserFeedback.id == feedback_id)
                 .values(
                     status="resolved",
-                    replied_at=datetime.now(),
+                    replied_at=func.now(),
                     replied_by=admin_id,
                     reply_content=reply_content
                 )
@@ -565,7 +562,7 @@ async def set_system_setting(setting_key: str, setting_value: str, setting_type:
                 await session.execute(
                     update(SystemSettings).where(SystemSettings.setting_key == setting_key).values(
                         setting_value=setting_value,
-                        updated_at=datetime.now(),
+                        updated_at=func.now(),
                         updated_by=updater_id
                     )
                 )

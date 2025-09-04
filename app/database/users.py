@@ -1,4 +1,4 @@
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from datetime import datetime
 from loguru import logger
 
@@ -20,12 +20,10 @@ async def add_user(chat_id: int, full_name: str, username: str | None) -> bool:
 
             if not is_exists:
                 safe_username = username if username else f"user_{chat_id}"
-                created_at = datetime.now()
                 new_user = User(
                     chat_id=chat_id,
                     full_name=full_name,
                     username=safe_username,
-                    created_at=created_at,
                     role=ROLE_USER,
                 )
                 session.add(new_user)
@@ -115,7 +113,7 @@ async def update_last_acitivity(chat_id: int) -> None:
             await session.execute(
                 update(User)
                 .filter_by(chat_id=chat_id)
-                .values(last_activity_at=datetime.now())
+                .values(last_activity_at=func.now())
             )
             await session.commit()
         except Exception as e:
