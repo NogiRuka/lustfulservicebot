@@ -332,9 +332,22 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
         prefix = callback_data.split("_")[0] + "_" + callback_data.split("_")[1]
         keyboard = browser.create_navigation_keyboard(user_id, prefix, data['page_info'])
         
-        await callback.message.edit_text(text, reply_markup=keyboard)
+        try:
+            await callback.message.edit_text(text, reply_markup=keyboard)
+        except Exception as edit_error:
+            # 处理消息内容相同的错误
+            if "message is not modified" in str(edit_error):
+                # 消息内容相同，无需更新，直接回应
+                pass
+            else:
+                # 其他编辑错误，重新抛出
+                raise edit_error
+        
         await callback.answer()
         
     except Exception as e:
         logger.error(f"处理浏览器回调失败: {e}")
-        await callback.answer("❌ 操作失败，请稍后重试")
+        if "message is not modified" in str(e):
+            await callback.answer("📄 页面内容无变化")
+        else:
+            await callback.answer("❌ 操作失败，请稍后重试")
