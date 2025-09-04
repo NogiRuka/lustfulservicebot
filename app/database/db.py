@@ -104,19 +104,19 @@ async def init_default_categories() -> None:
             "sort_order": 3
         },
         {
-            "name": "纪录片",
-            "description": "纪录片类求片和投稿",
+            "name": "国产🔞",
+            "description": "国产成人内容",
             "sort_order": 4
         },
         {
-            "name": "综艺",
-            "description": "综艺节目类求片和投稿",
+            "name": "日韩🔞",
+            "description": "日韩成人内容",
             "sort_order": 5
         },
         {
-            "name": "其他",
-            "description": "其他类型的求片和投稿",
-            "sort_order": 99
+            "name": "欧美🔞",
+            "description": "欧美成人内容",
+            "sort_order": 6
         }
     ]
     

@@ -25,7 +25,7 @@ class User(Base):
 
 
 class MovieCategory(Base):
-    """求片类型表。"""
+    """内容分类表（求片和投稿共用）。"""
     
     __tablename__ = "movie_categories"
     

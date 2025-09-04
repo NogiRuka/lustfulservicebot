@@ -443,10 +443,10 @@ async def get_server_stats() -> dict:
             return {}
 
 
-# ==================== 求片类型管理 ====================
+# ==================== 内容分类管理（求片和投稿共用） ====================
 
 async def create_movie_category(name: str, description: str = None, creator_id: int = None, sort_order: int = 0) -> bool:
-    """创建求片类型"""
+    """创建内容分类（求片和投稿共用）"""
     async for session in get_db():
         try:
             category = MovieCategory(
@@ -459,13 +459,13 @@ async def create_movie_category(name: str, description: str = None, creator_id: 
             await session.commit()
             return True
         except Exception as e:
-            logger.error(f"创建求片类型失败: {e}")
+            logger.error(f"创建内容分类失败: {e}")
             await session.rollback()
             return False
 
 
 async def get_all_movie_categories(active_only: bool = True) -> List[MovieCategory]:
-    """获取所有求片类型"""
+    """获取所有内容分类（求片和投稿共用）"""
     async for session in get_db():
         try:
             query = select(MovieCategory).order_by(MovieCategory.sort_order, MovieCategory.created_at)
@@ -474,12 +474,12 @@ async def get_all_movie_categories(active_only: bool = True) -> List[MovieCatego
             result = await session.execute(query)
             return result.scalars().all()
         except Exception as e:
-            logger.error(f"获取求片类型失败: {e}")
+            logger.error(f"获取内容分类失败: {e}")
             return []
 
 
 async def get_movie_category_by_id(category_id: int) -> Optional[MovieCategory]:
-    """根据ID获取求片类型"""
+    """根据ID获取内容分类"""
     async for session in get_db():
         try:
             result = await session.execute(
@@ -487,12 +487,12 @@ async def get_movie_category_by_id(category_id: int) -> Optional[MovieCategory]:
             )
             return result.scalar_one_or_none()
         except Exception as e:
-            logger.error(f"获取求片类型失败: {e}")
+            logger.error(f"获取内容分类失败: {e}")
             return None
 
 
 async def update_movie_category(category_id: int, name: str = None, description: str = None, is_active: bool = None) -> bool:
-    """更新求片类型"""
+    """更新内容分类"""
     async for session in get_db():
         try:
             update_data = {}
@@ -510,13 +510,13 @@ async def update_movie_category(category_id: int, name: str = None, description:
                 await session.commit()
             return True
         except Exception as e:
-            logger.error(f"更新求片类型失败: {e}")
+            logger.error(f"更新内容分类失败: {e}")
             await session.rollback()
             return False
 
 
 async def delete_movie_category(category_id: int) -> bool:
-    """删除求片类型"""
+    """删除内容分类"""
     async for session in get_db():
         try:
             await session.execute(
@@ -525,7 +525,7 @@ async def delete_movie_category(category_id: int) -> bool:
             await session.commit()
             return True
         except Exception as e:
-            logger.error(f"删除求片类型失败: {e}")
+            logger.error(f"删除内容分类失败: {e}")
             await session.rollback()
             return False
 
