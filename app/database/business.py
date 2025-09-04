@@ -470,7 +470,8 @@ async def get_all_movie_categories(active_only: bool = True) -> List[MovieCatego
         try:
             query = select(MovieCategory).order_by(MovieCategory.sort_order, MovieCategory.created_at)
             if active_only:
-                query = query.where(MovieCategory.is_active == True)
+                # SQLite兼容的布尔查询：直接与1比较或使用!=0
+                query = query.where(MovieCategory.is_active != 0)
             result = await session.execute(query)
             return result.scalars().all()
         except Exception as e:
