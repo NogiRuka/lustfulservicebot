@@ -242,8 +242,14 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
     try:
         if "_page_" in callback_data:
             # 页面跳转
-            page = int(callback_data.split("_page_")[1])
-            data = await browser.get_page_data(user_id, page)
+            try:
+                page_str = callback_data.split("_page_")[1]
+                page = int(page_str)
+                data = await browser.get_page_data(user_id, page)
+            except (ValueError, IndexError) as e:
+                logger.error(f"解析页面号失败: {callback_data}, 错误: {e}")
+                await callback.answer("❌ 页面跳转失败")
+                return
             
         elif "_settings" in callback_data:
             # 显示设置
@@ -272,9 +278,15 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
             
         elif "_page_size_" in callback_data:
             # 设置具体页面大小
-            page_size = int(callback_data.split("_page_size_")[1])
-            browser.update_config(user_id, page_size=page_size)
-            data = await browser.get_page_data(user_id, 1)
+            try:
+                page_size_str = callback_data.split("_page_size_")[1]
+                page_size = int(page_size_str)
+                browser.update_config(user_id, page_size=page_size)
+                data = await browser.get_page_data(user_id, 1)
+            except (ValueError, IndexError) as e:
+                logger.error(f"解析页面大小失败: {callback_data}, 错误: {e}")
+                await callback.answer("❌ 页面大小设置失败")
+                return
             
         elif "_toggle_sort_order" in callback_data:
             # 切换排序顺序
