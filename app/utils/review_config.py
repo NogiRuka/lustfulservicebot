@@ -7,6 +7,19 @@ from app.utils.panel_utils import get_user_display_link, send_review_notificatio
 from loguru import logger
 
 
+async def check_admin_permission(user_id: int) -> bool:
+    """检查管理员权限和功能开关"""
+    from app.database.business import is_feature_enabled
+    from app.database.users import get_role
+    from app.utils.roles import ROLE_SUPERADMIN
+    
+    role = await get_role(user_id)
+    # 超管不受功能开关限制，普通管理员需要检查开关
+    if role != ROLE_SUPERADMIN and not await is_feature_enabled("admin_panel_enabled"):
+        return False
+    return True
+
+
 class ReviewConfig:
     """审核配置类"""
     
