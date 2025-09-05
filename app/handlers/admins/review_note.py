@@ -366,6 +366,33 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                     await _send_media_messages_for_content(cb, state, current_page_data)
             else:
                 # 返回具体的审核列表并重新发送媒体消息
+                # 但首先需要更新审核中心主面板数据
+                text = "✅ <b>审核中心</b>\n\n"
+                text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
+                text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
+                text += "请选择要审核的类型："
+                
+                from app.buttons.users import admin_review_center_kb
+                
+                # 智能查找并更新主面板消息
+                current_message_id = cb.message.message_id
+                for offset in range(1, 10):
+                    try:
+                        potential_main_id = current_message_id - offset
+                        await cb.bot.edit_message_caption(
+                            chat_id=cb.message.chat.id,
+                            message_id=potential_main_id,
+                            caption=text,
+                            reply_markup=admin_review_center_kb
+                        )
+                        logger.info(f"成功更新审核中心主面板消息 ID: {potential_main_id}")
+                        break
+                    except Exception as e:
+                        continue
+                else:
+                    logger.warning("无法找到审核中心主面板消息进行更新")
+                
+                # 然后返回具体的审核列表
                 if item_type == 'movie':
                     from app.handlers.admins.movie_review import movie_review_handler
                     await movie_review_handler.handle_review_list(cb, state)
