@@ -369,15 +369,17 @@ class ReviewHandler:
             # 发送审核通知
             await self._send_review_notification(cb, item_id, "approved")
             
-            # 如果是媒体消息审核，只显示alert并删除媒体消息
+            # 如果是媒体消息审核，只显示alert并刷新主面板数据
             if "media" in cb.data:
                 await cb.answer(f"✅ {self.config.name}已通过")
-                # 删除已发送的媒体消息并刷新主面板
+                # 删除已发送的媒体消息并刷新主面板当前页数据
                 await cleanup_sent_media_messages(cb.bot, state)
                 await self.handle_review_list(cb, state)
             else:
+                # 主菜单审核：显示alert，返回审核页面并刷新数据，重新发送媒体消息
                 await cb.answer(f"✅ {self.config.name}已通过")
-                # 刷新审核列表
+                # 删除之前发送的媒体消息，刷新审核列表并重新发送媒体消息
+                await cleanup_sent_media_messages(cb.bot, state)
                 await self.handle_review_list(cb, state)
         else:
             await cb.answer(f"❌ 操作失败，请检查{self.config.name}ID是否正确", show_alert=True)
@@ -390,15 +392,17 @@ class ReviewHandler:
             # 发送审核通知
             await self._send_review_notification(cb, item_id, "rejected")
             
-            # 如果是媒体消息审核，只显示alert并删除媒体消息
+            # 如果是媒体消息审核，只显示alert并刷新主面板数据
             if "media" in cb.data:
                 await cb.answer(f"❌ {self.config.name}已拒绝")
-                # 删除已发送的媒体消息并刷新主面板
+                # 删除已发送的媒体消息并刷新主面板当前页数据
                 await cleanup_sent_media_messages(cb.bot, state)
                 await self.handle_review_list(cb, state)
             else:
+                # 主菜单审核：显示alert，返回审核页面并刷新数据，重新发送媒体消息
                 await cb.answer(f"❌ {self.config.name}已拒绝")
-                # 刷新审核列表
+                # 删除之前发送的媒体消息，刷新审核列表并重新发送媒体消息
+                await cleanup_sent_media_messages(cb.bot, state)
                 await self.handle_review_list(cb, state)
         else:
             await cb.answer(f"❌ 操作失败，请检查{self.config.name}ID是否正确", show_alert=True)
