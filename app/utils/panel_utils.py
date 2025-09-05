@@ -329,9 +329,16 @@ async def cleanup_sent_media_messages(bot, state):
     try:
         data = await state.get_data()
         sent_media_ids = data.get('sent_media_ids', [])
-        
-        # 添加调试信息，检查是否误删主消息
         main_message_id = data.get('main_message_id')
+        
+        # 详细的调试信息
+        from loguru import logger
+        logger.info(f"🧹 开始清理媒体消息: 主消息ID={main_message_id}, 媒体消息列表={sent_media_ids}")
+        
+        # 检查是否有主消息ID在媒体消息列表中
+        if main_message_id and main_message_id in sent_media_ids:
+            logger.error(f"🚨 发现BUG：主消息ID {main_message_id} 在媒体消息列表中！")
+            logger.error(f"这会导致主消息被删除！sent_media_ids: {sent_media_ids}")
         
         for message_id in sent_media_ids:
             try:
