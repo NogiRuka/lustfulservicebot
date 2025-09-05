@@ -2,6 +2,10 @@ from aiogram import types, F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from loguru import logger
+from app.utils.debug_utils import (
+    debug_log, debug_message_info, debug_state_info, debug_main_message_tracking,
+    debug_review_flow, debug_function
+)
 
 from app.database.business import (
     get_pending_movie_requests, get_pending_content_submissions,
@@ -36,14 +40,22 @@ content_browse_handler = BrowseHandler(CONTENT_BROWSE_CONFIG)
 # ==================== 审核中心 ====================
 
 @review_center_router.callback_query(F.data == "admin_review_center")
+@debug_function("审核中心入口")
 async def cb_admin_review_center(cb: types.CallbackQuery, state: FSMContext):
     """审核中心"""
+    debug_review_flow("进入审核中心")
+    debug_message_info(cb, "审核中心回调")
+    await debug_state_info(state, "进入前")
+    
     # 检查管理员权限和功能开关
     from app.utils.review_config import check_admin_permission
     
     if not await check_admin_permission(cb.from_user.id):
+        debug_log("权限检查失败", user_id=cb.from_user.id)
         await cb.answer("❌ 审核功能已关闭", show_alert=True)
         return
+    
+    debug_log("权限检查通过", user_id=cb.from_user.id)
     
     # 删除之前发送的媒体消息
     try:
@@ -72,14 +84,33 @@ async def cb_admin_review_center(cb: types.CallbackQuery, state: FSMContext):
     text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
     text += "请选择要审核的类型："
     
+    debug_review_flow(
+        "准备编辑审核中心主消息",
+        target_message_id=cb.message.message_id,
+        movie_count=len(movie_requests),
+        content_count=len(content_submissions)
+    )
+    
     await cb.message.edit_caption(
         caption=text,
         reply_markup=admin_review_center_kb
     )
     
     # 保存主消息ID，确保后续操作能正确编辑这个消息
-    await state.update_data(main_message_id=cb.message.message_id)
+    old_main_id = (await state.get_data()).get('main_message_id')
+    new_main_id = cb.message.message_id
     
+    debug_main_message_tracking(
+        "审核中心设置主消息ID",
+        old_id=old_main_id,
+        new_id=new_main_id,
+        source="审核中心主面板"
+    )
+    
+    await state.update_data(main_message_id=new_main_id)
+    await debug_state_info(state, "主消息ID设置后")
+    
+    debug_review_flow("审核中心初始化完成")
     await cb.answer()
 
 

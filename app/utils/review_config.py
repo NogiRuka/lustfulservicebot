@@ -6,6 +6,10 @@ from app.utils.pagination import Paginator, format_page_header
 from app.utils.panel_utils import get_user_display_link, send_review_notification, cleanup_sent_media_messages
 from app.config.config import REVIEW_PAGE_SIZE
 from loguru import logger
+from app.utils.debug_utils import (
+    debug_log, debug_message_info, debug_state_info, debug_main_message_tracking,
+    debug_review_flow, debug_media_message_tracking, debug_function
+)
 
 
 async def check_admin_permission(user_id: int) -> bool:
@@ -222,16 +226,32 @@ class ReviewHandler:
     def __init__(self, config: ReviewConfig):
         self.config = config
     
+    @debug_function("处理审核列表")
     async def handle_review_list(self, cb: types.CallbackQuery, state: FSMContext, page: int = 1):
         """处理审核列表"""
+        debug_review_flow(
+            f"开始处理{self.config.name}审核列表",
+            page=page,
+            item_type=self.config.item_type
+        )
+        debug_message_info(cb, "审核列表回调")
+        await debug_state_info(state, "进入前")
+        
         # 清理之前发送的媒体消息
+        data = await state.get_data()
+        old_media_ids = data.get('sent_media_ids', [])
+        debug_media_message_tracking("清理媒体消息", message_ids=old_media_ids)
+        
         await cleanup_sent_media_messages(cb.bot, state)
         
         # 清空媒体消息记录
         await state.update_data(sent_media_ids=[])
+        debug_media_message_tracking("清空媒体消息记录")
         
         # 获取待审核的项目
+        debug_review_flow("获取待审核项目")
         items = await self.config.get_pending_items_function()
+        debug_review_flow("获取到待审核项目", count=len(items))
         
         if not items:
             from app.buttons.users import admin_review_center_kb
@@ -250,9 +270,17 @@ class ReviewHandler:
         text = await ReviewUIBuilder.build_review_list_text(self.config, page_data, paginator, page)
         
         # 处理媒体消息
+        debug_review_flow("开始发送媒体消息", page_items=len(page_data))
         await self._send_media_messages(cb, state, page_data)
         
         keyboard = ReviewUIBuilder.build_review_list_keyboard(self.config, page_data, paginator, page)
+        
+        debug_review_flow(
+            "准备编辑主消息显示审核列表",
+            target_message_id=cb.message.message_id,
+            page=page,
+            total_pages=paginator.total_pages
+        )
         
         from app.utils.message_utils import safe_edit_message
         await safe_edit_message(
@@ -262,14 +290,38 @@ class ReviewHandler:
         )
         
         # 保存主消息ID，确保后续操作能正确编辑这个消息
-        await state.update_data(main_message_id=cb.message.message_id)
+        old_main_id = (await state.get_data()).get('main_message_id')
+        new_main_id = cb.message.message_id
         
+        debug_main_message_tracking(
+            f"{self.config.name}审核列表设置主消息ID",
+            old_id=old_main_id,
+            new_id=new_main_id,
+            source=f"{self.config.name}审核列表"
+        )
+        
+        await state.update_data(main_message_id=new_main_id)
+        await debug_state_info(state, "主消息ID设置后")
+        
+        debug_review_flow(f"{self.config.name}审核列表处理完成")
         await cb.answer()
     
     async def _send_media_messages(self, cb: types.CallbackQuery, state: FSMContext, items: List):
         """发送媒体消息"""
+        debug_media_message_tracking(
+            "开始发送媒体消息",
+            total_items=len(items),
+            item_type=self.config.item_type
+        )
+        
+        sent_count = 0
         for item in items:
             if hasattr(item, 'file_id') and item.file_id:
+                debug_log(
+                    f"准备发送{self.config.name}媒体消息",
+                    item_id=item.id,
+                    file_id=item.file_id[:20] + "..." if len(item.file_id) > 20 else item.file_id
+                )
                 # 获取类型信息
                 category_name = "未知类型"
                 if hasattr(item, 'category') and item.category:
@@ -309,6 +361,14 @@ class ReviewHandler:
                         reply_markup=media_keyboard
                     )
                     
+                    sent_count += 1
+                    debug_log(
+                        f"{self.config.name}媒体消息发送成功",
+                        item_id=item.id,
+                        sent_message_id=sent_message.message_id,
+                        sent_count=sent_count
+                    )
+                    
                     # 记录发送的媒体消息ID
                     data = await state.get_data()
                     sent_media_ids = data.get('sent_media_ids', [])
@@ -317,8 +377,31 @@ class ReviewHandler:
                         sent_media_ids=sent_media_ids,
                         chat_id=cb.from_user.id
                     )
+                    
+                    debug_media_message_tracking(
+                        "媒体消息ID已记录",
+                        message_ids=[sent_message.message_id],
+                        total_sent=len(sent_media_ids)
+                    )
                 except Exception as e:
+                    debug_error(
+                        "媒体消息发送失败",
+                        str(e),
+                        item_id=item.id,
+                        item_type=self.config.item_type
+                    )
                     logger.error(f"发送媒体消息失败: {e}")
+            else:
+                debug_log(
+                    f"{self.config.name}项目无媒体文件",
+                    item_id=item.id
+                )
+        
+        debug_media_message_tracking(
+            "媒体消息发送完成",
+            sent_count=sent_count,
+            total_items=len(items)
+        )
     
     async def handle_detail(self, cb: types.CallbackQuery, state: FSMContext, item_id: int):
         """处理详情查看"""

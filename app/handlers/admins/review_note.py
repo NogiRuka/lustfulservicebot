@@ -6,6 +6,10 @@ from loguru import logger
 from app.utils.states import Wait
 from app.database.business import review_movie_request, review_content_submission, get_pending_movie_requests, get_pending_content_submissions
 from app.utils.panel_utils import send_review_notification, DEFAULT_WELCOME_PHOTO
+from app.utils.debug_utils import (
+    debug_log, debug_message_info, debug_state_info, debug_main_message_tracking,
+    debug_review_flow, debug_error, debug_function
+)
 
 review_note_router = Router()
 
@@ -13,13 +17,28 @@ review_note_router = Router()
 # ==================== 审核留言功能 ====================
 
 @review_note_router.callback_query(F.data.startswith("approve_movie_note_"))
+@debug_function("审核留言-通过求片")
 async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
     """留言通过求片"""
     request_id = int(cb.data.split("_")[-1])
+    
+    debug_review_flow("开始处理求片通过留言", request_id=request_id)
+    debug_message_info(cb, "当前回调消息")
+    await debug_state_info(state, "进入前")
 
     # 保存审核信息到状态，保持原有的主消息ID
     data = await state.get_data()
-    main_message_id = data.get('main_message_id') or cb.message.message_id
+    old_main_id = data.get('main_message_id')
+    current_message_id = cb.message.message_id
+    main_message_id = old_main_id or current_message_id
+    
+    debug_main_message_tracking(
+        "设置主消息ID",
+        old_id=old_main_id,
+        new_id=main_message_id,
+        current_msg_id=current_message_id,
+        source="保存的ID" if old_main_id else "当前消息ID"
+    )
     
     await state.update_data({
         'review_type': 'movie',
@@ -28,6 +47,9 @@ async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
         'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
         'main_message_id': main_message_id  # 确保主消息ID被保存
     })
+    
+    await debug_state_info(state, "状态更新后")
+    debug_review_flow("准备编辑消息显示留言输入界面", target_message_id=main_message_id)
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
@@ -44,13 +66,28 @@ async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_note_router.callback_query(F.data.startswith("reject_movie_note_"))
+@debug_function("审核留言-拒绝求片")
 async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
     """留言拒绝求片"""
     request_id = int(cb.data.split("_")[-1])
     
+    debug_review_flow("开始处理求片拒绝留言", request_id=request_id)
+    debug_message_info(cb, "当前回调消息")
+    await debug_state_info(state, "进入前")
+    
     # 保存审核信息到状态，保持原有的主消息ID
     data = await state.get_data()
-    main_message_id = data.get('main_message_id') or cb.message.message_id
+    old_main_id = data.get('main_message_id')
+    current_message_id = cb.message.message_id
+    main_message_id = old_main_id or current_message_id
+    
+    debug_main_message_tracking(
+        "设置主消息ID",
+        old_id=old_main_id,
+        new_id=main_message_id,
+        current_msg_id=current_message_id,
+        source="保存的ID" if old_main_id else "当前消息ID"
+    )
     
     await state.update_data({
         'review_type': 'movie',
@@ -59,6 +96,9 @@ async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
         'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
         'main_message_id': main_message_id  # 确保主消息ID被保存
     })
+    
+    await debug_state_info(state, "状态更新后")
+    debug_review_flow("准备编辑消息显示留言输入界面", target_message_id=main_message_id)
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
@@ -75,13 +115,28 @@ async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_note_router.callback_query(F.data.startswith("approve_content_note_"))
+@debug_function("审核留言-通过投稿")
 async def cb_approve_content_note(cb: types.CallbackQuery, state: FSMContext):
     """留言通过投稿"""
     submission_id = int(cb.data.split("_")[-1])
     
+    debug_review_flow("开始处理投稿通过留言", submission_id=submission_id)
+    debug_message_info(cb, "当前回调消息")
+    await debug_state_info(state, "进入前")
+    
     # 保存审核信息到状态，保持原有的主消息ID
     data = await state.get_data()
-    main_message_id = data.get('main_message_id') or cb.message.message_id
+    old_main_id = data.get('main_message_id')
+    current_message_id = cb.message.message_id
+    main_message_id = old_main_id or current_message_id
+    
+    debug_main_message_tracking(
+        "设置主消息ID",
+        old_id=old_main_id,
+        new_id=main_message_id,
+        current_msg_id=current_message_id,
+        source="保存的ID" if old_main_id else "当前消息ID"
+    )
     
     await state.update_data({
         'review_type': 'content',
@@ -90,6 +145,9 @@ async def cb_approve_content_note(cb: types.CallbackQuery, state: FSMContext):
         'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
         'main_message_id': main_message_id  # 确保主消息ID被保存
     })
+    
+    await debug_state_info(state, "状态更新后")
+    debug_review_flow("准备编辑消息显示留言输入界面", target_message_id=main_message_id)
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
@@ -106,13 +164,28 @@ async def cb_approve_content_note(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_note_router.callback_query(F.data.startswith("reject_content_note_"))
+@debug_function("审核留言-拒绝投稿")
 async def cb_reject_content_note(cb: types.CallbackQuery, state: FSMContext):
     """留言拒绝投稿"""
     submission_id = int(cb.data.split("_")[-1])
     
+    debug_review_flow("开始处理投稿拒绝留言", submission_id=submission_id)
+    debug_message_info(cb, "当前回调消息")
+    await debug_state_info(state, "进入前")
+    
     # 保存审核信息到状态，保持原有的主消息ID
     data = await state.get_data()
-    main_message_id = data.get('main_message_id') or cb.message.message_id
+    old_main_id = data.get('main_message_id')
+    current_message_id = cb.message.message_id
+    main_message_id = old_main_id or current_message_id
+    
+    debug_main_message_tracking(
+        "设置主消息ID",
+        old_id=old_main_id,
+        new_id=main_message_id,
+        current_msg_id=current_message_id,
+        source="保存的ID" if old_main_id else "当前消息ID"
+    )
     
     await state.update_data({
         'review_type': 'content',
@@ -121,6 +194,9 @@ async def cb_reject_content_note(cb: types.CallbackQuery, state: FSMContext):
         'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
         'main_message_id': main_message_id  # 确保主消息ID被保存
     })
+    
+    await debug_state_info(state, "状态更新后")
+    debug_review_flow("准备编辑消息显示留言输入界面", target_message_id=main_message_id)
     
     await state.set_state(Wait.waitReviewNote)
     await cb.message.edit_caption(
@@ -137,9 +213,15 @@ async def cb_reject_content_note(cb: types.CallbackQuery, state: FSMContext):
 
 
 @review_note_router.message(StateFilter(Wait.waitReviewNote))
+@debug_function("处理审核留言输入")
 async def process_review_note(msg: types.Message, state: FSMContext):
     """处理审核留言"""
     review_note = msg.text.strip()
+    
+    debug_review_flow("开始处理用户输入的审核留言", note_length=len(review_note))
+    debug_log("用户输入消息信息", user_id=msg.from_user.id, message_id=msg.message_id)
+    await debug_state_info(state, "获取状态数据")
+    
     data = await state.get_data()
     
     # 兼容新旧数据格式
@@ -147,6 +229,16 @@ async def process_review_note(msg: types.Message, state: FSMContext):
     item_id = data.get('item_id') or data.get('review_id')
     item_type = data.get('item_type') or data.get('review_type')
     message_id = data.get('message_id')
+    main_message_id = data.get('main_message_id')
+    
+    debug_review_flow(
+        "解析状态数据",
+        action=action,
+        item_id=item_id,
+        item_type=item_type,
+        message_id=message_id,
+        main_message_id=main_message_id
+    )
     
     # 检查留言是否为空（现在留言是必填的）
     if not review_note.strip():
@@ -316,8 +408,13 @@ async def _return_to_review_list(cb: types.CallbackQuery, state: FSMContext, ite
 
 
 @review_note_router.callback_query(F.data == "confirm_review_note")
+@debug_function("确认提交审核留言")
 async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
     """确认提交审核留言"""
+    debug_review_flow("开始确认提交审核留言")
+    debug_message_info(cb, "确认按钮回调")
+    await debug_state_info(state, "获取确认前状态")
+    
     data = await state.get_data()
     
     # 兼容新旧数据格式
@@ -325,6 +422,16 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
     item_id = data.get('item_id') or data.get('review_id')
     item_type = data.get('item_type') or data.get('review_type')
     review_note = data.get('review_note')
+    main_message_id = data.get('main_message_id')
+    
+    debug_review_flow(
+        "解析确认数据",
+        action=action,
+        item_id=item_id,
+        item_type=item_type,
+        note_length=len(review_note) if review_note else 0,
+        main_message_id=main_message_id
+    )
     
     # 转换action格式
     if action == 'approve':
