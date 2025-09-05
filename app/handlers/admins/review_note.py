@@ -491,7 +491,7 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         await cb.answer(f"✅ 已{action_text}{type_text} {item_id}")
         
         if is_media_message:
-            # 媒体消息审核：删除当前媒体消息，然后重新发送审核列表
+            # 媒体消息审核：删除当前媒体消息，然后刷新主面板数据
             try:
                 await cb.message.delete()
             except Exception as e:
@@ -501,26 +501,34 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
             from app.utils.panel_utils import cleanup_sent_media_messages
             await cleanup_sent_media_messages(cb.bot, state)
             
-            # 媒体消息审核完成后，发送新的审核列表消息
-            # 创建一个临时消息对象用于发送新的审核列表
-            temp_message = await cb.bot.send_photo(
-                chat_id=cb.message.chat.id,
-                photo=DEFAULT_WELCOME_PHOTO,
-                caption="🔄 正在加载审核列表..."
-            )
+            # 媒体消息审核完成后，刷新主面板数据
+            # 获取状态中保存的主消息ID
+            data = await state.get_data()
+            main_message_id = data.get('main_message_id')
             
-            # 创建新的回调对象指向临时消息
-            import copy
-            temp_cb = copy.copy(cb)
-            temp_cb.message = temp_message
-            
-            # 调用相应的审核列表处理器
-            if item_type == 'movie':
-                from app.handlers.admins.movie_review import movie_review_handler
-                await movie_review_handler.handle_review_list(temp_cb, state)
-            elif item_type == 'content':
-                from app.handlers.admins.content_review import content_review_handler
-                await content_review_handler.handle_review_list(temp_cb, state)
+            if main_message_id:
+                # 创建指向主面板消息的回调对象
+                import copy
+                main_cb = copy.copy(cb)
+                # 创建主面板消息对象
+                main_cb.message = types.Message(
+                    message_id=main_message_id,
+                    date=cb.message.date,
+                    chat=cb.message.chat,
+                    from_user=cb.from_user,
+                    content_type="photo"
+                )
+                
+                # 调用相应的审核列表处理器来刷新主面板
+                if item_type == 'movie':
+                    from app.handlers.admins.movie_review import movie_review_handler
+                    await movie_review_handler.handle_review_list(main_cb, state)
+                elif item_type == 'content':
+                    from app.handlers.admins.content_review import content_review_handler
+                    await content_review_handler.handle_review_list(main_cb, state)
+            else:
+                # 如果没有主消息ID，回退到原有逻辑
+                await _return_to_review_list(cb, state, item_type)
         else:
             # 主面板审核：删除媒体消息，然后返回审核列表
             from app.utils.panel_utils import cleanup_sent_media_messages
