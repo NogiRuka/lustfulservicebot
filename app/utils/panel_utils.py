@@ -330,8 +330,18 @@ async def cleanup_sent_media_messages(bot, state):
         data = await state.get_data()
         sent_media_ids = data.get('sent_media_ids', [])
         
+        # 添加调试信息，检查是否误删主消息
+        main_message_id = data.get('main_message_id')
+        
         for message_id in sent_media_ids:
             try:
+                # 检查是否要删除主消息
+                if message_id == main_message_id:
+                    from loguru import logger
+                    logger.error(f"⚠️ 警告：试图删除主消息 {message_id}！这是一个BUG！")
+                    logger.error(f"主消息ID: {main_message_id}, 媒体消息列表: {sent_media_ids}")
+                    continue  # 跳过删除主消息
+                
                 await bot.delete_message(chat_id=data.get('chat_id'), message_id=message_id)
             except Exception as e:
                 from loguru import logger

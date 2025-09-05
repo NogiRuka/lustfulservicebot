@@ -548,20 +548,50 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                             text = f"📝 <b>投稿审核</b>\n\n暂无待审核的投稿请求。"
                             keyboard = admin_review_center_kb
                     
-                    # 直接编辑主面板消息
-                    await cb.bot.edit_message_caption(
-                        chat_id=cb.message.chat.id,
-                        message_id=main_message_id,
-                        caption=text,
-                        reply_markup=keyboard,
-                        parse_mode="HTML"
-                    )
+                    # 尝试编辑主面板消息，如果失败则发送新消息
+                    try:
+                        await cb.bot.edit_message_caption(
+                            chat_id=cb.message.chat.id,
+                            message_id=main_message_id,
+                            caption=text,
+                            reply_markup=keyboard,
+                            parse_mode="HTML"
+                        )
+                        debug_review_flow("主面板消息编辑成功", message_id=main_message_id)
+                    except Exception as edit_error:
+                        debug_error("主面板消息编辑失败", str(edit_error), message_id=main_message_id)
+                        logger.warning(f"编辑主面板消息失败，发送新消息: {edit_error}")
+                        
+                        # 发送新的主面板消息
+                        new_main_message = await cb.bot.send_photo(
+                            chat_id=cb.message.chat.id,
+                            photo=DEFAULT_WELCOME_PHOTO,
+                            caption=text,
+                            reply_markup=keyboard,
+                            parse_mode="HTML"
+                        )
+                        
+                        # 更新主消息ID
+                        new_main_id = new_main_message.message_id
+                        await state.update_data(main_message_id=new_main_id)
+                        
+                        debug_main_message_tracking(
+                            "创建新主消息",
+                            old_id=main_message_id,
+                            new_id=new_main_id,
+                            reason="原主消息不存在"
+                        )
+                        debug_review_flow("新主面板消息创建成功", message_id=new_main_id)
                     
                     # 发送新的媒体消息（如果有待审核项目）
-                    if item_type == 'movie' and items and page_data:
-                        await movie_review_handler._send_media_messages(cb, state, page_data)
-                    elif item_type == 'content' and items and page_data:
-                        await content_review_handler._send_media_messages(cb, state, page_data)
+                    if items and page_data:
+                        # 确保sent_media_ids列表是干净的，不包含主消息ID
+                        await state.update_data(sent_media_ids=[])
+                        
+                        if item_type == 'movie':
+                            await movie_review_handler._send_media_messages(cb, state, page_data)
+                        elif item_type == 'content':
+                            await content_review_handler._send_media_messages(cb, state, page_data)
                         
                 except Exception as e:
                     logger.error(f"刷新主面板失败: {e}")
