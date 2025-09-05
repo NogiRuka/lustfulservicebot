@@ -268,13 +268,9 @@ class ReviewHandler:
         
         # 构建界面
         text = await ReviewUIBuilder.build_review_list_text(self.config, page_data, paginator, page)
-        
-        # 处理媒体消息
-        debug_review_flow("开始发送媒体消息", page_items=len(page_data))
-        await self._send_media_messages(cb, state, page_data)
-        
         keyboard = ReviewUIBuilder.build_review_list_keyboard(self.config, page_data, paginator, page)
         
+        # 优先处理主消息：先编辑主消息，再处理媒体消息
         debug_review_flow(
             "准备编辑主消息显示审核列表",
             target_message_id=cb.message.message_id,
@@ -302,6 +298,10 @@ class ReviewHandler:
         
         await state.update_data(main_message_id=new_main_id)
         await debug_state_info(state, "主消息ID设置后")
+        
+        # 主消息处理完成后，再处理媒体消息
+        debug_review_flow("开始发送媒体消息", page_items=len(page_data))
+        await self._send_media_messages(cb, state, page_data)
         
         debug_review_flow(f"{self.config.name}审核列表处理完成")
         await cb.answer()
