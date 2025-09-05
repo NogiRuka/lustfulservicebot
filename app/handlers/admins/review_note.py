@@ -484,27 +484,55 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         # 区分媒体消息审核和主面板审核的处理逻辑
         note_preview = review_note[:30] + ('...' if len(review_note) > 30 else '') if review_note else "无留言"
         
-        # 检查是否为媒体消息（单独发送的媒体消息，排除主消息）
+        # 获取主消息ID
         data = await state.get_data()
         main_message_id = data.get('main_message_id')
-        is_media_message = (
-            (hasattr(cb.message, 'photo') or hasattr(cb.message, 'video') or hasattr(cb.message, 'document')) and
-            cb.message.message_id != main_message_id  # 排除主消息
+        current_message_id = cb.message.message_id
+        
+        # 安全的媒体消息判断：必须同时满足三个条件
+        # 1. 当前消息有媒体内容
+        # 2. 当前消息ID不等于主消息ID
+        # 3. 主消息ID存在且有效
+        has_media_content = hasattr(cb.message, 'photo') or hasattr(cb.message, 'video') or hasattr(cb.message, 'document')
+        is_not_main_message = main_message_id and current_message_id != main_message_id
+        is_media_message = has_media_content and is_not_main_message
+        
+        debug_review_flow(
+            "消息类型判断",
+            current_message_id=current_message_id,
+            main_message_id=main_message_id,
+            has_media_content=has_media_content,
+            is_not_main_message=is_not_main_message,
+            is_media_message=is_media_message
         )
         
         # 显示提示消息（不需要用户确认）
         await cb.answer(f"✅ 已{action_text}{type_text} {item_id}")
         
         if is_media_message:
-            # 媒体消息审核：删除当前媒体消息，然后刷新主面板数据
-            try:
-                await cb.message.delete()
-            except Exception as e:
-                logger.warning(f"删除媒体消息失败: {e}")
+            # 媒体消息审核：安全删除当前媒体消息，然后刷新主面板数据
+            debug_review_flow("开始媒体消息审核流程", message_id=current_message_id)
             
-            # 删除其他已发送的媒体消息
-            from app.utils.panel_utils import cleanup_sent_media_messages
-            await cleanup_sent_media_messages(cb.bot, state)
+            # 双重检查：确保不会删除主消息
+            if current_message_id == main_message_id:
+                debug_error("严重错误", "试图删除主消息！", message_id=current_message_id)
+                logger.error(f"🚨 严重错误：试图删除主消息 {current_message_id}！")
+                # 强制使用主面板处理逻辑
+                is_media_message = False
+            else:
+                # 安全删除当前媒体消息
+                try:
+                    debug_review_flow("删除媒体消息", message_id=current_message_id)
+                    await cb.message.delete()
+                    debug_review_flow("媒体消息删除成功", message_id=current_message_id)
+                except Exception as e:
+                    logger.warning(f"删除媒体消息失败 {current_message_id}: {e}")
+                
+                # 删除其他已发送的媒体消息
+                from app.utils.panel_utils import cleanup_sent_media_messages
+                await cleanup_sent_media_messages(cb.bot, state)
+        
+        if is_media_message:
             
             # 媒体消息审核完成后，刷新主面板数据
             # 获取状态中保存的主消息ID
@@ -606,7 +634,18 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                 # 如果没有主消息ID，回退到原有逻辑
                 await _return_to_review_list(cb, state, item_type)
         else:
-            # 主面板审核：删除媒体消息，然后返回审核列表
+            # 主面板审核：安全处理主消息审核
+            debug_review_flow("开始主面板审核流程", message_id=current_message_id)
+            
+            # 确保当前消息是主消息
+            if current_message_id == main_message_id:
+                debug_review_flow("确认为主消息审核", message_id=current_message_id)
+            else:
+                debug_review_flow("非主消息的主面板审核", 
+                                current_id=current_message_id, 
+                                main_id=main_message_id)
+            
+            # 删除媒体消息，但保护主消息
             from app.utils.panel_utils import cleanup_sent_media_messages
             await cleanup_sent_media_messages(cb.bot, state)
             
