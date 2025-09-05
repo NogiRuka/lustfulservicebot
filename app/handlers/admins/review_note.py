@@ -507,25 +507,68 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
             main_message_id = data.get('main_message_id')
             
             if main_message_id:
-                # 创建指向主面板消息的回调对象
-                import copy
-                main_cb = copy.copy(cb)
-                # 创建主面板消息对象
-                main_cb.message = types.Message(
-                    message_id=main_message_id,
-                    date=cb.message.date,
-                    chat=cb.message.chat,
-                    from_user=cb.from_user,
-                    content_type="photo"
-                )
-                
-                # 调用相应的审核列表处理器来刷新主面板
-                if item_type == 'movie':
-                    from app.handlers.admins.movie_review import movie_review_handler
-                    await movie_review_handler.handle_review_list(main_cb, state)
-                elif item_type == 'content':
-                    from app.handlers.admins.content_review import content_review_handler
-                    await content_review_handler.handle_review_list(main_cb, state)
+                # 直接编辑主面板消息来刷新数据
+                try:
+                    # 获取最新的待审核数据
+                    if item_type == 'movie':
+                        from app.handlers.admins.movie_review import movie_review_handler
+                        from app.database.business import get_pending_movie_requests
+                        items = await get_pending_movie_requests()
+                        
+                        # 构建审核列表文本和键盘
+                        from app.utils.review_config import ReviewUIBuilder
+                        from app.utils.pagination import Paginator
+                        from app.config.config import REVIEW_PAGE_SIZE
+                        
+                        if items:
+                            paginator = Paginator(items, page_size=REVIEW_PAGE_SIZE)
+                            page_data = paginator.get_page_items(1)
+                            text = await ReviewUIBuilder.build_review_list_text(movie_review_handler.config, page_data, paginator, 1)
+                            keyboard = ReviewUIBuilder.build_review_list_keyboard(movie_review_handler.config, page_data, paginator, 1)
+                        else:
+                            from app.buttons.users import admin_review_center_kb
+                            text = f"🎬 <b>求片审核</b>\n\n暂无待审核的求片请求。"
+                            keyboard = admin_review_center_kb
+                            
+                    elif item_type == 'content':
+                        from app.handlers.admins.content_review import content_review_handler
+                        from app.database.business import get_pending_content_submissions
+                        items = await get_pending_content_submissions()
+                        
+                        # 构建审核列表文本和键盘
+                        from app.utils.review_config import ReviewUIBuilder
+                        from app.utils.pagination import Paginator
+                        from app.config.config import REVIEW_PAGE_SIZE
+                        
+                        if items:
+                            paginator = Paginator(items, page_size=REVIEW_PAGE_SIZE)
+                            page_data = paginator.get_page_items(1)
+                            text = await ReviewUIBuilder.build_review_list_text(content_review_handler.config, page_data, paginator, 1)
+                            keyboard = ReviewUIBuilder.build_review_list_keyboard(content_review_handler.config, page_data, paginator, 1)
+                        else:
+                            from app.buttons.users import admin_review_center_kb
+                            text = f"📝 <b>投稿审核</b>\n\n暂无待审核的投稿请求。"
+                            keyboard = admin_review_center_kb
+                    
+                    # 直接编辑主面板消息
+                    await cb.bot.edit_message_caption(
+                        chat_id=cb.message.chat.id,
+                        message_id=main_message_id,
+                        caption=text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
+                    
+                    # 发送新的媒体消息（如果有待审核项目）
+                    if item_type == 'movie' and items:
+                        await movie_review_handler._send_media_messages(cb, state, page_data)
+                    elif item_type == 'content' and items:
+                        await content_review_handler._send_media_messages(cb, state, page_data)
+                        
+                except Exception as e:
+                    logger.error(f"刷新主面板失败: {e}")
+                    # 如果编辑失败，回退到原有逻辑
+                    await _return_to_review_list(cb, state, item_type)
             else:
                 # 如果没有主消息ID，回退到原有逻辑
                 await _return_to_review_list(cb, state, item_type)
