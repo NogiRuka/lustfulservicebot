@@ -77,7 +77,12 @@ async def browse_requests_command(message: Message):
             data['page_info']
         )
         
-        await message.answer(text, reply_markup=keyboard)
+        from app.utils.panel_utils import DEFAULT_WELCOME_PHOTO
+        await message.answer_photo(
+            photo=DEFAULT_WELCOME_PHOTO,
+            caption=text,
+            reply_markup=keyboard
+        )
         
     except Exception as e:
         logger.error(f"浏览求片请求失败: {e}")
@@ -119,7 +124,12 @@ async def browse_submissions_command(message: Message):
             data['page_info']
         )
         
-        await message.answer(text, reply_markup=keyboard)
+        from app.utils.panel_utils import DEFAULT_WELCOME_PHOTO
+        await message.answer_photo(
+            photo=DEFAULT_WELCOME_PHOTO,
+            caption=text,
+            reply_markup=keyboard
+        )
         
     except Exception as e:
         logger.error(f"浏览投稿失败: {e}")
@@ -161,7 +171,12 @@ async def browse_feedback_command(message: Message):
             data['page_info']
         )
         
-        await message.answer(text, reply_markup=keyboard)
+        from app.utils.panel_utils import DEFAULT_WELCOME_PHOTO
+        await message.answer_photo(
+            photo=DEFAULT_WELCOME_PHOTO,
+            caption=text,
+            reply_markup=keyboard
+        )
         
     except Exception as e:
         logger.error(f"浏览反馈失败: {e}")
@@ -202,7 +217,12 @@ async def browse_users_command(message: Message):
             data['page_info']
         )
         
-        await message.answer(text, reply_markup=keyboard)
+        from app.utils.panel_utils import DEFAULT_WELCOME_PHOTO
+        await message.answer_photo(
+            photo=DEFAULT_WELCOME_PHOTO,
+            caption=text,
+            reply_markup=keyboard
+        )
         
     except Exception as e:
         logger.error(f"浏览用户失败: {e}")
@@ -245,8 +265,8 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
             # 设置每页条数
             prefix = callback_data.split("_set_page_size")[0]
             keyboard = browser.create_page_size_keyboard(prefix)
-            await callback.message.edit_text(
-                "📊 选择每页显示条数：",
+            await callback.message.edit_caption(
+                caption="📊 选择每页显示条数：",
                 reply_markup=keyboard
             )
             await callback.answer()
@@ -278,8 +298,8 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
         elif "_settings" in callback_data:
             # 显示设置
             keyboard = browser.create_settings_keyboard(user_id, callback_data.split("_settings")[0])
-            await callback.message.edit_text(
-                f"⚙️ {title} - 浏览设置\n\n请选择要修改的设置项：",
+            await callback.message.edit_caption(
+                caption=f"⚙️ {title} - 浏览设置\n\n请选择要修改的设置项：",
                 reply_markup=keyboard
             )
             await callback.answer()
@@ -300,8 +320,8 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
             # 设置排序字段
             prefix = callback_data.split("_set_sort_field")[0]
             keyboard = browser.create_sort_field_keyboard(prefix)
-            await callback.message.edit_text(
-                "📅 选择排序字段：",
+            await callback.message.edit_caption(
+                caption="📅 选择排序字段：",
                 reply_markup=keyboard
             )
             await callback.answer()
@@ -319,8 +339,8 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
             prefix = callback_data.split("_set_fields")[0]
             state = browser.get_user_state(user_id)
             keyboard = browser.create_visible_fields_keyboard(prefix, state.config.visible_fields)
-            await callback.message.edit_text(
-                "🏷️ 选择显示字段：",
+            await callback.message.edit_caption(
+                caption="🏷️ 选择显示字段：",
                 reply_markup=keyboard
             )
             await callback.answer()
@@ -345,8 +365,8 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
             # 更新键盘显示
             prefix = callback_data.split("_toggle_field_")[0]
             keyboard = browser.create_visible_fields_keyboard(prefix, current_fields)
-            await callback.message.edit_text(
-                "🏷️ 选择显示字段：",
+            await callback.message.edit_caption(
+                caption="🏷️ 选择显示字段：",
                 reply_markup=keyboard
             )
             await callback.answer()
@@ -359,8 +379,8 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
             elif "_back_to_settings" in callback_data:
                 prefix = callback_data.split("_back_to_settings")[0]
                 keyboard = browser.create_settings_keyboard(user_id, prefix)
-                await callback.message.edit_text(
-                    f"⚙️ {title} - 浏览设置\n\n请选择要修改的设置项：",
+                await callback.message.edit_caption(
+                    caption=f"⚙️ {title} - 浏览设置\n\n请选择要修改的设置项：",
                     reply_markup=keyboard
                 )
                 await callback.answer()
@@ -384,7 +404,7 @@ async def handle_browser_callback(callback: CallbackQuery, browser: AdvancedBrow
         keyboard = browser.create_navigation_keyboard(user_id, prefix, data['page_info'])
         
         try:
-            await callback.message.edit_text(text, reply_markup=keyboard)
+            await callback.message.edit_caption(caption=text, reply_markup=keyboard)
         except Exception as edit_error:
             # 处理消息内容相同的错误
             if "message is not modified" in str(edit_error):

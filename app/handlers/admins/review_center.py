@@ -74,60 +74,199 @@ async def cb_admin_advanced_browse(cb: types.CallbackQuery, state: FSMContext):
 @review_center_router.callback_query(F.data == "browse_requests_btn")
 async def cb_browse_requests_btn(cb: types.CallbackQuery):
     """按钮触发浏览求片"""
-    from app.handlers.admins.advanced_browse import browse_requests_command
-    # 模拟命令消息
-    class MockMessage:
-        def __init__(self, user):
-            self.from_user = user
-            self.answer = cb.message.edit_caption
+    from app.handlers.admins.advanced_browse import request_browser
     
-    mock_msg = MockMessage(cb.from_user)
-    await browse_requests_command(mock_msg)
+    user_id = str(cb.from_user.id)
+    
+    try:
+        # 获取第一页数据
+        data = await request_browser.get_page_data(user_id, 1)
+        
+        # 格式化显示
+        text = request_browser.format_page_header(
+            "求片请求浏览", 
+            data['page_info'], 
+            data['config']
+        )
+        
+        # 显示数据项
+        for i, item in enumerate(data['items'], 1):
+            item_text = request_browser.format_item_display(
+                item,
+                data['config'].visible_fields,
+                {
+                    'status': lambda x: {'pending': '待审核', 'approved': '已通过', 'rejected': '已拒绝'}.get(x, x),
+                    'category_id': lambda x: getattr(item.category, 'name', '未分类') if hasattr(item, 'category') and item.category else '未分类'
+                }
+            )
+            text += f"{i}. {item_text}\n\n"
+        
+        # 创建键盘
+        keyboard = request_browser.create_navigation_keyboard(
+            user_id, 
+            "browse_requests", 
+            data['page_info']
+        )
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=keyboard
+        )
+        
+    except Exception as e:
+        logger.error(f"浏览求片请求失败: {e}")
+        await cb.answer("❌ 浏览求片请求失败，请稍后重试", show_alert=True)
+        return
+    
     await cb.answer()
 
 
 @review_center_router.callback_query(F.data == "browse_submissions_btn")
 async def cb_browse_submissions_btn(cb: types.CallbackQuery):
     """按钮触发浏览投稿"""
-    from app.handlers.admins.advanced_browse import browse_submissions_command
-    # 模拟命令消息
-    class MockMessage:
-        def __init__(self, user):
-            self.from_user = user
-            self.answer = cb.message.edit_caption
+    from app.handlers.admins.advanced_browse import submission_browser
     
-    mock_msg = MockMessage(cb.from_user)
-    await browse_submissions_command(mock_msg)
+    user_id = str(cb.from_user.id)
+    
+    try:
+        # 获取第一页数据
+        data = await submission_browser.get_page_data(user_id, 1)
+        
+        # 格式化显示
+        text = submission_browser.format_page_header(
+            "投稿内容浏览", 
+            data['page_info'], 
+            data['config']
+        )
+        
+        # 显示数据项
+        for i, item in enumerate(data['items'], 1):
+            item_text = submission_browser.format_item_display(
+                item,
+                data['config'].visible_fields,
+                {
+                    'status': lambda x: {'pending': '待审核', 'approved': '已通过', 'rejected': '已拒绝'}.get(x, x),
+                    'category_id': lambda x: getattr(item.category, 'name', '未分类') if hasattr(item, 'category') and item.category else '未分类'
+                }
+            )
+            text += f"{i}. {item_text}\n\n"
+        
+        # 创建键盘
+        keyboard = submission_browser.create_navigation_keyboard(
+            user_id, 
+            "browse_submissions", 
+            data['page_info']
+        )
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=keyboard
+        )
+        
+    except Exception as e:
+        logger.error(f"浏览投稿失败: {e}")
+        await cb.answer("❌ 浏览投稿失败，请稍后重试", show_alert=True)
+        return
+    
     await cb.answer()
 
 
 @review_center_router.callback_query(F.data == "browse_feedback_btn")
 async def cb_browse_feedback_btn(cb: types.CallbackQuery):
     """按钮触发浏览反馈"""
-    from app.handlers.admins.advanced_browse import browse_feedback_command
-    # 模拟命令消息
-    class MockMessage:
-        def __init__(self, user):
-            self.from_user = user
-            self.answer = cb.message.edit_caption
+    from app.handlers.admins.advanced_browse import feedback_browser
     
-    mock_msg = MockMessage(cb.from_user)
-    await browse_feedback_command(mock_msg)
+    user_id = str(cb.from_user.id)
+    
+    try:
+        # 获取第一页数据
+        data = await feedback_browser.get_page_data(user_id, 1)
+        
+        # 格式化显示
+        text = feedback_browser.format_page_header(
+            "用户反馈浏览", 
+            data['page_info'], 
+            data['config']
+        )
+        
+        # 显示数据项
+        for i, item in enumerate(data['items'], 1):
+            item_text = feedback_browser.format_item_display(
+                item,
+                data['config'].visible_fields,
+                {
+                    'status': lambda x: {'pending': '待处理', 'processing': '处理中', 'resolved': '已解决'}.get(x, x),
+                    'feedback_type': lambda x: {'bug': '错误报告', 'suggestion': '建议', 'complaint': '投诉', 'other': '其他'}.get(x, x)
+                }
+            )
+            text += f"{i}. {item_text}\n\n"
+        
+        # 创建键盘
+        keyboard = feedback_browser.create_navigation_keyboard(
+            user_id, 
+            "browse_feedback", 
+            data['page_info']
+        )
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=keyboard
+        )
+        
+    except Exception as e:
+        logger.error(f"浏览反馈失败: {e}")
+        await cb.answer("❌ 浏览反馈失败，请稍后重试", show_alert=True)
+        return
+    
     await cb.answer()
 
 
 @review_center_router.callback_query(F.data == "browse_users_btn")
 async def cb_browse_users_btn(cb: types.CallbackQuery):
     """按钮触发浏览用户"""
-    from app.handlers.admins.advanced_browse import browse_users_command
-    # 模拟命令消息
-    class MockMessage:
-        def __init__(self, user):
-            self.from_user = user
-            self.answer = cb.message.edit_caption
+    from app.handlers.admins.advanced_browse import user_browser
     
-    mock_msg = MockMessage(cb.from_user)
-    await browse_users_command(mock_msg)
+    user_id = str(cb.from_user.id)
+    
+    try:
+        # 获取第一页数据
+        data = await user_browser.get_page_data(user_id, 1)
+        
+        # 格式化显示
+        text = user_browser.format_page_header(
+            "用户信息浏览", 
+            data['page_info'], 
+            data['config']
+        )
+        
+        # 显示数据项
+        for i, item in enumerate(data['items'], 1):
+            item_text = user_browser.format_item_display(
+                item,
+                data['config'].visible_fields,
+                {
+                    'role': lambda x: {'user': '普通用户', 'admin': '管理员', 'superadmin': '超级管理员'}.get(x, x)
+                }
+            )
+            text += f"{i}. {item_text}\n\n"
+        
+        # 创建键盘
+        keyboard = user_browser.create_navigation_keyboard(
+            user_id, 
+            "browse_users", 
+            data['page_info']
+        )
+        
+        await cb.message.edit_caption(
+            caption=text,
+            reply_markup=keyboard
+        )
+        
+    except Exception as e:
+        logger.error(f"浏览用户失败: {e}")
+        await cb.answer("❌ 浏览用户失败，请稍后重试", show_alert=True)
+        return
+    
     await cb.answer()
 
 
