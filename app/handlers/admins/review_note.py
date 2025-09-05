@@ -484,8 +484,13 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         # 区分媒体消息审核和主面板审核的处理逻辑
         note_preview = review_note[:30] + ('...' if len(review_note) > 30 else '') if review_note else "无留言"
         
-        # 检查是否为媒体消息（单独发送的媒体消息）
-        is_media_message = hasattr(cb.message, 'photo') or hasattr(cb.message, 'video') or hasattr(cb.message, 'document')
+        # 检查是否为媒体消息（单独发送的媒体消息，排除主消息）
+        data = await state.get_data()
+        main_message_id = data.get('main_message_id')
+        is_media_message = (
+            (hasattr(cb.message, 'photo') or hasattr(cb.message, 'video') or hasattr(cb.message, 'document')) and
+            cb.message.message_id != main_message_id  # 排除主消息
+        )
         
         # 显示提示消息（不需要用户确认）
         await cb.answer(f"✅ 已{action_text}{type_text} {item_id}")
