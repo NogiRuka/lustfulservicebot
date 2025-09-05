@@ -248,6 +248,57 @@ async def process_review_note(msg: types.Message, state: FSMContext):
 # skip_review_note 函数已删除，因为留言审核现在是必填的
 
 
+async def _update_review_center_panel(cb: types.CallbackQuery, movie_requests, content_submissions):
+    """更新审核中心主面板数据"""
+    text = "✅ <b>审核中心</b>\n\n"
+    text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
+    text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
+    text += "请选择要审核的类型："
+    
+    from app.buttons.users import admin_review_center_kb
+    
+    # 智能查找并更新主面板消息
+    current_message_id = cb.message.message_id
+    for offset in range(1, 10):
+        try:
+            potential_main_id = current_message_id - offset
+            await cb.bot.edit_message_caption(
+                chat_id=cb.message.chat.id,
+                message_id=potential_main_id,
+                caption=text,
+                reply_markup=admin_review_center_kb
+            )
+            logger.info(f"成功更新审核中心主面板消息 ID: {potential_main_id}")
+            return True
+        except Exception as e:
+            continue
+    
+    logger.warning("无法找到审核中心主面板消息进行更新")
+    return False
+
+
+async def _send_current_page_media(cb: types.CallbackQuery, state: FSMContext, item_type: str, movie_requests, content_submissions):
+    """发送当前页的媒体消息"""
+    if item_type == 'movie':
+        from app.handlers.admins.review_center import _send_media_messages_for_movies
+        current_page_data = movie_requests[:5] if movie_requests else []
+        await _send_media_messages_for_movies(cb, state, current_page_data)
+    elif item_type == 'content':
+        from app.handlers.admins.review_center import _send_media_messages_for_content
+        current_page_data = content_submissions[:5] if content_submissions else []
+        await _send_media_messages_for_content(cb, state, current_page_data)
+
+
+async def _return_to_review_list(cb: types.CallbackQuery, state: FSMContext, item_type: str):
+    """返回具体的审核列表"""
+    if item_type == 'movie':
+        from app.handlers.admins.movie_review import movie_review_handler
+        await movie_review_handler.handle_review_list(cb, state)
+    elif item_type == 'content':
+        from app.handlers.admins.content_review import content_review_handler
+        await content_review_handler.handle_review_list(cb, state)
+
+
 @review_note_router.callback_query(F.data == "confirm_review_note")
 async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
     """确认提交审核留言"""
@@ -280,7 +331,7 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         success = await review_content_submission(item_id, cb.from_user.id, review_action, review_note)
         type_text = "投稿"
     else:
-        await cb.answer("❌ 审核类型错误", show_alert=True)
+        await cb.answer("❌ 审核类型错误")
         await state.clear()
         return
     
@@ -313,107 +364,32 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         # 检查是否为媒体消息（单独发送的媒体消息）
         is_media_message = hasattr(cb.message, 'photo') or hasattr(cb.message, 'video') or hasattr(cb.message, 'document')
         
+        # 显示提示消息（不需要用户确认）
+        await cb.answer(f"✅ 已{action_text}{type_text} {item_id}（{note_preview}）")
+        
+        # 删除所有已发送的媒体消息
+        from app.utils.panel_utils import cleanup_sent_media_messages
+        await cleanup_sent_media_messages(cb.bot, state)
+        
+        # 获取最新的待审核数据
+        movie_requests = await get_pending_movie_requests()
+        content_submissions = await get_pending_content_submissions()
+        
+        # 检查是否来自审核中心
+        from_review_center = data.get('from_review_center', False)
+        
         if is_media_message:
-            # 媒体消息留言审核完成：提示消息 + 删除所有媒体消息（包括操作的那条）+ 刷新数据重新发送新的媒体消息
-            await cb.answer(f"✅ 已{action_text}{type_text} {item_id}（{note_preview}）", show_alert=True)
-            
-            # 删除所有已发送的媒体消息（包括当前操作的媒体消息）
-            from app.utils.panel_utils import cleanup_sent_media_messages
-            await cleanup_sent_media_messages(cb.bot, state)
-            
-            # 获取最新的待审核数据
-            movie_requests = await get_pending_movie_requests()
-            content_submissions = await get_pending_content_submissions()
-            
-            # 检查是否来自审核中心
-            from_review_center = data.get('from_review_center', False)
-            
+            # 媒体消息审核完成后的处理
             if from_review_center:
-                # 更新审核中心主面板数据
-                text = "✅ <b>审核中心</b>\n\n"
-                text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
-                text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
-                text += "请选择要审核的类型："
-                
-                from app.buttons.users import admin_review_center_kb
-                
-                # 智能查找并更新主面板消息
-                current_message_id = cb.message.message_id
-                for offset in range(1, 10):
-                    try:
-                        potential_main_id = current_message_id - offset
-                        await cb.bot.edit_message_caption(
-                            chat_id=cb.message.chat.id,
-                            message_id=potential_main_id,
-                            caption=text,
-                            reply_markup=admin_review_center_kb
-                        )
-                        logger.info(f"成功更新审核中心主面板消息 ID: {potential_main_id}")
-                        break
-                    except Exception as e:
-                        continue
-                else:
-                    logger.warning("无法找到审核中心主面板消息进行更新")
-                
-                # 重新发送当前页的媒体消息
-                if item_type == 'movie':
-                    from app.handlers.admins.review_center import _send_media_messages_for_movies
-                    current_page_data = movie_requests[:5] if movie_requests else []
-                    await _send_media_messages_for_movies(cb, state, current_page_data)
-                elif item_type == 'content':
-                    from app.handlers.admins.review_center import _send_media_messages_for_content
-                    current_page_data = content_submissions[:5] if content_submissions else []
-                    await _send_media_messages_for_content(cb, state, current_page_data)
+                # 更新审核中心主面板并重新发送媒体消息
+                await _update_review_center_panel(cb, movie_requests, content_submissions)
+                await _send_current_page_media(cb, state, item_type, movie_requests, content_submissions)
             else:
-                # 返回具体的审核列表并重新发送媒体消息
-                # 但首先需要更新审核中心主面板数据
-                text = "✅ <b>审核中心</b>\n\n"
-                text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
-                text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
-                text += "请选择要审核的类型："
-                
-                from app.buttons.users import admin_review_center_kb
-                
-                # 智能查找并更新主面板消息
-                current_message_id = cb.message.message_id
-                for offset in range(1, 10):
-                    try:
-                        potential_main_id = current_message_id - offset
-                        await cb.bot.edit_message_caption(
-                            chat_id=cb.message.chat.id,
-                            message_id=potential_main_id,
-                            caption=text,
-                            reply_markup=admin_review_center_kb
-                        )
-                        logger.info(f"成功更新审核中心主面板消息 ID: {potential_main_id}")
-                        break
-                    except Exception as e:
-                        continue
-                else:
-                    logger.warning("无法找到审核中心主面板消息进行更新")
-                
-                # 然后返回具体的审核列表
-                if item_type == 'movie':
-                    from app.handlers.admins.movie_review import movie_review_handler
-                    await movie_review_handler.handle_review_list(cb, state)
-                elif item_type == 'content':
-                    from app.handlers.admins.content_review import content_review_handler
-                    await content_review_handler.handle_review_list(cb, state)
+                # 更新审核中心主面板然后返回审核列表
+                await _update_review_center_panel(cb, movie_requests, content_submissions)
+                await _return_to_review_list(cb, state, item_type)
         else:
-            # 主面板留言审核完成：提示消息 + 删除所有媒体消息 + 保留主面板消息 + 返回审核浏览页面发送新的媒体消息
-            await cb.answer(f"✅ 已{action_text}{type_text} {item_id}（{note_preview}）", show_alert=True)
-            
-            # 删除所有已发送的媒体消息（但保留主面板消息）
-            from app.utils.panel_utils import cleanup_sent_media_messages
-            await cleanup_sent_media_messages(cb.bot, state)
-            
-            # 获取最新的待审核数据
-            movie_requests = await get_pending_movie_requests()
-            content_submissions = await get_pending_content_submissions()
-            
-            # 检查是否来自审核中心
-            from_review_center = data.get('from_review_center', False)
-            
+            # 主面板审核完成后的处理
             if from_review_center:
                 # 更新主面板回到审核中心并发送新的媒体消息
                 text = "✅ <b>审核中心</b>\n\n"
@@ -429,25 +405,12 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                     reply_markup=admin_review_center_kb
                 )
                 
-                # 发送新的媒体消息
-                if item_type == 'movie':
-                    from app.handlers.admins.review_center import _send_media_messages_for_movies
-                    current_page_data = movie_requests[:5] if movie_requests else []
-                    await _send_media_messages_for_movies(cb, state, current_page_data)
-                elif item_type == 'content':
-                    from app.handlers.admins.review_center import _send_media_messages_for_content
-                    current_page_data = content_submissions[:5] if content_submissions else []
-                    await _send_media_messages_for_content(cb, state, current_page_data)
+                await _send_current_page_media(cb, state, item_type, movie_requests, content_submissions)
             else:
                 # 返回具体的审核列表
-                if item_type == 'movie':
-                    from app.handlers.admins.movie_review import movie_review_handler
-                    await movie_review_handler.handle_review_list(cb, state)
-                elif item_type == 'content':
-                    from app.handlers.admins.content_review import content_review_handler
-                    await content_review_handler.handle_review_list(cb, state)
+                await _return_to_review_list(cb, state, item_type)
     else:
-        await cb.answer("❌ 审核失败，请重试", show_alert=True)
+        await cb.answer("❌ 审核失败，请重试")
     
     await state.clear()
     await cb.answer()
