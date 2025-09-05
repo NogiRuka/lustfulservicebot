@@ -385,8 +385,7 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                 await _update_review_center_panel(cb, movie_requests, content_submissions)
                 await _send_current_page_media(cb, state, item_type, movie_requests, content_submissions)
             else:
-                # 更新审核中心主面板然后返回审核列表
-                await _update_review_center_panel(cb, movie_requests, content_submissions)
+                # 直接返回审核列表（不更新审核中心主面板）
                 await _return_to_review_list(cb, state, item_type)
         else:
             # 主面板审核完成后的处理
