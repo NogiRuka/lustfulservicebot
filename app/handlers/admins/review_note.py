@@ -509,6 +509,12 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
             if main_message_id:
                 # 直接编辑主面板消息来刷新数据
                 try:
+                    # 初始化变量
+                    items = []
+                    page_data = []
+                    text = ""
+                    keyboard = None
+                    
                     # 获取最新的待审核数据
                     if item_type == 'movie':
                         from app.handlers.admins.movie_review import movie_review_handler
@@ -560,9 +566,9 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                     )
                     
                     # 发送新的媒体消息（如果有待审核项目）
-                    if item_type == 'movie' and items:
+                    if item_type == 'movie' and items and page_data:
                         await movie_review_handler._send_media_messages(cb, state, page_data)
-                    elif item_type == 'content' and items:
+                    elif item_type == 'content' and items and page_data:
                         await content_review_handler._send_media_messages(cb, state, page_data)
                         
                 except Exception as e:
