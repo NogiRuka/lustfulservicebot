@@ -4,8 +4,12 @@ from aiogram.fsm.context import FSMContext
 from loguru import logger
 from app.utils.debug_utils import (
     debug_log, debug_message_info, debug_state_info, debug_main_message_tracking,
-    debug_review_flow, debug_function
+    debug_review_flow, debug_media_message_tracking, debug_function
 )
+from aiogram.filters import Command
+from app.utils.filters import HasRole
+from app.utils.roles import ROLE_ADMIN, ROLE_SUPERADMIN
+from app.config import ADMINS_ID, SUPERADMIN_ID
 
 from app.database.business import (
     get_pending_movie_requests, get_pending_content_submissions,
@@ -38,6 +42,94 @@ content_browse_handler = BrowseHandler(CONTENT_BROWSE_CONFIG)
 
 
 # ==================== 审核中心 ====================
+
+@review_center_router.callback_query(F.data == "admin_advanced_browse")
+async def cb_admin_advanced_browse(cb: types.CallbackQuery, state: FSMContext):
+    """高级浏览菜单"""
+    # 检查管理员权限
+    from app.utils.review_config import check_admin_permission
+    
+    if not await check_admin_permission(cb.from_user.id):
+        await cb.answer("❌ 审核功能已关闭", show_alert=True)
+        return
+    
+    from app.buttons.users import admin_advanced_browse_kb
+    
+    text = "🔍 <b>高级浏览</b>\n\n"
+    text += "选择要浏览的数据类型：\n\n"
+    text += "🎬 浏览求片 - 查看所有求片请求\n"
+    text += "📝 浏览投稿 - 查看所有投稿内容\n"
+    text += "💬 浏览反馈 - 查看用户反馈信息\n"
+    text += "👥 浏览用户 - 查看用户信息\n\n"
+    text += "💡 支持分页、排序、筛选等高级功能"
+    
+    await cb.message.edit_caption(
+        caption=text,
+        reply_markup=admin_advanced_browse_kb
+    )
+    await cb.answer()
+
+
+# 高级浏览按钮处理器
+@review_center_router.callback_query(F.data == "browse_requests_btn")
+async def cb_browse_requests_btn(cb: types.CallbackQuery):
+    """按钮触发浏览求片"""
+    from app.handlers.admins.advanced_browse import browse_requests_command
+    # 模拟命令消息
+    class MockMessage:
+        def __init__(self, user):
+            self.from_user = user
+            self.answer = cb.message.edit_caption
+    
+    mock_msg = MockMessage(cb.from_user)
+    await browse_requests_command(mock_msg)
+    await cb.answer()
+
+
+@review_center_router.callback_query(F.data == "browse_submissions_btn")
+async def cb_browse_submissions_btn(cb: types.CallbackQuery):
+    """按钮触发浏览投稿"""
+    from app.handlers.admins.advanced_browse import browse_submissions_command
+    # 模拟命令消息
+    class MockMessage:
+        def __init__(self, user):
+            self.from_user = user
+            self.answer = cb.message.edit_caption
+    
+    mock_msg = MockMessage(cb.from_user)
+    await browse_submissions_command(mock_msg)
+    await cb.answer()
+
+
+@review_center_router.callback_query(F.data == "browse_feedback_btn")
+async def cb_browse_feedback_btn(cb: types.CallbackQuery):
+    """按钮触发浏览反馈"""
+    from app.handlers.admins.advanced_browse import browse_feedback_command
+    # 模拟命令消息
+    class MockMessage:
+        def __init__(self, user):
+            self.from_user = user
+            self.answer = cb.message.edit_caption
+    
+    mock_msg = MockMessage(cb.from_user)
+    await browse_feedback_command(mock_msg)
+    await cb.answer()
+
+
+@review_center_router.callback_query(F.data == "browse_users_btn")
+async def cb_browse_users_btn(cb: types.CallbackQuery):
+    """按钮触发浏览用户"""
+    from app.handlers.admins.advanced_browse import browse_users_command
+    # 模拟命令消息
+    class MockMessage:
+        def __init__(self, user):
+            self.from_user = user
+            self.answer = cb.message.edit_caption
+    
+    mock_msg = MockMessage(cb.from_user)
+    await browse_users_command(mock_msg)
+    await cb.answer()
+
 
 @review_center_router.callback_query(F.data == "admin_review_center")
 @debug_function("审核中心入口")
@@ -563,6 +655,186 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext):
     """所有投稿分页"""
     page = extract_page_from_callback(cb.data, "all_content")
     await content_browse_handler.handle_browse_list(cb, state, page)
+
+
+# ==================== 命令行审核功能 ====================
+
+@review_center_router.message(Command("approve"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+async def approve_command(message: types.Message):
+    """命令行通过审核"""
+    # 检查管理员权限
+    from app.utils.review_config import check_admin_permission
+    from app.database.users import get_role
+    from app.utils.roles import ROLE_SUPERADMIN
+    from app.database.business import is_feature_enabled
+    
+    try:
+        role = await get_role(message.from_user.id)
+        # 超管不受功能开关限制，普通管理员需要检查开关
+        if role != ROLE_SUPERADMIN and not await is_feature_enabled("admin_panel_enabled"):
+            await message.reply("❌ 审核功能已关闭")
+            return
+        
+        parts = message.text.strip().split()
+        if len(parts) < 3:
+            await message.reply(
+                "用法：/approve [类型] [ID] [留言]\n"
+                "示例：/approve movie 123 内容很好\n"
+                "类型：movie(求片) 或 content(投稿)"
+            )
+            return
+        
+        item_type = parts[1].lower()
+        try:
+            item_id = int(parts[2])
+        except ValueError:
+            await message.reply("❌ ID必须是数字")
+            return
+        
+        review_note = " ".join(parts[3:]) if len(parts) > 3 else "通过审核"
+        
+        if item_type not in ['movie', 'content']:
+            await message.reply("❌ 类型必须是 movie 或 content")
+            return
+        
+        # 执行审核
+        if item_type == 'movie':
+            from app.database.business import review_movie_request, get_pending_movie_requests
+            success = await review_movie_request(item_id, message.from_user.id, "approved", review_note)
+            type_text = "求片"
+        else:
+            from app.database.business import review_content_submission, get_pending_content_submissions
+            success = await review_content_submission(item_id, message.from_user.id, "approved", review_note)
+            type_text = "投稿"
+        
+        if success:
+            # 发送通知
+            from app.utils.panel_utils import send_review_notification
+            from app.database.business import get_movie_requests_advanced, get_content_submissions_advanced
+            
+            # 获取项目信息用于通知
+            if item_type == 'movie':
+                data = await get_movie_requests_advanced(offset=0, limit=1000)
+                item = next((r for r in data['items'] if r.id == item_id), None)
+            else:
+                data = await get_content_submissions_advanced(offset=0, limit=1000)
+                item = next((s for s in data['items'] if s.id == item_id), None)
+            
+            if item:
+                # 通过category_id获取分类名称
+                from app.database.business import get_movie_category_by_id
+                category = await get_movie_category_by_id(item.category_id) if item.category_id else None
+                category_name = category.name if category else None
+                
+                if item_type == 'movie':
+                    await send_review_notification(
+                        message.bot, item.user_id, item_type, item.title, "approved", review_note,
+                        file_id=item.file_id, item_content=item.description, item_id=item.id,
+                        category_name=category_name
+                    )
+                else:
+                    await send_review_notification(
+                        message.bot, item.user_id, item_type, item.title, "approved", review_note,
+                        file_id=item.file_id, item_content=item.content, item_id=item.id,
+                        category_name=category_name
+                    )
+            
+            await message.reply(f"✅ 已通过{type_text} #{item_id}\n💬 留言：{review_note}")
+        else:
+            await message.reply(f"❌ 操作失败，请检查{type_text}ID是否正确")
+            
+    except Exception as e:
+        logger.error(f"命令行审核失败: {e}")
+        await message.reply("❌ 审核失败，请稍后重试")
+
+
+@review_center_router.message(Command("reject"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+async def reject_command(message: types.Message):
+    """命令行拒绝审核"""
+    # 检查管理员权限
+    from app.utils.review_config import check_admin_permission
+    from app.database.users import get_role
+    from app.utils.roles import ROLE_SUPERADMIN
+    from app.database.business import is_feature_enabled
+    
+    try:
+        role = await get_role(message.from_user.id)
+        # 超管不受功能开关限制，普通管理员需要检查开关
+        if role != ROLE_SUPERADMIN and not await is_feature_enabled("admin_panel_enabled"):
+            await message.reply("❌ 审核功能已关闭")
+            return
+        
+        parts = message.text.strip().split()
+        if len(parts) < 4:
+            await message.reply(
+                "用法：/reject [类型] [ID] [拒绝原因]\n"
+                "示例：/reject movie 123 内容不符合要求\n"
+                "类型：movie(求片) 或 content(投稿)"
+            )
+            return
+        
+        item_type = parts[1].lower()
+        try:
+            item_id = int(parts[2])
+        except ValueError:
+            await message.reply("❌ ID必须是数字")
+            return
+        
+        review_note = " ".join(parts[3:])
+        
+        if item_type not in ['movie', 'content']:
+            await message.reply("❌ 类型必须是 movie 或 content")
+            return
+        
+        # 执行审核
+        if item_type == 'movie':
+            from app.database.business import review_movie_request
+            success = await review_movie_request(item_id, message.from_user.id, "rejected", review_note)
+            type_text = "求片"
+        else:
+            from app.database.business import review_content_submission
+            success = await review_content_submission(item_id, message.from_user.id, "rejected", review_note)
+            type_text = "投稿"
+        
+        if success:
+            # 发送通知
+            from app.utils.panel_utils import send_review_notification
+            from app.database.business import get_movie_requests_advanced, get_content_submissions_advanced
+            
+            # 获取项目信息用于通知
+            if item_type == 'movie':
+                data = await get_movie_requests_advanced(offset=0, limit=1000)
+                item = next((r for r in data['items'] if r.id == item_id), None)
+            else:
+                data = await get_content_submissions_advanced(offset=0, limit=1000)
+                item = next((s for s in data['items'] if s.id == item_id), None)
+            
+            if item:
+                # 通过category_id获取分类名称
+                from app.database.business import get_movie_category_by_id
+                category = await get_movie_category_by_id(item.category_id) if item.category_id else None
+                category_name = category.name if category else None
+                
+                if item_type == 'movie':
+                    await send_review_notification(
+                        message.bot, item.user_id, item_type, item.title, "rejected", review_note,
+                        file_id=item.file_id, item_content=item.description, item_id=item.id,
+                        category_name=category_name
+                    )
+                else:
+                    await send_review_notification(
+                        message.bot, item.user_id, item_type, item.title, "rejected", review_note,
+                        file_id=item.file_id, item_content=item.content, item_id=item.id,
+                        category_name=category_name
+                    )
+            
+            await message.reply(f"❌ 已拒绝{type_text} #{item_id}\n💬 原因：{review_note}")
+        else:
+            await message.reply(f"❌ 操作失败，请检查{type_text}ID是否正确")
+            
+    except Exception as e:
+        logger.error(f"命令行审核失败: {e}")
+        await message.reply("❌ 审核失败，请稍后重试")
 
 
 # 原有的投稿相关函数已被配置类统一处理，删除重复代码

@@ -155,6 +155,10 @@ admin_review_center_kb = InlineKeyboardMarkup(
             InlineKeyboardButton(text="📋 所有求片", callback_data="admin_all_movies"),
             InlineKeyboardButton(text="📄 所有投稿", callback_data="admin_all_content"),
         ],
+        [
+            InlineKeyboardButton(text="🔍 高级浏览", callback_data="admin_advanced_browse"),
+            InlineKeyboardButton(text="👀 反馈浏览", callback_data="admin_feedback_browse"),
+        ],
         [BTN_BACK_TO_MAIN],
     ]
 )
@@ -162,6 +166,21 @@ admin_review_center_kb = InlineKeyboardMarkup(
 # 审核详情菜单（带返回上一级）
 admin_review_detail_kb = InlineKeyboardMarkup(
     inline_keyboard=[
+        [BTN_BACK_TO_REVIEW, BTN_BACK_TO_MAIN],
+    ]
+)
+
+# 高级浏览菜单
+admin_advanced_browse_kb = InlineKeyboardMarkup(
+    inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🎬 浏览求片", callback_data="browse_requests_btn"),
+            InlineKeyboardButton(text="📝 浏览投稿", callback_data="browse_submissions_btn"),
+        ],
+        [
+            InlineKeyboardButton(text="💬 浏览反馈", callback_data="browse_feedback_btn"),
+            InlineKeyboardButton(text="👥 浏览用户", callback_data="browse_users_btn"),
+        ],
         [BTN_BACK_TO_REVIEW, BTN_BACK_TO_MAIN],
     ]
 )

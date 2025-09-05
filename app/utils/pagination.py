@@ -91,7 +91,7 @@ def format_page_header(title: str, page_info: dict) -> str:
     
     if page_info['total_pages'] > 1:
         header += f"📄 第 {page_info['current_page']}/{page_info['total_pages']} 页 "
-        header += f"(第 {page_info['start_item']}-{page_info['end_item']} 条)\n\n"
+        header += f"(第 {page_info['start_item']}-{page_info['end_item']} 条)\n"
     else:
         header += "\n"
     
