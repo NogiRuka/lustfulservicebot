@@ -515,16 +515,16 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                     text = ""
                     keyboard = None
                     
+                    # 导入必要的模块
+                    from app.utils.review_config import ReviewUIBuilder
+                    from app.utils.pagination import Paginator
+                    from app.config.config import REVIEW_PAGE_SIZE
+                    from app.buttons.users import admin_review_center_kb
+                    
                     # 获取最新的待审核数据
                     if item_type == 'movie':
                         from app.handlers.admins.movie_review import movie_review_handler
-                        from app.database.business import get_pending_movie_requests
                         items = await get_pending_movie_requests()
-                        
-                        # 构建审核列表文本和键盘
-                        from app.utils.review_config import ReviewUIBuilder
-                        from app.utils.pagination import Paginator
-                        from app.config.config import REVIEW_PAGE_SIZE
                         
                         if items:
                             paginator = Paginator(items, page_size=REVIEW_PAGE_SIZE)
@@ -532,19 +532,12 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                             text = await ReviewUIBuilder.build_review_list_text(movie_review_handler.config, page_data, paginator, 1)
                             keyboard = ReviewUIBuilder.build_review_list_keyboard(movie_review_handler.config, page_data, paginator, 1)
                         else:
-                            from app.buttons.users import admin_review_center_kb
                             text = f"🎬 <b>求片审核</b>\n\n暂无待审核的求片请求。"
                             keyboard = admin_review_center_kb
                             
                     elif item_type == 'content':
                         from app.handlers.admins.content_review import content_review_handler
-                        from app.database.business import get_pending_content_submissions
                         items = await get_pending_content_submissions()
-                        
-                        # 构建审核列表文本和键盘
-                        from app.utils.review_config import ReviewUIBuilder
-                        from app.utils.pagination import Paginator
-                        from app.config.config import REVIEW_PAGE_SIZE
                         
                         if items:
                             paginator = Paginator(items, page_size=REVIEW_PAGE_SIZE)
@@ -552,7 +545,6 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                             text = await ReviewUIBuilder.build_review_list_text(content_review_handler.config, page_data, paginator, 1)
                             keyboard = ReviewUIBuilder.build_review_list_keyboard(content_review_handler.config, page_data, paginator, 1)
                         else:
-                            from app.buttons.users import admin_review_center_kb
                             text = f"📝 <b>投稿审核</b>\n\n暂无待审核的投稿请求。"
                             keyboard = admin_review_center_kb
                     
