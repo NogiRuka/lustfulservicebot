@@ -367,16 +367,26 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         # 显示提示消息（不需要用户确认）
         await cb.answer(f"✅ 已{action_text}{type_text} {item_id}")
         
-        # 删除所有已发送的媒体消息
-        from app.utils.panel_utils import cleanup_sent_media_messages
-        await cleanup_sent_media_messages(cb.bot, state)
-        
-        # 获取最新的待审核数据
-        movie_requests = await get_pending_movie_requests()
-        content_submissions = await get_pending_content_submissions()
-        
-        # 审核完成后统一返回到审核列表（会自动刷新显示最新的待审核数据）
-        await _return_to_review_list(cb, state, item_type)
+        if is_media_message:
+            # 媒体消息审核：删除当前媒体消息，然后重新发送审核列表
+            try:
+                await cb.message.delete()
+            except Exception as e:
+                logger.warning(f"删除媒体消息失败: {e}")
+            
+            # 删除其他已发送的媒体消息
+            from app.utils.panel_utils import cleanup_sent_media_messages
+            await cleanup_sent_media_messages(cb.bot, state)
+            
+            # 重新发送审核列表
+            await _return_to_review_list(cb, state, item_type)
+        else:
+            # 主面板审核：删除媒体消息，然后返回审核列表
+            from app.utils.panel_utils import cleanup_sent_media_messages
+            await cleanup_sent_media_messages(cb.bot, state)
+            
+            # 返回审核列表
+            await _return_to_review_list(cb, state, item_type)
     else:
         await cb.answer("❌ 审核失败，请重试")
     
