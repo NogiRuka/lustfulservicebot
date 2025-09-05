@@ -184,11 +184,86 @@ if should_show_feature('main_message_tracking'):
 🔍 DEBUG: 📱 媒体消息跟踪 | action=清理媒体消息 | message_ids=[1002, 1003, 1004]
 ```
 
+## 文件日志功能
+
+### 自动文件日志
+
+调试系统支持将调试信息实时写入文件，方便查看和分析：
+
+**文件日志配置**:
+- **开发模式**: 自动写入 `logs/debug.log`，最大10MB，保留5个备份
+- **测试模式**: 自动写入 `logs/debug_test.log`，最大5MB，保留3个备份
+- **生产模式**: 不写入文件日志
+
+**日志文件特性**:
+- ✅ 实时写入，无需重启
+- ✅ 自动轮转，避免文件过大
+- ✅ 压缩备份，节省磁盘空间
+- ✅ UTF-8编码，支持中文
+
+### 手动控制文件日志
+
+```python
+from app.utils.debug_utils import enable_file_logging, disable_file_logging, get_debug_log_file
+
+# 启用文件日志
+enable_file_logging()
+
+# 启用文件日志并指定路径
+enable_file_logging('custom_logs/my_debug.log')
+
+# 禁用文件日志
+disable_file_logging()
+
+# 获取当前日志文件路径
+log_file = get_debug_log_file()
+print(f"当前日志文件: {log_file}")
+```
+
+### 日志查看工具
+
+项目提供了专用的日志查看工具 `tools/debug_log_viewer.py`：
+
+**查看最近的日志**:
+```bash
+python tools/debug_log_viewer.py --tail 100
+```
+
+**实时跟踪日志**:
+```bash
+python tools/debug_log_viewer.py --follow
+```
+
+**过滤特定内容**:
+```bash
+python tools/debug_log_viewer.py --filter "主消息ID"
+python tools/debug_log_viewer.py --filter "审核流程"
+```
+
+**查看调试配置**:
+```bash
+python tools/debug_log_viewer.py --info
+```
+
+**指定日志文件**:
+```bash
+python tools/debug_log_viewer.py --file logs/debug.log --tail 50
+```
+
+### 日志文件示例
+
+```
+2025-09-06 06:33:44.770 | DEBUG    | app.utils.debug_utils:debug_log:21 - 🔍 DEBUG [DEVELOPMENT]: 🚀 进入函数: 审核中心入口
+2025-09-06 06:33:44.771 | DEBUG    | app.utils.debug_utils:debug_log:21 - 🔍 DEBUG [DEVELOPMENT]: 🔄 审核流程: 进入审核中心
+2025-09-06 06:33:44.772 | DEBUG    | app.utils.debug_utils:debug_log:21 - 🔍 DEBUG [DEVELOPMENT]: 📍 主消息ID跟踪 | action=审核中心设置主消息ID | old_id=None | new_id=1001
+```
+
 ## 性能考虑
 
 - 调试信息只在启用时才会执行
 - 生产模式下几乎没有性能影响
 - 开发模式下会有轻微的日志开销
+- 文件日志使用异步写入，对性能影响最小
 
 ## 最佳实践
 

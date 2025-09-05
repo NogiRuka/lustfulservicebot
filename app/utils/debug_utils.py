@@ -3,8 +3,48 @@ from typing import Any, Dict, Optional
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 from app.config.debug_config import (
-    is_debug_enabled, should_show_feature, get_current_mode
+    is_debug_enabled, should_show_feature, get_current_mode, get_debug_config
 )
+import os
+from pathlib import Path
+
+# 初始化文件日志
+def _init_file_logging():
+    """初始化文件日志配置"""
+    config = get_debug_config()
+    
+    if config.get('log_to_file', False) and config.get('log_file_path'):
+        log_file_path = config['log_file_path']
+        
+        # 确保日志目录存在
+        log_dir = Path(log_file_path).parent
+        log_dir.mkdir(parents=True, exist_ok=True)
+        
+        # 移除现有的文件处理器（如果有）
+        logger.remove()
+        
+        # 添加控制台输出
+        logger.add(
+            lambda msg: print(msg, end=""),
+            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} - {message}",
+            level="DEBUG"
+        )
+        
+        # 添加文件输出
+        logger.add(
+            log_file_path,
+            format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} - {message}",
+            level="DEBUG",
+            rotation=config.get('max_file_size', '10MB'),
+            retention=config.get('backup_count', 5),
+            compression="zip",
+            encoding="utf-8"
+        )
+        
+        logger.info(f"调试文件日志已启用: {log_file_path}")
+
+# 在模块加载时初始化文件日志
+_init_file_logging()
 
 def debug_log(message: str, **kwargs):
     """调试日志函数
@@ -144,7 +184,51 @@ def set_debug_mode(mode: str):
     """
     from app.config.debug_config import set_debug_mode as config_set_debug_mode
     config_set_debug_mode(mode)
+    
+    # 重新初始化文件日志
+    _init_file_logging()
+    
     debug_log(f"调试模式已设置为: {mode}")
+
+def get_debug_log_file() -> Optional[str]:
+    """获取当前调试日志文件路径
+    
+    Returns:
+        日志文件路径，如果未启用文件日志则返回None
+    """
+    config = get_debug_config()
+    if config.get('log_to_file', False):
+        return config.get('log_file_path')
+    return None
+
+def enable_file_logging(log_file_path: str = None):
+    """启用文件日志
+    
+    Args:
+        log_file_path: 自定义日志文件路径（可选）
+    """
+    config = get_debug_config()
+    if log_file_path:
+        config['log_file_path'] = log_file_path
+    config['log_to_file'] = True
+    
+    _init_file_logging()
+    debug_log(f"文件日志已启用: {config.get('log_file_path')}")
+
+def disable_file_logging():
+    """禁用文件日志"""
+    config = get_debug_config()
+    config['log_to_file'] = False
+    
+    # 重新配置为仅控制台输出
+    logger.remove()
+    logger.add(
+        lambda msg: print(msg, end=""),
+        format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level:<8} | {name}:{function}:{line} - {message}",
+        level="DEBUG"
+    )
+    
+    debug_log("文件日志已禁用")
 
 def get_debug_mode() -> str:
     """获取当前调试模式

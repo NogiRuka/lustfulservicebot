@@ -19,7 +19,11 @@ DEBUG_CONFIG = {
         'show_media_tracking': True,
         'show_review_flow': True,
         'show_main_message_tracking': True,
-        'show_function_entry_exit': True
+        'show_function_entry_exit': True,
+        'log_to_file': True,
+        'log_file_path': 'logs/debug.log',
+        'max_file_size': '10MB',
+        'backup_count': 5
     },
     'testing': {
         'enabled': True,
@@ -29,7 +33,11 @@ DEBUG_CONFIG = {
         'show_media_tracking': True,
         'show_review_flow': True,
         'show_main_message_tracking': True,
-        'show_function_entry_exit': False
+        'show_function_entry_exit': False,
+        'log_to_file': True,
+        'log_file_path': 'logs/debug_test.log',
+        'max_file_size': '5MB',
+        'backup_count': 3
     },
     'production': {
         'enabled': False,
@@ -39,7 +47,11 @@ DEBUG_CONFIG = {
         'show_media_tracking': False,
         'show_review_flow': False,
         'show_main_message_tracking': False,
-        'show_function_entry_exit': False
+        'show_function_entry_exit': False,
+        'log_to_file': False,
+        'log_file_path': None,
+        'max_file_size': None,
+        'backup_count': 0
     }
 }
 
