@@ -61,6 +61,9 @@ async def cb_admin_advanced_browse(cb: types.CallbackQuery, state: FSMContext):
     text += "📝 浏览投稿 - 查看所有投稿内容\n"
     text += "💬 浏览反馈 - 查看用户反馈信息\n"
     text += "👥 浏览用户 - 查看用户信息\n\n"
+    text += "⚡ <b>快捷命令</b>：\n"
+    text += "├ /br - 浏览求片  ├ /bs - 浏览投稿\n"
+    text += "├ /bf - 浏览反馈  └ /bu - 浏览用户\n\n"
     text += "💡 支持分页、排序、筛选等高级功能"
     
     await cb.message.edit_caption(
@@ -313,7 +316,12 @@ async def cb_admin_review_center(cb: types.CallbackQuery, state: FSMContext):
     text = "✅ <b>审核中心</b>\n\n"
     text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
     text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
-    text += "请选择要审核的类型："
+    text += "请选择要审核的类型：\n\n"
+    text += "⚡ <b>快捷命令</b>：\n"
+    text += "├ /ap [类型] [ID] [留言] - 通过审核\n"
+    text += "├ /rj [类型] [ID] [原因] - 拒绝审核\n"
+    text += "├ /br /bs /bf /bu - 高级浏览\n"
+    text += "└ /h - 查看完整命令帮助"
     
     debug_review_flow(
         "准备编辑审核中心主消息",
