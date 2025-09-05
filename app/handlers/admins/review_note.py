@@ -378,14 +378,51 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
             from app.utils.panel_utils import cleanup_sent_media_messages
             await cleanup_sent_media_messages(cb.bot, state)
             
-            # 重新发送审核列表
-            await _return_to_review_list(cb, state, item_type)
+            # 媒体消息审核完成后，重新发送审核列表（不编辑现有消息）
+            if item_type == 'movie':
+                from app.handlers.admins.movie_review import movie_review_handler
+                # 创建一个新的callback query对象，指向聊天而不是特定消息
+                new_cb = types.CallbackQuery(
+                    id=cb.id,
+                    from_user=cb.from_user,
+                    chat_instance=cb.chat_instance,
+                    data="movie_review_list",
+                    message=None  # 不指向特定消息，让处理器重新发送
+                )
+                new_cb.bot = cb.bot
+                new_cb.message = types.Message(
+                    message_id=0,  # 临时ID
+                    date=cb.message.date,
+                    chat=cb.message.chat,
+                    from_user=cb.from_user,
+                    content_type="text"
+                )
+                await movie_review_handler.handle_review_list(new_cb, state)
+            elif item_type == 'content':
+                from app.handlers.admins.content_review import content_review_handler
+                # 创建一个新的callback query对象，指向聊天而不是特定消息
+                new_cb = types.CallbackQuery(
+                    id=cb.id,
+                    from_user=cb.from_user,
+                    chat_instance=cb.chat_instance,
+                    data="content_review_list",
+                    message=None  # 不指向特定消息，让处理器重新发送
+                )
+                new_cb.bot = cb.bot
+                new_cb.message = types.Message(
+                    message_id=0,  # 临时ID
+                    date=cb.message.date,
+                    chat=cb.message.chat,
+                    from_user=cb.from_user,
+                    content_type="text"
+                )
+                await content_review_handler.handle_review_list(new_cb, state)
         else:
             # 主面板审核：删除媒体消息，然后返回审核列表
             from app.utils.panel_utils import cleanup_sent_media_messages
             await cleanup_sent_media_messages(cb.bot, state)
             
-            # 返回审核列表
+            # 返回审核列表（可以直接编辑主面板消息）
             await _return_to_review_list(cb, state, item_type)
     else:
         await cb.answer("❌ 审核失败，请重试")
