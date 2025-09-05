@@ -42,7 +42,7 @@ action_browser = AdvancedBrowser(
 )
 
 
-@router.message(Command("browse_requests"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+@router.message(Command("browse_requests", "br"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def browse_requests_command(message: Message):
     """浏览求片请求命令"""
     user_id = str(message.from_user.id)
@@ -89,7 +89,7 @@ async def browse_requests_command(message: Message):
         await message.answer("❌ 浏览求片请求失败，请稍后重试")
 
 
-@router.message(Command("browse_submissions"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+@router.message(Command("browse_submissions", "bs"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def browse_submissions_command(message: Message):
     """浏览投稿命令"""
     user_id = str(message.from_user.id)
@@ -136,7 +136,7 @@ async def browse_submissions_command(message: Message):
         await message.answer("❌ 浏览投稿失败，请稍后重试")
 
 
-@router.message(Command("browse_feedback"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+@router.message(Command("browse_feedback", "bf"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def browse_feedback_command(message: Message):
     """浏览反馈命令"""
     user_id = str(message.from_user.id)
@@ -183,7 +183,7 @@ async def browse_feedback_command(message: Message):
         await message.answer("❌ 浏览反馈失败，请稍后重试")
 
 
-@router.message(Command("browse_users"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+@router.message(Command("browse_users", "bu"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def browse_users_command(message: Message):
     """浏览用户命令"""
     user_id = str(message.from_user.id)

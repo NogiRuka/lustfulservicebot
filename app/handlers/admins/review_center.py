@@ -798,7 +798,7 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext):
 
 # ==================== 命令行审核功能 ====================
 
-@review_center_router.message(Command("approve"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+@review_center_router.message(Command("approve", "ap"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def approve_command(message: types.Message):
     """命令行通过审核"""
     # 检查管理员权限
@@ -817,8 +817,8 @@ async def approve_command(message: types.Message):
         parts = message.text.strip().split()
         if len(parts) < 3:
             await message.reply(
-                "用法：/approve [类型] [ID] [留言]\n"
-                "示例：/approve movie 123 内容很好\n"
+                "用法：/approve [类型] [ID] [留言] 或 /ap [类型] [ID] [留言]\n"
+                "示例：/ap movie 123 内容很好\n"
                 "类型：movie(求片) 或 content(投稿)"
             )
             return
@@ -887,7 +887,7 @@ async def approve_command(message: types.Message):
         await message.reply("❌ 审核失败，请稍后重试")
 
 
-@review_center_router.message(Command("reject"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+@review_center_router.message(Command("reject", "rj"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
 async def reject_command(message: types.Message):
     """命令行拒绝审核"""
     # 检查管理员权限
@@ -906,8 +906,8 @@ async def reject_command(message: types.Message):
         parts = message.text.strip().split()
         if len(parts) < 4:
             await message.reply(
-                "用法：/reject [类型] [ID] [拒绝原因]\n"
-                "示例：/reject movie 123 内容不符合要求\n"
+                "用法：/reject [类型] [ID] [拒绝原因] 或 /rj [类型] [ID] [拒绝原因]\n"
+                "示例：/rj movie 123 内容不符合要求\n"
                 "类型：movie(求片) 或 content(投稿)"
             )
             return
