@@ -292,10 +292,42 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
                  text += "请选择要审核的类型："
                  
                  from app.buttons.users import admin_review_center_kb
-                 await cb.message.edit_caption(
-                     caption=text,
-                     reply_markup=admin_review_center_kb
-                 )
+                 # 尝试更新主消息，而不是当前媒体消息
+                 main_message_id = data.get('main_message_id')
+                 if main_message_id:
+                     try:
+                         await cb.bot.edit_message_caption(
+                             chat_id=cb.message.chat.id,
+                             message_id=main_message_id,
+                             caption=text,
+                             reply_markup=admin_review_center_kb
+                         )
+                     except Exception as e:
+                         logger.warning(f"更新主消息失败: {e}")
+                 else:
+                     # 如果没有main_message_id，尝试更新原始消息
+                     original_message_id = data.get('original_message_id')
+                     if original_message_id:
+                         try:
+                             await cb.bot.edit_message_caption(
+                                 chat_id=cb.message.chat.id,
+                                 message_id=original_message_id,
+                                 caption=text,
+                                 reply_markup=admin_review_center_kb
+                             )
+                         except Exception as e:
+                             logger.warning(f"更新原始消息失败: {e}")
+                     else:
+                         # 最后尝试：发送新消息替代
+                         try:
+                             await cb.bot.send_photo(
+                                 chat_id=cb.message.chat.id,
+                                 photo=DEFAULT_WELCOME_PHOTO,
+                                 caption=text,
+                                 reply_markup=admin_review_center_kb
+                             )
+                         except Exception as e:
+                             logger.warning(f"发送新消息失败: {e}")
                  
                  # 重新发送当前页面的媒体消息（使用待审核数据）
                  if item_type == 'movie':
@@ -489,7 +521,7 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                     text += "请选择要审核的类型："
                     
                     from app.buttons.users import admin_review_center_kb
-                    # 查找主消息并更新
+                    # 直接更新当前消息（如果是主消息）或查找主消息
                     main_message_id = data.get('main_message_id')
                     if main_message_id:
                         try:
@@ -501,6 +533,31 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                             )
                         except Exception as e:
                             logger.warning(f"更新主消息失败: {e}")
+                    else:
+                        # 如果没有main_message_id，尝试更新当前消息的原始消息
+                        # 通过查找状态中的原始消息ID
+                        original_message_id = data.get('original_message_id')
+                        if original_message_id:
+                            try:
+                                await cb.bot.edit_message_caption(
+                                    chat_id=cb.message.chat.id,
+                                    message_id=original_message_id,
+                                    caption=text,
+                                    reply_markup=admin_review_center_kb
+                                )
+                            except Exception as e:
+                                logger.warning(f"更新原始消息失败: {e}")
+                        else:
+                            # 最后尝试：发送新消息替代
+                            try:
+                                await cb.bot.send_photo(
+                                    chat_id=cb.message.chat.id,
+                                    photo=DEFAULT_WELCOME_PHOTO,
+                                    caption=text,
+                                    reply_markup=admin_review_center_kb
+                                )
+                            except Exception as e:
+                                logger.warning(f"发送新消息失败: {e}")
                     
                     # 重新发送当前页面的媒体消息（使用待审核数据）
                     if item_type == 'movie':
