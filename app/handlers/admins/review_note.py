@@ -17,12 +17,16 @@ async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
     """留言通过求片"""
     request_id = int(cb.data.split("_")[-1])
 
-    # 保存审核信息到状态
+    # 保存审核信息到状态，保持原有的主消息ID
+    data = await state.get_data()
+    main_message_id = data.get('main_message_id') or cb.message.message_id
+    
     await state.update_data({
         'review_type': 'movie',
         'review_id': request_id,
         'review_action': 'approved',
-        'message_id': cb.message.message_id
+        'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
+        'main_message_id': main_message_id  # 确保主消息ID被保存
     })
     
     await state.set_state(Wait.waitReviewNote)
@@ -44,12 +48,16 @@ async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
     """留言拒绝求片"""
     request_id = int(cb.data.split("_")[-1])
     
-    # 保存审核信息到状态
+    # 保存审核信息到状态，保持原有的主消息ID
+    data = await state.get_data()
+    main_message_id = data.get('main_message_id') or cb.message.message_id
+    
     await state.update_data({
         'review_type': 'movie',
         'review_id': request_id,
         'review_action': 'rejected',
-        'message_id': cb.message.message_id
+        'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
+        'main_message_id': main_message_id  # 确保主消息ID被保存
     })
     
     await state.set_state(Wait.waitReviewNote)
@@ -71,12 +79,16 @@ async def cb_approve_content_note(cb: types.CallbackQuery, state: FSMContext):
     """留言通过投稿"""
     submission_id = int(cb.data.split("_")[-1])
     
-    # 保存审核信息到状态
+    # 保存审核信息到状态，保持原有的主消息ID
+    data = await state.get_data()
+    main_message_id = data.get('main_message_id') or cb.message.message_id
+    
     await state.update_data({
         'review_type': 'content',
         'review_id': submission_id,
         'review_action': 'approved',
-        'message_id': cb.message.message_id
+        'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
+        'main_message_id': main_message_id  # 确保主消息ID被保存
     })
     
     await state.set_state(Wait.waitReviewNote)
@@ -98,12 +110,16 @@ async def cb_reject_content_note(cb: types.CallbackQuery, state: FSMContext):
     """留言拒绝投稿"""
     submission_id = int(cb.data.split("_")[-1])
     
-    # 保存审核信息到状态
+    # 保存审核信息到状态，保持原有的主消息ID
+    data = await state.get_data()
+    main_message_id = data.get('main_message_id') or cb.message.message_id
+    
     await state.update_data({
         'review_type': 'content',
         'review_id': submission_id,
         'review_action': 'rejected',
-        'message_id': cb.message.message_id
+        'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
+        'main_message_id': main_message_id  # 确保主消息ID被保存
     })
     
     await state.set_state(Wait.waitReviewNote)

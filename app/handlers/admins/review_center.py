@@ -76,6 +76,10 @@ async def cb_admin_review_center(cb: types.CallbackQuery, state: FSMContext):
         caption=text,
         reply_markup=admin_review_center_kb
     )
+    
+    # 保存主消息ID，确保后续操作能正确编辑这个消息
+    await state.update_data(main_message_id=cb.message.message_id)
+    
     await cb.answer()
 
 

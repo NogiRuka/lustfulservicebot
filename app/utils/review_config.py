@@ -260,6 +260,10 @@ class ReviewHandler:
             caption=text,
             reply_markup=keyboard
         )
+        
+        # 保存主消息ID，确保后续操作能正确编辑这个消息
+        await state.update_data(main_message_id=cb.message.message_id)
+        
         await cb.answer()
     
     async def _send_media_messages(self, cb: types.CallbackQuery, state: FSMContext, items: List):
