@@ -365,7 +365,7 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         is_media_message = hasattr(cb.message, 'photo') or hasattr(cb.message, 'video') or hasattr(cb.message, 'document')
         
         # 显示提示消息（不需要用户确认）
-        await cb.answer(f"✅ 已{action_text}{type_text} {item_id}（{note_preview}）")
+        await cb.answer(f"✅ 已{action_text}{type_text} {item_id}")
         
         # 删除所有已发送的媒体消息
         from app.utils.panel_utils import cleanup_sent_media_messages
@@ -389,25 +389,8 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                 await _return_to_review_list(cb, state, item_type)
         else:
             # 主面板审核完成后的处理
-            if from_review_center:
-                # 更新主面板回到审核中心并发送新的媒体消息
-                text = "✅ <b>审核中心</b>\n\n"
-                text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
-                text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
-                text += "请选择要审核的类型："
-                
-                from app.buttons.users import admin_review_center_kb
-                
-                # 更新主面板消息（操作的那条消息就是主面板，不删除）
-                await cb.message.edit_caption(
-                    caption=text,
-                    reply_markup=admin_review_center_kb
-                )
-                
-                await _send_current_page_media(cb, state, item_type, movie_requests, content_submissions)
-            else:
-                # 返回具体的审核列表
-                await _return_to_review_list(cb, state, item_type)
+            # 无论是否来自审核中心，都应该返回到审核列表
+            await _return_to_review_list(cb, state, item_type)
     else:
         await cb.answer("❌ 审核失败，请重试")
     
