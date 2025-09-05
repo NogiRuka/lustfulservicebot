@@ -375,22 +375,8 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
         movie_requests = await get_pending_movie_requests()
         content_submissions = await get_pending_content_submissions()
         
-        # 检查是否来自审核中心
-        from_review_center = data.get('from_review_center', False)
-        
-        if is_media_message:
-            # 媒体消息审核完成后的处理
-            if from_review_center:
-                # 更新审核中心主面板并重新发送媒体消息
-                await _update_review_center_panel(cb, movie_requests, content_submissions)
-                await _send_current_page_media(cb, state, item_type, movie_requests, content_submissions)
-            else:
-                # 直接返回审核列表（不更新审核中心主面板）
-                await _return_to_review_list(cb, state, item_type)
-        else:
-            # 主面板审核完成后的处理
-            # 无论是否来自审核中心，都应该返回到审核列表
-            await _return_to_review_list(cb, state, item_type)
+        # 审核完成后统一返回到审核列表（会自动刷新显示最新的待审核数据）
+        await _return_to_review_list(cb, state, item_type)
     else:
         await cb.answer("❌ 审核失败，请重试")
     
