@@ -48,3 +48,12 @@ if _sync_channel_raw and not SYNC_CHANNELS:
 # 默认使用相对路径的 SQLite 数据库（相对于当前运行目录）
 _default_sqlite_url = "sqlite+aiosqlite:///./db/lustfulservice.db"
 DATABASE_URL_ASYNC = os.getenv("DATABASE_URL_ASYNC", _default_sqlite_url)
+
+# 分页配置常量
+REVIEW_PAGE_SIZE = 3  # 审核列表每页显示的项目数量
+BROWSE_PAGE_SIZE = 5  # 浏览列表每页显示的项目数量
+ADVANCED_BROWSE_PAGE_SIZE = 10  # 高级浏览每页显示的项目数量
+ADVANCED_BROWSE_LARGE_PAGE_SIZE = 15  # 高级浏览大页面每页显示的项目数量
+SUBMISSION_PAGE_SIZE = 5  # 投稿列表每页显示的项目数量
+CATEGORY_PAGE_SIZE = 5  # 分类列表每页显示的项目数量
+SETTINGS_PAGE_SIZE = 8  # 设置列表每页显示的项目数量

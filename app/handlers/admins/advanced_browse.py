@@ -30,10 +30,11 @@ request_browser = create_browser_for_reviews(get_movie_requests_advanced)
 submission_browser = create_browser_for_reviews(get_content_submissions_advanced)
 feedback_browser = create_browser_for_feedback(get_user_feedback_advanced)
 user_browser = create_browser_for_users(get_users_advanced)
+from app.config.config import ADVANCED_BROWSE_LARGE_PAGE_SIZE
 action_browser = AdvancedBrowser(
     get_admin_actions_advanced,
     BrowserConfig(
-        page_size=15,
+        page_size=ADVANCED_BROWSE_LARGE_PAGE_SIZE,
         sort_field=TimeField.CREATED_AT,
         sort_order=SortOrder.DESC,
         visible_fields=['id', 'action_type', 'description', 'created_at', 'admin_id']

@@ -849,8 +849,9 @@ async def cb_superadmin_category_manage_page(cb: types.CallbackQuery, page: int 
     if page is None:
         page = extract_page_from_callback(cb.data, "category_manage")
     
+    from app.config.config import CATEGORY_PAGE_SIZE
     categories = await get_all_movie_categories(active_only=False)
-    paginator = Paginator(categories, page_size=5)
+    paginator = Paginator(categories, page_size=CATEGORY_PAGE_SIZE)
     page_info = paginator.get_page_info(page)
     page_items = paginator.get_page_items(page)
     
@@ -1096,8 +1097,9 @@ async def cb_view_all_settings_page(cb: types.CallbackQuery, page: int = None):
     if page is None:
         page = extract_page_from_callback(cb.data, "settings")
     
+    from app.config.config import SETTINGS_PAGE_SIZE
     settings = await get_all_system_settings()
-    paginator = Paginator(settings, page_size=8)
+    paginator = Paginator(settings, page_size=SETTINGS_PAGE_SIZE)
     page_info = paginator.get_page_info(page)
     page_items = paginator.get_page_items(page)
     

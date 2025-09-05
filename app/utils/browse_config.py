@@ -188,7 +188,8 @@ class BrowseHandler:
             return
         
         # 创建分页器
-        paginator = Paginator(items, page_size=5)
+        from app.config.config import BROWSE_PAGE_SIZE
+        paginator = Paginator(items, page_size=BROWSE_PAGE_SIZE)
         page_data = paginator.get_page_items(page)
         page_info = paginator.get_page_info(page)
         

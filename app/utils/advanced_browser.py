@@ -489,8 +489,9 @@ class AdvancedBrowser:
 # 便捷函数
 def create_browser_for_reviews(data_source_func: Callable) -> AdvancedBrowser:
     """为审核数据创建浏览器"""
+    from app.config.config import ADVANCED_BROWSE_PAGE_SIZE
     default_config = BrowserConfig(
-        page_size=10,
+        page_size=ADVANCED_BROWSE_PAGE_SIZE,
         sort_field=TimeField.CREATED_AT,
         sort_order=SortOrder.ASC,
         visible_fields=['id', 'title', 'status', 'created_at', 'user_id']
@@ -500,8 +501,9 @@ def create_browser_for_reviews(data_source_func: Callable) -> AdvancedBrowser:
 
 def create_browser_for_feedback(data_source_func: Callable) -> AdvancedBrowser:
     """为反馈数据创建浏览器"""
+    from app.config.config import ADVANCED_BROWSE_PAGE_SIZE
     default_config = BrowserConfig(
-        page_size=10,
+        page_size=ADVANCED_BROWSE_PAGE_SIZE,
         sort_field=TimeField.CREATED_AT,
         sort_order=SortOrder.ASC,
         visible_fields=['id', 'feedback_type', 'status', 'created_at', 'user_id']
@@ -511,8 +513,9 @@ def create_browser_for_feedback(data_source_func: Callable) -> AdvancedBrowser:
 
 def create_browser_for_users(data_source_func: Callable) -> AdvancedBrowser:
     """为用户数据创建浏览器"""
+    from app.config.config import ADVANCED_BROWSE_LARGE_PAGE_SIZE
     default_config = BrowserConfig(
-        page_size=15,
+        page_size=ADVANCED_BROWSE_LARGE_PAGE_SIZE,
         sort_field=TimeField.CREATED_AT,
         sort_order=SortOrder.ASC,
         visible_fields=['id', 'username', 'full_name', 'role', 'created_at']

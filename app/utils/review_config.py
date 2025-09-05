@@ -4,6 +4,7 @@ from aiogram.fsm.context import FSMContext
 from app.utils.time_utils import humanize_time, get_status_text
 from app.utils.pagination import Paginator, format_page_header
 from app.utils.panel_utils import get_user_display_link, send_review_notification, cleanup_sent_media_messages
+from app.config.config import REVIEW_PAGE_SIZE
 from loguru import logger
 
 
@@ -242,7 +243,7 @@ class ReviewHandler:
             return
         
         # 创建分页器
-        paginator = Paginator(items, page_size=3)  # 使用原来的页面大小
+        paginator = Paginator(items, page_size=REVIEW_PAGE_SIZE)
         page_data = paginator.get_page_items(page)
         
         # 构建界面

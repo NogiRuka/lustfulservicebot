@@ -510,7 +510,8 @@ class SubmissionHandler:
         items = await self.config.get_user_items_function(cb.from_user.id)
         
         # 创建分页器
-        paginator = Paginator(items, page_size=5)
+        from app.config.config import SUBMISSION_PAGE_SIZE
+        paginator = Paginator(items, page_size=SUBMISSION_PAGE_SIZE)
         page_data = paginator.get_page_items(page)
         
         # 构建界面
