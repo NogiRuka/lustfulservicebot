@@ -44,8 +44,8 @@ async def cb_approve_movie_note(cb: types.CallbackQuery, state: FSMContext):
         'review_type': 'movie',
         'review_id': request_id,
         'review_action': 'approved',
-        'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
-        'main_message_id': main_message_id  # 确保主消息ID被保存
+        'message_id': cb.message.message_id,  # 当前操作的消息ID
+        'main_message_id': main_message_id  # 主面板消息ID
     })
     
     await debug_state_info(state, "状态更新后")
@@ -93,7 +93,7 @@ async def cb_reject_movie_note(cb: types.CallbackQuery, state: FSMContext):
         'review_type': 'movie',
         'review_id': request_id,
         'review_action': 'rejected',
-        'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
+        'message_id': cb.message.message_id,  # 当前操作的消息ID
         'main_message_id': main_message_id  # 确保主消息ID被保存
     })
     
@@ -142,8 +142,8 @@ async def cb_approve_content_note(cb: types.CallbackQuery, state: FSMContext):
         'review_type': 'content',
         'review_id': submission_id,
         'review_action': 'approved',
-        'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
-        'main_message_id': main_message_id  # 确保主消息ID被保存
+        'message_id': cb.message.message_id,  # 当前操作的消息ID
+        'main_message_id': main_message_id  # 主面板消息ID
     })
     
     await debug_state_info(state, "状态更新后")
@@ -191,8 +191,8 @@ async def cb_reject_content_note(cb: types.CallbackQuery, state: FSMContext):
         'review_type': 'content',
         'review_id': submission_id,
         'review_action': 'rejected',
-        'message_id': main_message_id,  # 使用主消息ID而不是当前消息ID
-        'main_message_id': main_message_id  # 确保主消息ID被保存
+        'message_id': cb.message.message_id,  # 当前操作的消息ID
+        'main_message_id': main_message_id  # 主面板消息ID
     })
     
     await debug_state_info(state, "状态更新后")
