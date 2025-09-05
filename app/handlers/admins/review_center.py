@@ -796,6 +796,34 @@ async def cb_admin_all_content_page(cb: types.CallbackQuery, state: FSMContext):
     await content_browse_handler.handle_browse_list(cb, state, page)
 
 
+# ==================== 命令帮助功能 ====================
+
+@review_center_router.message(Command("help", "h"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
+async def help_command(message: types.Message):
+    """显示管理员命令帮助"""
+    help_text = (
+        "🔧 <b>管理员命令帮助</b>\n\n"
+        "📋 <b>高级浏览命令</b>:\n"
+        "├ /br - 浏览求片请求\n"
+        "├ /bs - 浏览投稿内容\n"
+        "├ /bf - 浏览用户反馈\n"
+        "└ /bu - 浏览用户信息\n\n"
+        "⚡ <b>快速审核命令</b>:\n"
+        "├ /ap [类型] [ID] [留言] - 通过审核\n"
+        "└ /rj [类型] [ID] [原因] - 拒绝审核\n\n"
+        "📝 <b>使用示例</b>:\n"
+        "├ /ap movie 123 内容很好\n"
+        "├ /rj content 456 格式有问题\n"
+        "└ /br (浏览求片)\n\n"
+        "💡 <b>提示</b>:\n"
+        "├ 类型: movie(求片) 或 content(投稿)\n"
+        "├ 也可使用完整命令如 /browse_requests\n"
+        "└ 按钮操作: 审核中心 → 🔍 高级浏览"
+    )
+    
+    await message.reply(help_text, parse_mode="HTML")
+
+
 # ==================== 命令行审核功能 ====================
 
 @review_center_router.message(Command("approve", "ap"), HasRole(superadmin_id=SUPERADMIN_ID, admins_id=ADMINS_ID, allow_roles=[ROLE_ADMIN, ROLE_SUPERADMIN]))
