@@ -205,6 +205,19 @@ class AdvancedBrowser:
             ]
             keyboard.append(settings_buttons)
         
+        # 返回按钮行
+        back_buttons = [
+            InlineKeyboardButton(
+                text="⬅️ 返回上一级",
+                callback_data="admin_review_center"
+            ),
+            InlineKeyboardButton(
+                text="🔙 返回主菜单",
+                callback_data="back_to_main"
+            )
+        ]
+        keyboard.append(back_buttons)
+        
         return InlineKeyboardMarkup(inline_keyboard=keyboard)
     
     def create_settings_keyboard(
