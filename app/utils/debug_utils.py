@@ -162,6 +162,9 @@ def debug_function(func_name: str = None):
         func_name: 函数名称（可选）
     """
     def decorator(func):
+        import functools
+        
+        @functools.wraps(func)
         async def wrapper(*args, **kwargs):
             if is_debug_enabled() and should_show_feature('function_entry_exit'):
                 name = func_name or func.__name__
