@@ -282,7 +282,7 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
             from_review_center = data.get('from_review_center', False)
             
             if from_review_center:
-                 # 如果来自数据浏览页面，编辑主消息返回审核中心
+                 # 手动更新主面板数据，因为cb.message指向的是媒体消息而不是主面板消息
                  movie_requests = await get_pending_movie_requests()
                  content_submissions = await get_pending_content_submissions()
                  
@@ -292,42 +292,33 @@ async def cb_skip_review_note(cb: types.CallbackQuery, state: FSMContext):
                  text += "请选择要审核的类型："
                  
                  from app.buttons.users import admin_review_center_kb
-                 # 尝试更新主消息，而不是当前媒体消息
-                 main_message_id = data.get('main_message_id')
-                 if main_message_id:
+                 
+                 # 查找所有可能的主面板消息ID并尝试更新
+                 data = await state.get_data()
+                 sent_media_ids = data.get('sent_media_ids', [])
+                 
+                 # 尝试找到主面板消息（通常是最早的消息或者不在媒体消息列表中的消息）
+                 # 我们可以尝试向前查找消息ID
+                 current_message_id = cb.message.message_id
+                 
+                 # 尝试更新前面的消息（主面板通常在媒体消息之前）
+                 for offset in range(1, 10):  # 尝试前面10个消息ID
                      try:
+                         potential_main_id = current_message_id - offset
                          await cb.bot.edit_message_caption(
                              chat_id=cb.message.chat.id,
-                             message_id=main_message_id,
+                             message_id=potential_main_id,
                              caption=text,
                              reply_markup=admin_review_center_kb
                          )
+                         logger.info(f"成功更新主面板消息 ID: {potential_main_id}")
+                         break
                      except Exception as e:
-                         logger.warning(f"更新主消息失败: {e}")
+                         # 如果这个消息ID不存在或不是图片消息，继续尝试下一个
+                         continue
                  else:
-                     # 如果没有main_message_id，尝试更新原始消息
-                     original_message_id = data.get('original_message_id')
-                     if original_message_id:
-                         try:
-                             await cb.bot.edit_message_caption(
-                                 chat_id=cb.message.chat.id,
-                                 message_id=original_message_id,
-                                 caption=text,
-                                 reply_markup=admin_review_center_kb
-                             )
-                         except Exception as e:
-                             logger.warning(f"更新原始消息失败: {e}")
-                     else:
-                         # 最后尝试：发送新消息替代
-                         try:
-                             await cb.bot.send_photo(
-                                 chat_id=cb.message.chat.id,
-                                 photo=DEFAULT_WELCOME_PHOTO,
-                                 caption=text,
-                                 reply_markup=admin_review_center_kb
-                             )
-                         except Exception as e:
-                             logger.warning(f"发送新消息失败: {e}")
+                     # 如果都失败了，记录警告
+                     logger.warning("无法找到主面板消息进行更新")
                  
                  # 重新发送当前页面的媒体消息（使用待审核数据）
                  if item_type == 'movie':
@@ -448,36 +439,55 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
             from_review_center = data.get('from_review_center', False)
             
             if from_review_center:
-                # 如果来自数据浏览页面，编辑主消息返回审核中心
-                movie_requests = await get_pending_movie_requests()
-                content_submissions = await get_pending_content_submissions()
-                
-                text = "✅ <b>审核中心</b>\n\n"
-                text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
-                text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
-                text += "请选择要审核的类型："
-                
-                from app.buttons.users import admin_review_center_kb
-                await cb.message.edit_caption(
-                    caption=text,
-                    reply_markup=admin_review_center_kb
-                )
-                
-                # 重新发送当前页面的媒体消息
-                if item_type == 'movie':
-                    from app.handlers.admins.review_center import _send_media_messages_for_movies
-                    from app.database.business import get_all_movie_requests
-                    all_requests = await get_all_movie_requests()
-                    # 获取当前页面的数据（这里简化为前5条）
-                    current_page_data = all_requests[:5] if all_requests else []
-                    await _send_media_messages_for_movies(cb, state, current_page_data)
-                elif item_type == 'content':
-                    from app.handlers.admins.review_center import _send_media_messages_for_content
-                    from app.database.business import get_all_content_submissions
-                    all_submissions = await get_all_content_submissions()
-                    # 获取当前页面的数据（这里简化为前5条）
-                    current_page_data = all_submissions[:5] if all_submissions else []
-                    await _send_media_messages_for_content(cb, state, current_page_data)
+                     # 手动更新主面板数据，因为cb.message指向的是媒体消息而不是主面板消息
+                     movie_requests = await get_pending_movie_requests()
+                     content_submissions = await get_pending_content_submissions()
+                     
+                     text = "✅ <b>审核中心</b>\n\n"
+                     text += f"🎬 待审核求片：{len(movie_requests)} 条\n"
+                     text += f"📝 待审核投稿：{len(content_submissions)} 条\n\n"
+                     text += "请选择要审核的类型："
+                     
+                     from app.buttons.users import admin_review_center_kb
+                     
+                     # 查找所有可能的主面板消息ID并尝试更新
+                     data = await state.get_data()
+                     sent_media_ids = data.get('sent_media_ids', [])
+                     
+                     # 尝试找到主面板消息（通常是最早的消息或者不在媒体消息列表中的消息）
+                     # 我们可以尝试向前查找消息ID
+                     current_message_id = cb.message.message_id
+                     
+                     # 尝试更新前面的消息（主面板通常在媒体消息之前）
+                     for offset in range(1, 10):  # 尝试前面10个消息ID
+                         try:
+                             potential_main_id = current_message_id - offset
+                             await cb.bot.edit_message_caption(
+                                 chat_id=cb.message.chat.id,
+                                 message_id=potential_main_id,
+                                 caption=text,
+                                 reply_markup=admin_review_center_kb
+                             )
+                             logger.info(f"成功更新主面板消息 ID: {potential_main_id}")
+                             break
+                         except Exception as e:
+                             # 如果这个消息ID不存在或不是图片消息，继续尝试下一个
+                             continue
+                     else:
+                         # 如果都失败了，记录警告
+                         logger.warning("无法找到主面板消息进行更新")
+                     
+                     # 重新发送当前页面的媒体消息（使用待审核数据）
+                     if item_type == 'movie':
+                         from app.handlers.admins.review_center import _send_media_messages_for_movies
+                         # 获取当前页面的待审核数据
+                         current_page_data = movie_requests[:5] if movie_requests else []
+                         await _send_media_messages_for_movies(cb, state, current_page_data)
+                     elif item_type == 'content':
+                         from app.handlers.admins.review_center import _send_media_messages_for_content
+                         # 获取当前页面的待审核数据
+                         current_page_data = content_submissions[:5] if content_submissions else []
+                         await _send_media_messages_for_content(cb, state, current_page_data)
             else:
                 # 否则返回具体的审核列表
                 if item_type == 'movie':
@@ -511,7 +521,7 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                 # 检测并同步主消息的媒体消息状态
                 from_review_center = data.get('from_review_center', False)
                 if from_review_center:
-                    # 更新主面板的统计数据
+                    # 手动更新主面板数据，因为cb.message指向的是媒体消息而不是主面板消息
                     movie_requests = await get_pending_movie_requests()
                     content_submissions = await get_pending_content_submissions()
                     
@@ -521,43 +531,33 @@ async def cb_confirm_review_note(cb: types.CallbackQuery, state: FSMContext):
                     text += "请选择要审核的类型："
                     
                     from app.buttons.users import admin_review_center_kb
-                    # 直接更新当前消息（如果是主消息）或查找主消息
-                    main_message_id = data.get('main_message_id')
-                    if main_message_id:
+                    
+                    # 查找所有可能的主面板消息ID并尝试更新
+                    data = await state.get_data()
+                    sent_media_ids = data.get('sent_media_ids', [])
+                    
+                    # 尝试找到主面板消息（通常是最早的消息或者不在媒体消息列表中的消息）
+                    # 我们可以尝试向前查找消息ID
+                    current_message_id = cb.message.message_id
+                    
+                    # 尝试更新前面的消息（主面板通常在媒体消息之前）
+                    for offset in range(1, 10):  # 尝试前面10个消息ID
                         try:
+                            potential_main_id = current_message_id - offset
                             await cb.bot.edit_message_caption(
                                 chat_id=cb.message.chat.id,
-                                message_id=main_message_id,
+                                message_id=potential_main_id,
                                 caption=text,
                                 reply_markup=admin_review_center_kb
                             )
+                            logger.info(f"成功更新主面板消息 ID: {potential_main_id}")
+                            break
                         except Exception as e:
-                            logger.warning(f"更新主消息失败: {e}")
+                            # 如果这个消息ID不存在或不是图片消息，继续尝试下一个
+                            continue
                     else:
-                        # 如果没有main_message_id，尝试更新当前消息的原始消息
-                        # 通过查找状态中的原始消息ID
-                        original_message_id = data.get('original_message_id')
-                        if original_message_id:
-                            try:
-                                await cb.bot.edit_message_caption(
-                                    chat_id=cb.message.chat.id,
-                                    message_id=original_message_id,
-                                    caption=text,
-                                    reply_markup=admin_review_center_kb
-                                )
-                            except Exception as e:
-                                logger.warning(f"更新原始消息失败: {e}")
-                        else:
-                            # 最后尝试：发送新消息替代
-                            try:
-                                await cb.bot.send_photo(
-                                    chat_id=cb.message.chat.id,
-                                    photo=DEFAULT_WELCOME_PHOTO,
-                                    caption=text,
-                                    reply_markup=admin_review_center_kb
-                                )
-                            except Exception as e:
-                                logger.warning(f"发送新消息失败: {e}")
+                        # 如果都失败了，记录警告
+                        logger.warning("无法找到主面板消息进行更新")
                     
                     # 重新发送当前页面的媒体消息（使用待审核数据）
                     if item_type == 'movie':
