@@ -49,6 +49,85 @@ async def cb_superadmin_manage_center(cb: types.CallbackQuery):
     await cb.answer()
 
 
+@superadmin_router.callback_query(F.data == "image_add_new")
+async def cb_image_add_new(cb: types.CallbackQuery):
+    """添加新图片按钮处理"""
+    await cb.answer("💡 请使用命令 /img_add [图片URL] 添加新图片\n示例：/ia https://example.com/image.jpg", show_alert=True)
+
+
+@superadmin_router.callback_query(F.data == "image_remove_menu")
+async def cb_image_remove_menu(cb: types.CallbackQuery):
+    """删除图片菜单"""
+    await cb.answer("💡 请使用命令 /img_remove [图片URL] 删除图片\n示例：/ir https://example.com/image.jpg", show_alert=True)
+
+
+@superadmin_router.callback_query(F.data == "image_clear_sessions")
+async def cb_image_clear_sessions(cb: types.CallbackQuery):
+    """清除会话缓存按钮处理"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    from app.config.image_config import clear_all_sessions, get_image_info
+    
+    try:
+        # 获取清除前的信息
+        info_before = get_image_info()
+        sessions_before = info_before['active_sessions']
+        
+        # 清除所有会话
+        clear_all_sessions()
+        
+        await cb.answer(
+            f"🧹 会话缓存清除成功！\n清除了 {sessions_before} 个会话\n所有用户下次/start时将重新随机选择图片",
+            show_alert=True
+        )
+        
+        # 刷新界面显示
+        await cb_superadmin_image_manage(cb)
+        
+    except Exception as e:
+        logger.error(f"清除会话缓存失败: {e}")
+        await cb.answer(f"❌ 清除失败：{str(e)}", show_alert=True)
+
+
+@superadmin_router.callback_query(F.data == "image_test_random")
+async def cb_image_test_random(cb: types.CallbackQuery):
+    """测试随机图片按钮处理"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    from app.config.image_config import get_random_image
+    
+    try:
+        # 获取随机图片
+        random_image = get_random_image()
+        
+        # 发送测试图片
+        test_text = (
+            f"🎲 <b>随机图片测试</b>\n\n"
+            f"🎯 <b>随机选择的图片</b>：\n{random_image}\n\n"
+            f"⏰ <b>测试时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"💡 <b>说明</b>：这就是用户/start时可能看到的图片"
+        )
+        
+        await cb.bot.send_photo(
+            chat_id=cb.from_user.id,
+            photo=random_image,
+            caption=test_text,
+            parse_mode="HTML"
+        )
+        
+        await cb.answer("🎲 随机图片测试已发送！")
+        
+    except Exception as e:
+        logger.error(f"测试随机图片失败: {e}")
+        await cb.answer(f"❌ 测试失败：{str(e)}", show_alert=True)
+
+
 # ==================== 功能开关切换 ====================
 
 @superadmin_router.callback_query(F.data.startswith("toggle_"))
