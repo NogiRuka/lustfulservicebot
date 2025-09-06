@@ -854,25 +854,21 @@ async def cb_superadmin_image_manage(cb: types.CallbackQuery):
     info = get_image_info()
     
     text = "🖼️ <b>随机图片管理</b>\n\n"
-    text += "📋 <b>图片池信息</b>：\n\n"
     text += f"📊 <b>图片总数</b>：{info['total_images']} 张\n"
-    text += f"👥 <b>活跃会话</b>：{info['active_sessions']} 个\n"
-    text += f"📝 <b>说明</b>：{info['description']}\n\n"
+    text += f"👥 <b>活跃会话</b>：{info['active_sessions']} 个\n\n"
     
-    text += "🎯 <b>图片列表</b>：\n"
-    for i, img_url in enumerate(IMAGE_LIST, 1):
-        text += f"{i}. {img_url}\n\n"
+    # 只显示前3张图片，避免文本过长
+    text += "🎯 <b>图片列表</b>（前3张）：\n"
+    for i, img_url in enumerate(IMAGE_LIST[:3], 1):
+        # 截断URL显示，避免过长
+        display_url = img_url[:50] + "..." if len(img_url) > 50 else img_url
+        text += f"{i}. {display_url}\n"
     
-    text += "💡 <b>功能说明</b>：\n"
-    text += "├ 每次/start时随机选择一张图片\n"
-    text += "├ 同一会话中编辑操作使用相同图片\n"
-    text += "├ 支持添加/删除图片到随机池\n"
-    text += "└ 支持清除所有用户会话缓存\n\n"
-    text += "⚡ <b>管理命令</b>：\n"
-    text += "├ /img_info - 查看图片池信息\n"
-    text += "├ /img_add [URL] - 添加图片到池\n"
-    text += "├ /img_remove [URL] - 从池中移除图片\n"
-    text += "└ /img_clear - 清除所有会话缓存"
+    if len(IMAGE_LIST) > 3:
+        text += f"... 还有 {len(IMAGE_LIST) - 3} 张图片\n"
+    
+    text += "\n💡 <b>功能</b>：随机图片池管理\n"
+    text += "⚡ <b>命令</b>：/img_info 查看详情"
     
     # 创建随机图片管理按钮
     image_manage_kb = types.InlineKeyboardMarkup(
