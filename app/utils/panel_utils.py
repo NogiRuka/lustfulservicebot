@@ -101,14 +101,14 @@ async def send_review_notification(bot, user_id: int, item_type: str, item_title
             status_color = '🟢'
             title_decoration = '🎉✨🎉'
             title_text = f"{title_decoration} <b>{config['name']}审核通过</b> {title_decoration}"
-            result_bg = '━━━━━━━━━━━━━━━━━━━━'
+            result_bg = '─────────────────'
         else:
             status_emoji = '❌'
             status_text = '审核拒绝'
             status_color = '🔴'
             title_decoration = '📋⚠️📋'
             title_text = f"{title_decoration} <b>{config['name']}审核结果</b> {title_decoration}"
-            result_bg = '━━━━━━━━━━━━━━━━━━━━'
+            result_bg = '─────────────────'
         
         # 构建美化的通知消息
         # 如果有分类名称，显示具体分类；否则显示默认类别

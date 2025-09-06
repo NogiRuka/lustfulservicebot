@@ -213,30 +213,6 @@ class DevChangelog(Base):
         return f"<DevChangelog(id={self.id}, version={self.version}, title={self.title})>"
 
 
-class ImageLibrary(Base):
-    """图片库表 - 存储超管发送的图片信息"""
-
-    __tablename__ = "image_library"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    file_id = Column(String, nullable=False, unique=True)  # Telegram文件ID
-    file_unique_id = Column(String, nullable=True)  # Telegram唯一文件ID
-    file_url = Column(String, nullable=True)  # 图片URL（如果有）
-    file_size = Column(Integer, nullable=True)  # 文件大小（字节）
-    width = Column(Integer, nullable=True)  # 图片宽度
-    height = Column(Integer, nullable=True)  # 图片高度
-    caption = Column(Text, nullable=True)  # 图片说明
-    uploaded_by = Column(BigInteger, ForeignKey('users.chat_id'), nullable=False)  # 上传者ID（超管）
-    uploaded_at = Column(DateTime, default=datetime.now, nullable=False)  # 上传时间
-    is_active = Column(Boolean, default=True, nullable=False)  # 是否启用
-    usage_count = Column(Integer, default=0, nullable=False)  # 使用次数
-    last_used_at = Column(DateTime, nullable=True)  # 最后使用时间
-    tags = Column(String, nullable=True)  # 标签（用逗号分隔）
-    
-    def __repr__(self):
-        return f"<ImageLibrary(id={self.id}, file_id='{self.file_id}', uploaded_by={self.uploaded_by})>"
-
-
 class SentMessage(Base):
     """代发消息追踪表"""
 
@@ -257,3 +233,21 @@ class SentMessage(Base):
     
     def __repr__(self):
         return f"<SentMessage(id={self.id}, admin_id={self.admin_id}, target_type='{self.target_type}', target_id={self.target_id})>"
+
+
+class ImageLibrary(Base):
+    """图片库表 - 存储管理员添加的图片链接信息"""
+
+    __tablename__ = "image_library"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    image_url = Column(String, nullable=False, unique=True)  # 图片URL
+    description = Column(Text, nullable=True)  # 图片描述
+    added_by = Column(BigInteger, ForeignKey('users.chat_id'), nullable=False)  # 添加者ID（管理员）
+    added_at = Column(DateTime, default=datetime.now, nullable=False)  # 添加时间
+    is_active = Column(Boolean, default=True, nullable=False)  # 是否启用
+    usage_count = Column(Integer, default=0, nullable=False)  # 使用次数
+    last_used_at = Column(DateTime, nullable=True)  # 最后使用时间
+    
+    def __repr__(self):
+        return f"<ImageLibrary(id={self.id}, image_url='{self.image_url}', added_by={self.added_by})>"

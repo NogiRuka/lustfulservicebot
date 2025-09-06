@@ -843,57 +843,197 @@ async def cb_superadmin_my_admins(cb: types.CallbackQuery):
 
 @superadmin_router.callback_query(F.data == "superadmin_image_manage")
 async def cb_superadmin_image_manage(cb: types.CallbackQuery):
-    """简化的图片管理界面"""
+    """图片管理界面 - 显示数据库中的所有图片"""
     role = await get_role(cb.from_user.id)
     if role != ROLE_SUPERADMIN:
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
-    from app.config.image_config import get_image_info, IMAGE_LIST
+    from app.config.image_config import get_image_info
+    from app.database.image_library import get_all_images, get_image_stats
     
-    info = get_image_info()
+    try:
+        # 获取随机池信息
+        pool_info = get_image_info()
+        
+        # 获取数据库图片统计
+        db_stats = await get_image_stats()
+        
+        # 获取最近的图片
+        recent_images = await get_all_images(limit=5)
+        
+        text = "🖼️ <b>图片管理中心</b>\n\n"
+        text += "📊 <b>统计信息</b>：\n"
+        text += f"├ 随机池图片：{pool_info['total_images']} 张\n"
+        text += f"├ 数据库图片：{db_stats['total_images']} 张\n"
+        text += f"├ 活跃会话：{pool_info['active_sessions']} 个\n"
+        text += f"└ 总使用次数：{db_stats['total_usage']} 次\n\n"
+        
+        if recent_images:
+            text += "🎯 <b>最近添加的图片</b>：\n"
+            for i, img in enumerate(recent_images[:3], 1):
+                # 截断URL显示
+                display_url = img.image_url[:40] + "..." if len(img.image_url) > 40 else img.image_url
+                text += f"{i}. {display_url}\n"
+                text += f"   📅 {img.added_at.strftime('%m-%d %H:%M')} | 🔢 使用{img.usage_count}次\n"
+            
+            if len(recent_images) > 3:
+                text += f"... 还有 {len(recent_images) - 3} 张图片\n"
+        else:
+            text += "📝 <b>暂无图片记录</b>\n"
+        
+        text += "\n💡 <b>功能</b>：图片池与数据库管理\n"
+        text += "⚡ <b>命令</b>：/img_info 查看详情"
+        
+        # 创建图片管理按钮
+        image_manage_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="➕ 添加图片", callback_data="image_add_new"),
+                    types.InlineKeyboardButton(text="🗑️ 删除图片", callback_data="image_remove_menu"),
+                ],
+                [
+                    types.InlineKeyboardButton(text="📋 查看所有图片", callback_data="image_view_all"),
+                    types.InlineKeyboardButton(text="📊 详细统计", callback_data="image_stats_detail"),
+                ],
+                [
+                    types.InlineKeyboardButton(text="🧹 清除会话缓存", callback_data="image_clear_sessions"),
+                    types.InlineKeyboardButton(text="🎲 测试随机图片", callback_data="image_test_random"),
+                ],
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+                ],
+            ]
+        )
+        
+        await safe_edit_message(
+            cb.message,
+            caption=text,
+            reply_markup=image_manage_kb
+        )
+        await cb.answer()
+        
+    except Exception as e:
+        logger.error(f"图片管理界面加载失败: {e}")
+        await cb.answer("❌ 加载图片管理界面失败", show_alert=True)
+
+
+@superadmin_router.callback_query(F.data == "image_view_all")
+async def cb_image_view_all(cb: types.CallbackQuery):
+    """查看所有图片"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
     
-    text = "🖼️ <b>随机图片管理</b>\n\n"
-    text += f"📊 <b>图片总数</b>：{info['total_images']} 张\n"
-    text += f"👥 <b>活跃会话</b>：{info['active_sessions']} 个\n\n"
+    from app.database.image_library import get_all_images
     
-    # 只显示前3张图片，避免文本过长
-    text += "🎯 <b>图片列表</b>（前3张）：\n"
-    for i, img_url in enumerate(IMAGE_LIST[:3], 1):
-        # 截断URL显示，避免过长
-        display_url = img_url[:50] + "..." if len(img_url) > 50 else img_url
-        text += f"{i}. {display_url}\n"
+    try:
+        images = await get_all_images(limit=20)
+        
+        if not images:
+            await cb.answer("📝 暂无图片记录", show_alert=True)
+            return
+        
+        text = "📋 <b>所有图片列表</b>\n\n"
+        
+        for i, img in enumerate(images, 1):
+            # 截断URL显示
+            display_url = img.image_url[:50] + "..." if len(img.image_url) > 50 else img.image_url
+            status = "🟢" if img.is_active else "🔴"
+            text += f"{i}. {status} {display_url}\n"
+            text += f"   📅 {img.added_at.strftime('%Y-%m-%d %H:%M')} | 🔢 使用{img.usage_count}次\n"
+            if img.description:
+                text += f"   📝 {img.description[:30]}...\n" if len(img.description) > 30 else f"   📝 {img.description}\n"
+            text += "\n"
+        
+        if len(images) == 20:
+            text += "... 仅显示前20张图片\n\n"
+        
+        text += "💡 🟢=活跃 🔴=禁用"
+        
+        # 创建返回按钮
+        back_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回图片管理", callback_data="superadmin_image_manage"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+                ],
+            ]
+        )
+        
+        await safe_edit_message(
+            cb.message,
+            caption=text,
+            reply_markup=back_kb
+        )
+        await cb.answer()
+        
+    except Exception as e:
+        logger.error(f"查看所有图片失败: {e}")
+        await cb.answer("❌ 查看图片列表失败", show_alert=True)
+
+
+@superadmin_router.callback_query(F.data == "image_stats_detail")
+async def cb_image_stats_detail(cb: types.CallbackQuery):
+    """查看详细统计"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
     
-    if len(IMAGE_LIST) > 3:
-        text += f"... 还有 {len(IMAGE_LIST) - 3} 张图片\n"
+    from app.database.image_library import get_image_stats
+    from app.config.image_config import get_image_info
     
-    text += "\n💡 <b>功能</b>：随机图片池管理\n"
-    text += "⚡ <b>命令</b>：/img_info 查看详情"
-    
-    # 创建随机图片管理按钮
-    image_manage_kb = types.InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                types.InlineKeyboardButton(text="➕ 添加图片", callback_data="image_add_new"),
-                types.InlineKeyboardButton(text="🗑️ 删除图片", callback_data="image_remove_menu"),
-            ],
-            [
-                types.InlineKeyboardButton(text="🧹 清除会话缓存", callback_data="image_clear_sessions"),
-                types.InlineKeyboardButton(text="🎲 测试随机图片", callback_data="image_test_random"),
-            ],
-            [
-                types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
-                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
-            ],
-        ]
-    )
-    
-    await safe_edit_message(
-        cb.message,
-        caption=text,
-        reply_markup=image_manage_kb
-    )
-    await cb.answer()
+    try:
+        db_stats = await get_image_stats()
+        pool_info = get_image_info()
+        
+        text = "📊 <b>图片系统详细统计</b>\n\n"
+        
+        text += "🗄️ <b>数据库统计</b>：\n"
+        text += f"├ 总图片数：{db_stats['total_images']} 张\n"
+        text += f"├ 活跃图片：{db_stats['active_images']} 张\n"
+        text += f"├ 禁用图片：{db_stats['inactive_images']} 张\n"
+        text += f"└ 总使用次数：{db_stats['total_usage']} 次\n\n"
+        
+        text += "🎲 <b>随机池统计</b>：\n"
+        text += f"├ 池中图片：{pool_info['total_images']} 张\n"
+        text += f"├ 活跃会话：{pool_info['active_sessions']} 个\n"
+        text += f"└ 系统描述：{pool_info['description']}\n\n"
+        
+        if db_stats['recent_images']:
+            text += "🕐 <b>最近添加</b>：\n"
+            for img in db_stats['recent_images'][:3]:
+                display_url = img['image_url'][:30] + "..." if len(img['image_url']) > 30 else img['image_url']
+                text += f"├ {display_url}\n"
+                text += f"│   📅 {img['added_at']} | 🔢 {img['usage_count']}次\n"
+            text += "\n"
+        
+        avg_usage = db_stats['total_usage'] / db_stats['total_images'] if db_stats['total_images'] > 0 else 0
+        text += f"📈 <b>平均使用次数</b>：{avg_usage:.1f} 次/图片\n"
+        
+        # 创建返回按钮
+        back_kb = types.InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    types.InlineKeyboardButton(text="⬅️ 返回图片管理", callback_data="superadmin_image_manage"),
+                    types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+                ],
+            ]
+        )
+        
+        await safe_edit_message(
+            cb.message,
+            caption=text,
+            reply_markup=back_kb
+        )
+        await cb.answer()
+        
+    except Exception as e:
+        logger.error(f"查看详细统计失败: {e}")
+        await cb.answer("❌ 获取统计信息失败", show_alert=True)
 
 
 @superadmin_router.callback_query(F.data == "superadmin_manual_reply")
@@ -1017,7 +1157,7 @@ async def img_info_command(msg: types.Message):
 
 @superadmin_router.message(Command("img_add", "ia"))
 async def img_add_command(msg: types.Message):
-    """添加图片到随机池"""
+    """添加图片到随机池并保存到数据库"""
     role = await get_role(msg.from_user.id)
     if role != ROLE_SUPERADMIN:
         await msg.reply("❌ 仅超管可使用此命令")
@@ -1034,20 +1174,37 @@ async def img_add_command(msg: types.Message):
     image_url = parts[1]
     
     from app.config.image_config import add_image
+    from app.database.image_library import save_image_url
     
     try:
-        success = add_image(image_url)
+        # 添加到随机池
+        pool_success = add_image(image_url)
         
-        if success:
+        # 保存到数据库
+        db_record = await save_image_url(
+            image_url=image_url,
+            added_by=msg.from_user.id,
+            description=f"通过命令添加到随机图片池"
+        )
+        
+        if pool_success or db_record:
+            status_text = ""
+            if pool_success and db_record:
+                status_text = "✅ 图片已添加到随机池并保存到数据库"
+            elif pool_success:
+                status_text = "✅ 图片已添加到随机池（数据库中已存在）"
+            elif db_record:
+                status_text = "✅ 图片已保存到数据库（随机池中已存在）"
+            
             await msg.reply(
-                f"✅ <b>图片添加成功</b>\n\n"
-                f"🎯 <b>新图片URL</b>：\n{image_url}\n\n"
+                f"<b>{status_text}</b>\n\n"
+                f"🎯 <b>图片URL</b>：\n{image_url}\n\n"
                 f"⏰ <b>添加时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                f"💡 <b>提示</b>：图片已加入随机池，用户下次/start时可能随机到此图片",
+                f"💡 <b>提示</b>：图片已加入系统，用户下次/start时可能随机到此图片",
                 parse_mode="HTML"
             )
         else:
-            await msg.reply("⚠️ 图片已存在于随机池中")
+            await msg.reply("⚠️ 图片已存在于系统中")
         
     except Exception as e:
         logger.error(f"添加图片失败: {e}")

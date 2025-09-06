@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 图片库数据库操作模块
-处理超管发送的图片信息的存储和管理
+处理管理员添加的图片链接信息的存储和管理
 """
 
 from datetime import datetime
@@ -15,186 +15,214 @@ from app.database.db import AsyncSessionLocal
 from app.database.schema import ImageLibrary
 
 
-async def save_image_info(
-    file_id: str,
-    uploaded_by: int,
-    file_unique_id: str = None,
-    file_url: str = None,
-    file_size: int = None,
-    width: int = None,
-    height: int = None,
-    caption: str = None,
-    tags: str = None
-) -> Optional[ImageLibrary]:
-    """保存图片信息到数据库"""
+async def save_image_url(image_url: str, added_by: int, description: str = None) -> Optional[ImageLibrary]:
+    """保存图片URL到数据库
+    
+    Args:
+        image_url: 图片URL
+        added_by: 添加者ID（管理员）
+        description: 图片描述
+        
+    Returns:
+        保存的图片记录，失败返回None
+    """
     try:
         async with AsyncSessionLocal() as session:
-            # 检查是否已存在相同的file_id
-            stmt = select(ImageLibrary).where(ImageLibrary.file_id == file_id)
-            result = await session.execute(stmt)
-            existing_image = result.scalar_one_or_none()
+            # 检查URL是否已存在
+            existing = await session.execute(
+                select(ImageLibrary).where(ImageLibrary.image_url == image_url)
+            )
+            if existing.scalar_one_or_none():
+                logger.warning(f"图片URL已存在: {image_url}")
+                return None
             
-            if existing_image:
-                logger.info(f"图片已存在: {file_id}")
-                return existing_image
-            
-            # 创建新的图片记录
-            new_image = ImageLibrary(
-                file_id=file_id,
-                file_unique_id=file_unique_id,
-                file_url=file_url,
-                file_size=file_size,
-                width=width,
-                height=height,
-                caption=caption,
-                uploaded_by=uploaded_by,
-                tags=tags
+            # 创建新记录
+            image_record = ImageLibrary(
+                image_url=image_url,
+                description=description,
+                added_by=added_by,
+                added_at=datetime.now(),
+                is_active=True,
+                usage_count=0
             )
             
-            session.add(new_image)
+            session.add(image_record)
             await session.commit()
-            await session.refresh(new_image)
+            await session.refresh(image_record)
             
-            logger.success(f"图片信息保存成功: {file_id}")
-            return new_image
+            logger.info(f"图片URL保存成功: {image_url} (ID: {image_record.id})")
+            return image_record
             
     except Exception as e:
-        logger.error(f"保存图片信息失败: {e}")
+        logger.error(f"保存图片URL失败: {e}")
         return None
 
 
-async def get_image_by_id(image_id: int) -> Optional[ImageLibrary]:
-    """根据ID获取图片信息"""
+async def get_all_images(limit: int = 50, offset: int = 0, active_only: bool = True) -> List[ImageLibrary]:
+    """获取所有图片记录
+    
+    Args:
+        limit: 限制数量
+        offset: 偏移量
+        active_only: 是否只获取活跃的图片
+        
+    Returns:
+        图片记录列表
+    """
     try:
         async with AsyncSessionLocal() as session:
-            stmt = select(ImageLibrary).where(ImageLibrary.id == image_id)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
-    except Exception as e:
-        logger.error(f"获取图片信息失败: {e}")
-        return None
-
-
-async def get_image_by_file_id(file_id: str) -> Optional[ImageLibrary]:
-    """根据file_id获取图片信息"""
-    try:
-        async with AsyncSessionLocal() as session:
-            stmt = select(ImageLibrary).where(ImageLibrary.file_id == file_id)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
-    except Exception as e:
-        logger.error(f"获取图片信息失败: {e}")
-        return None
-
-
-async def get_all_images(
-    uploaded_by: int = None,
-    is_active: bool = True,
-    limit: int = 50,
-    offset: int = 0
-) -> List[ImageLibrary]:
-    """获取图片列表"""
-    try:
-        async with AsyncSessionLocal() as session:
-            stmt = select(ImageLibrary)
+            query = select(ImageLibrary)
             
-            if uploaded_by is not None:
-                stmt = stmt.where(ImageLibrary.uploaded_by == uploaded_by)
+            if active_only:
+                query = query.where(ImageLibrary.is_active == True)
             
-            if is_active is not None:
-                stmt = stmt.where(ImageLibrary.is_active == is_active)
+            query = query.order_by(ImageLibrary.added_at.desc()).limit(limit).offset(offset)
             
-            stmt = stmt.order_by(ImageLibrary.uploaded_at.desc())
-            stmt = stmt.limit(limit).offset(offset)
+            result = await session.execute(query)
+            images = result.scalars().all()
             
-            result = await session.execute(stmt)
-            return result.scalars().all()
+            return list(images)
+            
     except Exception as e:
         logger.error(f"获取图片列表失败: {e}")
         return []
 
 
-async def update_image_usage(file_id: str) -> bool:
-    """更新图片使用次数和最后使用时间"""
+async def get_image_by_id(image_id: int) -> Optional[ImageLibrary]:
+    """根据ID获取图片记录
+    
+    Args:
+        image_id: 图片ID
+        
+    Returns:
+        图片记录，不存在返回None
+    """
     try:
         async with AsyncSessionLocal() as session:
-            stmt = (
-                update(ImageLibrary)
-                .where(ImageLibrary.file_id == file_id)
-                .values(
-                    usage_count=ImageLibrary.usage_count + 1,
-                    last_used_at=datetime.now()
-                )
+            result = await session.execute(
+                select(ImageLibrary).where(ImageLibrary.id == image_id)
             )
+            return result.scalar_one_or_none()
             
-            result = await session.execute(stmt)
-            await session.commit()
-            
-            return result.rowcount > 0
     except Exception as e:
-        logger.error(f"更新图片使用信息失败: {e}")
-        return False
+        logger.error(f"获取图片记录失败: {e}")
+        return None
 
 
-async def delete_image(image_id: int) -> bool:
-    """删除图片记录"""
+async def get_image_by_url(image_url: str) -> Optional[ImageLibrary]:
+    """根据URL获取图片记录
+    
+    Args:
+        image_url: 图片URL
+        
+    Returns:
+        图片记录，不存在返回None
+    """
     try:
         async with AsyncSessionLocal() as session:
-            stmt = delete(ImageLibrary).where(ImageLibrary.id == image_id)
-            result = await session.execute(stmt)
+            result = await session.execute(
+                select(ImageLibrary).where(ImageLibrary.image_url == image_url)
+            )
+            return result.scalar_one_or_none()
+            
+    except Exception as e:
+        logger.error(f"获取图片记录失败: {e}")
+        return None
+
+
+async def delete_image_by_url(image_url: str) -> bool:
+    """根据URL删除图片记录
+    
+    Args:
+        image_url: 图片URL
+        
+    Returns:
+        删除成功返回True，失败返回False
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                delete(ImageLibrary).where(ImageLibrary.image_url == image_url)
+            )
             await session.commit()
             
-            return result.rowcount > 0
+            if result.rowcount > 0:
+                logger.info(f"图片记录删除成功: {image_url}")
+                return True
+            else:
+                logger.warning(f"图片记录不存在: {image_url}")
+                return False
+                
     except Exception as e:
         logger.error(f"删除图片记录失败: {e}")
         return False
 
 
-async def deactivate_image(image_id: int) -> bool:
-    """停用图片（软删除）"""
+async def update_image_usage(image_url: str) -> bool:
+    """更新图片使用次数
+    
+    Args:
+        image_url: 图片URL
+        
+    Returns:
+        更新成功返回True，失败返回False
+    """
     try:
         async with AsyncSessionLocal() as session:
-            stmt = (
+            result = await session.execute(
                 update(ImageLibrary)
-                .where(ImageLibrary.id == image_id)
-                .values(is_active=False)
+                .where(ImageLibrary.image_url == image_url)
+                .values(
+                    usage_count=ImageLibrary.usage_count + 1,
+                    last_used_at=datetime.now()
+                )
             )
-            
-            result = await session.execute(stmt)
             await session.commit()
             
-            return result.rowcount > 0
+            if result.rowcount > 0:
+                logger.debug(f"图片使用次数更新成功: {image_url}")
+                return True
+            else:
+                logger.warning(f"图片记录不存在，无法更新使用次数: {image_url}")
+                return False
+                
     except Exception as e:
-        logger.error(f"停用图片失败: {e}")
+        logger.error(f"更新图片使用次数失败: {e}")
         return False
 
 
 async def get_image_stats() -> Dict[str, Any]:
-    """获取图片库统计信息"""
+    """获取图片库统计信息
+    
+    Returns:
+        统计信息字典
+    """
     try:
         async with AsyncSessionLocal() as session:
             # 总图片数
-            total_stmt = select(func.count(ImageLibrary.id))
-            total_result = await session.execute(total_stmt)
+            total_result = await session.execute(
+                select(func.count(ImageLibrary.id))
+            )
             total_images = total_result.scalar()
             
             # 活跃图片数
-            active_stmt = select(func.count(ImageLibrary.id)).where(ImageLibrary.is_active == True)
-            active_result = await session.execute(active_stmt)
+            active_result = await session.execute(
+                select(func.count(ImageLibrary.id)).where(ImageLibrary.is_active == True)
+            )
             active_images = active_result.scalar()
             
             # 总使用次数
-            usage_stmt = select(func.sum(ImageLibrary.usage_count))
-            usage_result = await session.execute(usage_stmt)
+            usage_result = await session.execute(
+                select(func.sum(ImageLibrary.usage_count))
+            )
             total_usage = usage_result.scalar() or 0
             
-            # 最近上传的图片
-            recent_stmt = (
+            # 最近添加的图片
+            recent_result = await session.execute(
                 select(ImageLibrary)
-                .order_by(ImageLibrary.uploaded_at.desc())
+                .order_by(ImageLibrary.added_at.desc())
                 .limit(5)
             )
-            recent_result = await session.execute(recent_stmt)
             recent_images = recent_result.scalars().all()
             
             return {
@@ -205,14 +233,15 @@ async def get_image_stats() -> Dict[str, Any]:
                 'recent_images': [
                     {
                         'id': img.id,
-                        'file_id': img.file_id,
-                        'caption': img.caption,
-                        'uploaded_at': img.uploaded_at.strftime('%Y-%m-%d %H:%M:%S'),
-                        'usage_count': img.usage_count
+                        'image_url': img.image_url,
+                        'description': img.description,
+                        'usage_count': img.usage_count,
+                        'added_at': img.added_at.strftime('%Y-%m-%d %H:%M:%S')
                     }
                     for img in recent_images
                 ]
             }
+            
     except Exception as e:
         logger.error(f"获取图片统计信息失败: {e}")
         return {
@@ -224,41 +253,54 @@ async def get_image_stats() -> Dict[str, Any]:
         }
 
 
-async def search_images_by_tags(tags: str, limit: int = 20) -> List[ImageLibrary]:
-    """根据标签搜索图片"""
+async def get_active_image_urls() -> List[str]:
+    """获取所有活跃图片的URL列表
+    
+    Returns:
+        图片URL列表
+    """
     try:
         async with AsyncSessionLocal() as session:
-            # 简单的标签搜索（包含指定标签）
-            stmt = (
-                select(ImageLibrary)
-                .where(
-                    ImageLibrary.is_active == True,
-                    ImageLibrary.tags.contains(tags)
-                )
-                .order_by(ImageLibrary.uploaded_at.desc())
-                .limit(limit)
-            )
-            
-            result = await session.execute(stmt)
-            return result.scalars().all()
-    except Exception as e:
-        logger.error(f"搜索图片失败: {e}")
-        return []
-
-
-async def get_popular_images(limit: int = 10) -> List[ImageLibrary]:
-    """获取最受欢迎的图片（按使用次数排序）"""
-    try:
-        async with AsyncSessionLocal() as session:
-            stmt = (
-                select(ImageLibrary)
+            result = await session.execute(
+                select(ImageLibrary.image_url)
                 .where(ImageLibrary.is_active == True)
-                .order_by(ImageLibrary.usage_count.desc())
-                .limit(limit)
+                .order_by(ImageLibrary.added_at.desc())
             )
+            urls = result.scalars().all()
+            return list(urls)
             
-            result = await session.execute(stmt)
-            return result.scalars().all()
     except Exception as e:
-        logger.error(f"获取热门图片失败: {e}")
+        logger.error(f"获取活跃图片URL列表失败: {e}")
         return []
+
+
+async def toggle_image_status(image_url: str, is_active: bool) -> bool:
+    """切换图片状态
+    
+    Args:
+        image_url: 图片URL
+        is_active: 是否活跃
+        
+    Returns:
+        更新成功返回True，失败返回False
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                update(ImageLibrary)
+                .where(ImageLibrary.image_url == image_url)
+                .values(is_active=is_active)
+            )
+            await session.commit()
+            
+            if result.rowcount > 0:
+                status_text = "启用" if is_active else "禁用"
+                logger.info(f"图片状态更新成功: {image_url} -> {status_text}")
+                return True
+            else:
+                logger.warning(f"图片记录不存在: {image_url}")
+                return False
+                
+    except Exception as e:
+        logger.error(f"切换图片状态失败: {e}")
+        return False
