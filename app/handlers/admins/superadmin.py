@@ -500,6 +500,71 @@ async def cb_superadmin_my_admins(cb: types.CallbackQuery):
     await cb.answer()
 
 
+@superadmin_router.callback_query(F.data == "superadmin_image_manage")
+async def cb_superadmin_image_manage(cb: types.CallbackQuery):
+    """图片管理界面"""
+    role = await get_role(cb.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
+        return
+    
+    from app.config.image_config import image_manager, ImageType
+    
+    text = "🖼️ <b>图片管理中心</b>\n\n"
+    text += "📊 <b>图片状态概览</b>：\n\n"
+    
+    for image_type in ImageType:
+        info = image_manager.get_image_info(image_type)
+        status_emoji = "🟢" if info['active_count'] > 0 else "🔴"
+        
+        text += f"{status_emoji} <b>{image_type.value.upper()}</b>\n"
+        text += f"├ 总数：{info['total_count']} 张\n"
+        text += f"├ 激活：{info['active_count']} 张\n"
+        text += f"└ 当前：{info['current_image'][:40]}...\n\n"
+    
+    text += "💡 <b>管理功能</b>：\n"
+    text += "├ 📋 查看详细列表\n"
+    text += "├ ➕ 添加新图片\n"
+    text += "├ 🔄 切换图片状态\n"
+    text += "├ 🗑️ 删除图片\n"
+    text += "└ 🧪 测试图片显示\n\n"
+    text += "⚡ <b>快捷命令</b>：\n"
+    text += "├ /il - 查看图片列表\n"
+    text += "├ /ia [类型] [URL] [描述] - 添加图片\n"
+    text += "├ /it [类型] [URL] - 切换状态\n"
+    text += "├ /ir [类型] [URL] - 删除图片\n"
+    text += "└ /itest [类型] - 测试显示"
+    
+    # 创建图片管理按钮
+    image_manage_kb = types.InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                types.InlineKeyboardButton(text="📋 查看列表", callback_data="image_list_view"),
+                types.InlineKeyboardButton(text="🧪 测试图片", callback_data="image_test_menu"),
+            ],
+            [
+                types.InlineKeyboardButton(text="🖼️ 欢迎图片", callback_data="image_manage_welcome"),
+                types.InlineKeyboardButton(text="🛡️ 管理图片", callback_data="image_manage_admin"),
+            ],
+            [
+                types.InlineKeyboardButton(text="❌ 错误图片", callback_data="image_manage_error"),
+                types.InlineKeyboardButton(text="✅ 成功图片", callback_data="image_manage_success"),
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main"),
+            ],
+        ]
+    )
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=image_manage_kb
+    )
+    await cb.answer()
+
+
 @superadmin_router.callback_query(F.data == "superadmin_manual_reply")
 async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
     """代发消息功能"""

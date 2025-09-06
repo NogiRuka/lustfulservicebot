@@ -64,7 +64,7 @@ def get_superadmin_main_menu() -> InlineKeyboardMarkup:
             [BTN_MOVIE_CENTER, BTN_CONTENT_CENTER],
             [BTN_FEEDBACK_CENTER, BTN_FEEDBACK_BROWSE],
             [BTN_REVIEW_CENTER, BTN_SUPERADMIN_CENTER],
-            [BTN_MANUAL_REPLY, BTN_OTHER_FUNCTIONS],
+            [BTN_OTHER_FUNCTIONS],
         ]
     )
 
@@ -196,6 +196,10 @@ superadmin_manage_center_kb = InlineKeyboardMarkup(
         [
             InlineKeyboardButton(text="📂 类型管理", callback_data="superadmin_category_manage"),
             InlineKeyboardButton(text="⚙️ 系统设置", callback_data="superadmin_system_settings"),
+        ],
+        [
+            InlineKeyboardButton(text="🖼️ 图片管理", callback_data="superadmin_image_manage"),
+            InlineKeyboardButton(text="🤖 代发消息", callback_data="superadmin_manual_reply"),
         ],
         [BTN_BACK_TO_MAIN],
     ]
