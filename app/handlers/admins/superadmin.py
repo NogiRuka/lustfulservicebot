@@ -921,37 +921,68 @@ async def cb_superadmin_image_manage(cb: types.CallbackQuery):
 
 @superadmin_router.callback_query(F.data == "image_view_all")
 async def cb_image_view_all(cb: types.CallbackQuery):
-    """查看所有图片"""
+    """查看所有图片 - 包含数据库和随机池中的图片"""
     role = await get_role(cb.from_user.id)
     if role != ROLE_SUPERADMIN:
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
     from app.database.image_library import get_all_images
+    from app.config.image_config import IMAGE_LIST
     
     try:
-        images = await get_all_images(limit=20)
+        # 获取数据库中的图片
+        db_images = await get_all_images(limit=50)
         
-        if not images:
-            await cb.answer("📝 暂无图片记录", show_alert=True)
-            return
+        # 获取随机池中的图片
+        pool_images = IMAGE_LIST.copy()
+        
+        # 创建数据库图片URL集合，用于检查重复
+        db_urls = {img.image_url for img in db_images}
         
         text = "📋 <b>所有图片列表</b>\n\n"
         
-        for i, img in enumerate(images, 1):
-            # 截断URL显示
-            display_url = img.image_url[:50] + "..." if len(img.image_url) > 50 else img.image_url
-            status = "🟢" if img.is_active else "🔴"
-            text += f"{i}. {status} {display_url}\n"
-            text += f"   📅 {img.added_at.strftime('%Y-%m-%d %H:%M')} | 🔢 使用{img.usage_count}次\n"
-            if img.description:
-                text += f"   📝 {img.description[:30]}...\n" if len(img.description) > 30 else f"   📝 {img.description}\n"
-            text += "\n"
+        # 显示数据库中的图片
+        if db_images:
+            text += "🗄️ <b>数据库图片</b>：\n"
+            for i, img in enumerate(db_images[:15], 1):
+                # 截断URL显示
+                display_url = img.image_url[:45] + "..." if len(img.image_url) > 45 else img.image_url
+                status = "🟢" if img.is_active else "🔴"
+                in_pool = "🎲" if img.image_url in pool_images else ""
+                text += f"{i}. {status}{in_pool} {display_url}\n"
+                text += f"   📅 {img.added_at.strftime('%m-%d %H:%M')} | 🔢 {img.usage_count}次"
+                if img.description:
+                    text += f" | 📝 {img.description[:20]}..."
+                text += "\n\n"
+            
+            if len(db_images) > 15:
+                text += f"... 还有 {len(db_images) - 15} 张数据库图片\n\n"
         
-        if len(images) == 20:
-            text += "... 仅显示前20张图片\n\n"
+        # 显示只在随机池中的图片（不在数据库中）
+        pool_only = [url for url in pool_images if url not in db_urls]
+        if pool_only:
+            text += "🎲 <b>仅在随机池中的图片</b>：\n"
+            for i, url in enumerate(pool_only[:10], 1):
+                display_url = url[:45] + "..." if len(url) > 45 else url
+                text += f"{i}. 🎯 {display_url}\n"
+                text += "   📝 随机池图片（未保存到数据库）\n\n"
+            
+            if len(pool_only) > 10:
+                text += f"... 还有 {len(pool_only) - 10} 张随机池图片\n\n"
         
-        text += "💡 🟢=活跃 🔴=禁用"
+        # 统计信息
+        text += "📊 <b>统计</b>：\n"
+        text += f"├ 数据库图片：{len(db_images)} 张\n"
+        text += f"├ 随机池图片：{len(pool_images)} 张\n"
+        text += f"├ 仅随机池：{len(pool_only)} 张\n"
+        text += f"└ 总计：{len(db_images) + len(pool_only)} 张\n\n"
+        
+        text += "💡 🟢=活跃 🔴=禁用 🎲=在随机池 🎯=仅随机池"
+        
+        if not db_images and not pool_images:
+            await cb.answer("📝 暂无图片记录", show_alert=True)
+            return
         
         # 创建返回按钮
         back_kb = types.InlineKeyboardMarkup(
