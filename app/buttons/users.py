@@ -157,7 +157,6 @@ admin_review_center_kb = InlineKeyboardMarkup(
         ],
         [
             InlineKeyboardButton(text="🔍 高级浏览", callback_data="admin_advanced_browse"),
-            InlineKeyboardButton(text="👀 反馈浏览", callback_data="admin_feedback_browse"),
         ],
         [BTN_BACK_TO_MAIN],
     ]
