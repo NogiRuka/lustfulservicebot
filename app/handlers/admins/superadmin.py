@@ -486,16 +486,20 @@ async def cb_dev_changelog_detail(cb: types.CallbackQuery):
     }.get(changelog.changelog_type, "其他")
     
     from app.utils.time_utils import humanize_time
+    from app.utils.markdown_utils import format_changelog_content
     
     # 处理版本号显示，避免重复的v
     version_display = changelog.version if changelog.version.startswith('v') else f"v{changelog.version}"
+    
+    # 转换Markdown内容为HTML
+    formatted_content = format_changelog_content(changelog.content)
     
     text = f"{type_emoji} <b>开发日志详情</b>\n\n"
     text += f"📋 <b>版本</b>：{version_display}\n"
     text += f"📝 <b>标题</b>：{changelog.title}\n"
     text += f"🏷️ <b>类型</b>：{type_text}\n"
     text += f"⏰ <b>发布时间</b>：{humanize_time(changelog.created_at)}\n\n"
-    text += f"📄 <b>详细内容</b>：\n\n{changelog.content}"
+    text += f"📄 <b>详细内容</b>：\n\n{formatted_content}"
     
     # 创建返回按钮
     role = await get_role(cb.from_user.id)
