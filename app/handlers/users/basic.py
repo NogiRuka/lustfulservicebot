@@ -23,6 +23,8 @@ basic_router = Router()
 # /start：欢迎与菜单
 @basic_router.message(CommandStart())
 async def start(msg: types.Message):
+    logger.info(f"收到/start命令，用户: {msg.from_user.id}, 聊天类型: {msg.chat.type}")
+    
     # 第一步：检查是否是私聊
     if msg.chat.type != 'private':
         # 在群组中给出更明确的提示
@@ -223,26 +225,8 @@ async def cb_clear_chat_history(cb: types.CallbackQuery):
     await cb.answer("🗑️ 正在清空聊天记录...")
 
 
-# 普通文本消息：处理用户回复反馈
-@basic_router.message(F.text, IsCommand(), IsBusyFilter())
-async def message(msg: types.Message, state: FSMContext):
-    """处理普通文本消息"""
-    # 检查用户是否处于某个状态中，如果是则不处理
-    current_state = await state.get_state()
-    if current_state is not None:
-        logger.debug(f"用户 {msg.from_user.id} 处于状态 {current_state}，跳过通用消息处理")
-        return
-    
-    # 处理用户回复反馈的消息
-    if msg.reply_to_message and msg.reply_to_message.from_user.is_bot:
-        # 检查回复的消息是否是反馈回复通知
-        if "反馈回复通知" in msg.reply_to_message.text:
-            await handle_user_feedback_reply(msg)
-            return
-    
-    # 其他普通消息暂不处理，但允许继续传播给其他处理器（如回复追踪器）
-    logger.debug(f"用户 {msg.from_user.id} 发送了普通消息，暂不处理")
-    # 不返回，让消息继续传播到其他路由处理器
+# 注释：移除了可能导致命令冲突的通用消息处理器
+# 现在由回复追踪器处理普通消息，反馈回复功能可以在需要时重新实现
 
 
 async def handle_user_feedback_reply(msg: types.Message):
