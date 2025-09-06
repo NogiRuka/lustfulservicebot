@@ -63,8 +63,8 @@ def get_superadmin_main_menu() -> InlineKeyboardMarkup:
             [BTN_MY_INFO, BTN_SERVER_INFO],
             [BTN_MOVIE_CENTER, BTN_CONTENT_CENTER],
             [BTN_FEEDBACK_CENTER, BTN_FEEDBACK_BROWSE],
-            [BTN_REVIEW_CENTER, BTN_SUPERADMIN_CENTER],
-            [BTN_OTHER_FUNCTIONS],
+            [BTN_REVIEW_CENTER, BTN_OTHER_FUNCTIONS],
+            [BTN_SUPERADMIN_CENTER],
         ]
     )
 

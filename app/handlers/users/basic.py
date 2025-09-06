@@ -15,6 +15,7 @@ from app.utils.group_utils import get_group_member_count, user_in_group_filter
 from app.utils.commands_catalog import build_commands_help
 from app.config.config import GROUP, BOT_NICKNAME
 from app.utils.panel_utils import create_welcome_panel_text, create_info_panel_text, DEFAULT_WELCOME_PHOTO
+from app.config.image_config import refresh_user_session_image, get_welcome_image
 
 basic_router = Router()
 
@@ -48,7 +49,8 @@ async def start(msg: types.Message):
     
     # 使用复用的面板样式函数
     welcome_text = create_welcome_panel_text(title, role)
-    welcome_photo = DEFAULT_WELCOME_PHOTO
+    # 每次/start时刷新用户的随机图片
+    welcome_photo = refresh_user_session_image(msg.from_user.id)
     
     await msg.bot.send_photo(
         chat_id=msg.from_user.id,

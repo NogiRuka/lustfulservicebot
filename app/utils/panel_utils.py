@@ -444,7 +444,7 @@ async def send_admin_message_notification(bot, user_id: int, item_type: str, ite
 
 
 # 导入新的图片管理系统
-from app.config.image_config import get_welcome_image, get_admin_image, get_error_image, get_success_image
+from app.config.image_config import get_welcome_image, get_admin_image, get_error_image, get_success_image, refresh_user_session_image
 
 # 向后兼容的默认图片
 DEFAULT_WELCOME_PHOTO = get_welcome_image()
@@ -475,7 +475,7 @@ async def return_to_main_menu(cb, additional_logic_func=None):
         
         # 使用复用的面板样式函数
         welcome_text = create_welcome_panel_text(title, role)
-        welcome_photo = DEFAULT_WELCOME_PHOTO
+        welcome_photo = get_welcome_image(cb.from_user.id)
         
         # 优先使用edit_caption保持同一张图片
         try:

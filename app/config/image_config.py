@@ -1,186 +1,91 @@
-from typing import Dict, List
-from dataclasses import dataclass
-from enum import Enum
+import random
+
+# 随机图片配置
+# 主面板每次唤起时随机选择一张图片，编辑操作在同一张图片上进行
+
+# 图片列表
+IMAGE_LIST = [
+    "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true",
+    "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true",
+]
+
+# 当前会话使用的图片URL（每次/start时随机选择）
+CURRENT_WELCOME_IMAGE = None
 
 
-class ImageType(Enum):
-    """图片类型枚举"""
-    WELCOME = "welcome"  # 欢迎图片
-    ADMIN = "admin"      # 管理员面板图片
-    ERROR = "error"      # 错误页面图片
-    SUCCESS = "success"  # 成功页面图片
-    LOADING = "loading"  # 加载页面图片
+# 用户会话图片缓存
+user_session_images = {}
 
+def get_random_image() -> str:
+    """从图片列表中随机选择一张图片"""
+    return random.choice(IMAGE_LIST)
 
-@dataclass
-class ImageConfig:
-    """图片配置类"""
-    url: str
-    description: str
-    tags: List[str]
-    is_active: bool = True
-    priority: int = 0  # 优先级，数字越大优先级越高
+def get_user_session_image(user_id: int) -> str:
+    """获取用户会话的图片（如果没有则随机选择一张）"""
+    if user_id not in user_session_images:
+        user_session_images[user_id] = get_random_image()
+    return user_session_images[user_id]
 
+def refresh_user_session_image(user_id: int) -> str:
+    """刷新用户会话图片（重新随机选择）"""
+    user_session_images[user_id] = get_random_image()
+    return user_session_images[user_id]
 
-class ImageManager:
-    """图片管理器"""
-    
-    def __init__(self):
-        self._images: Dict[ImageType, List[ImageConfig]] = {
-            ImageType.WELCOME: [
-                ImageConfig(
-                    url="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true",
-                    description="默认欢迎图片 - JQVISION ISSUE16",
-                    tags=["default", "welcome", "main"],
-                    is_active=True,
-                    priority=100
-                ),
-                ImageConfig(
-                    url="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true",
-                    description="备用欢迎图片 - in356days Pok Napapon",
-                    tags=["backup", "welcome", "alternative"],
-                    is_active=False,
-                    priority=50
-                ),
-            ],
-            ImageType.ADMIN: [
-                ImageConfig(
-                    url="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true",
-                    description="管理员面板图片",
-                    tags=["admin", "panel", "management"],
-                    is_active=True,
-                    priority=100
-                ),
-            ],
-            ImageType.ERROR: [
-                ImageConfig(
-                    url="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true",
-                    description="错误页面图片",
-                    tags=["error", "failure", "problem"],
-                    is_active=True,
-                    priority=100
-                ),
-            ],
-            ImageType.SUCCESS: [
-                ImageConfig(
-                    url="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true",
-                    description="成功页面图片",
-                    tags=["success", "complete", "done"],
-                    is_active=True,
-                    priority=100
-                ),
-            ],
-            ImageType.LOADING: [
-                ImageConfig(
-                    url="https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true",
-                    description="加载页面图片",
-                    tags=["loading", "processing", "wait"],
-                    is_active=True,
-                    priority=100
-                ),
-            ],
-        }
-    
-    def get_image(self, image_type: ImageType, tag: str = None) -> str:
-        """获取指定类型的图片URL"""
-        images = self._images.get(image_type, [])
-        
-        # 过滤激活的图片
-        active_images = [img for img in images if img.is_active]
-        
-        if not active_images:
-            # 如果没有激活的图片，返回默认图片
-            return self.get_default_image()
-        
-        # 如果指定了标签，优先返回匹配标签的图片
-        if tag:
-            tagged_images = [img for img in active_images if tag in img.tags]
-            if tagged_images:
-                # 按优先级排序，返回最高优先级的图片
-                return sorted(tagged_images, key=lambda x: x.priority, reverse=True)[0].url
-        
-        # 按优先级排序，返回最高优先级的图片
-        return sorted(active_images, key=lambda x: x.priority, reverse=True)[0].url
-    
-    def get_default_image(self) -> str:
-        """获取默认图片"""
-        return "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true"
-    
-    def add_image(self, image_type: ImageType, config: ImageConfig):
-        """添加图片配置"""
-        if image_type not in self._images:
-            self._images[image_type] = []
-        self._images[image_type].append(config)
-    
-    def remove_image(self, image_type: ImageType, url: str) -> bool:
-        """移除图片配置"""
-        if image_type not in self._images:
-            return False
-        
-        original_count = len(self._images[image_type])
-        self._images[image_type] = [img for img in self._images[image_type] if img.url != url]
-        return len(self._images[image_type]) < original_count
-    
-    def set_image_active(self, image_type: ImageType, url: str, active: bool) -> bool:
-        """设置图片激活状态"""
-        if image_type not in self._images:
-            return False
-        
-        for img in self._images[image_type]:
-            if img.url == url:
-                img.is_active = active
-                return True
-        return False
-    
-    def get_all_images(self, image_type: ImageType = None) -> Dict[ImageType, List[ImageConfig]]:
-        """获取所有图片配置"""
-        if image_type:
-            return {image_type: self._images.get(image_type, [])}
-        return self._images.copy()
-    
-    def get_image_info(self, image_type: ImageType) -> Dict:
-        """获取图片类型的详细信息"""
-        images = self._images.get(image_type, [])
-        active_count = len([img for img in images if img.is_active])
-        
-        return {
-            'type': image_type.value,
-            'total_count': len(images),
-            'active_count': active_count,
-            'current_image': self.get_image(image_type),
-            'images': images
-        }
-
-
-# 全局图片管理器实例
-image_manager = ImageManager()
-
-
-# 便捷函数
-def get_welcome_image(tag: str = None) -> str:
+def get_welcome_image(user_id: int = None) -> str:
     """获取欢迎图片"""
-    return image_manager.get_image(ImageType.WELCOME, tag)
+    if user_id is None:
+        return get_random_image()
+    return get_user_session_image(user_id)
 
+def get_admin_image(user_id: int = None) -> str:
+    """获取管理员图片（与欢迎图片相同）"""
+    return get_welcome_image(user_id)
 
-def get_admin_image(tag: str = None) -> str:
-    """获取管理员图片"""
-    return image_manager.get_image(ImageType.ADMIN, tag)
+def get_error_image(user_id: int = None) -> str:
+    """获取错误图片（与欢迎图片相同）"""
+    return get_welcome_image(user_id)
 
+def get_success_image(user_id: int = None) -> str:
+    """获取成功图片（与欢迎图片相同）"""
+    return get_welcome_image(user_id)
 
-def get_error_image(tag: str = None) -> str:
-    """获取错误图片"""
-    return image_manager.get_image(ImageType.ERROR, tag)
-
-
-def get_success_image(tag: str = None) -> str:
-    """获取成功图片"""
-    return image_manager.get_image(ImageType.SUCCESS, tag)
-
-
-def get_loading_image(tag: str = None) -> str:
-    """获取加载图片"""
-    return image_manager.get_image(ImageType.LOADING, tag)
-
+def get_loading_image(user_id: int = None) -> str:
+    """获取加载图片（与欢迎图片相同）"""
+    return get_welcome_image(user_id)
 
 # 向后兼容
-DEFAULT_WELCOME_PHOTO = get_welcome_image()
+DEFAULT_WELCOME_PHOTO = IMAGE_LIST[0]
+
+# 图片信息显示函数
+def get_image_info() -> dict:
+    """获取图片配置信息"""
+    return {
+        'image_list': IMAGE_LIST,
+        'total_images': len(IMAGE_LIST),
+        'description': '主面板随机图片系统',
+        'active_sessions': len(user_session_images)
+    }
+
+# 图片管理函数
+def add_image(url: str) -> bool:
+    """添加图片到列表"""
+    if url not in IMAGE_LIST:
+        IMAGE_LIST.append(url)
+        return True
+    return False
+
+def remove_image(url: str) -> bool:
+    """从列表中移除图片"""
+    if url in IMAGE_LIST and len(IMAGE_LIST) > 1:  # 至少保留一张图片
+        IMAGE_LIST.remove(url)
+        # 清除使用了该图片的会话缓存
+        for user_id in list(user_session_images.keys()):
+            if user_session_images[user_id] == url:
+                user_session_images[user_id] = get_random_image()
+        return True
+    return False
+
+def clear_all_sessions():
+    """清除所有用户会话图片缓存"""
+    global user_session_images
+    user_session_images = {}

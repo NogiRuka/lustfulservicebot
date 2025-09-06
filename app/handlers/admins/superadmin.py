@@ -502,53 +502,47 @@ async def cb_superadmin_my_admins(cb: types.CallbackQuery):
 
 @superadmin_router.callback_query(F.data == "superadmin_image_manage")
 async def cb_superadmin_image_manage(cb: types.CallbackQuery):
-    """图片管理界面"""
+    """简化的图片管理界面"""
     role = await get_role(cb.from_user.id)
     if role != ROLE_SUPERADMIN:
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
-    from app.config.image_config import image_manager, ImageType
+    from app.config.image_config import get_image_info, IMAGE_LIST
     
-    text = "🖼️ <b>图片管理中心</b>\n\n"
-    text += "📊 <b>图片状态概览</b>：\n\n"
+    info = get_image_info()
     
-    for image_type in ImageType:
-        info = image_manager.get_image_info(image_type)
-        status_emoji = "🟢" if info['active_count'] > 0 else "🔴"
-        
-        text += f"{status_emoji} <b>{image_type.value.upper()}</b>\n"
-        text += f"├ 总数：{info['total_count']} 张\n"
-        text += f"├ 激活：{info['active_count']} 张\n"
-        text += f"└ 当前：{info['current_image'][:40]}...\n\n"
+    text = "🖼️ <b>随机图片管理</b>\n\n"
+    text += "📋 <b>图片池信息</b>：\n\n"
+    text += f"📊 <b>图片总数</b>：{info['total_images']} 张\n"
+    text += f"👥 <b>活跃会话</b>：{info['active_sessions']} 个\n"
+    text += f"📝 <b>说明</b>：{info['description']}\n\n"
     
-    text += "💡 <b>管理功能</b>：\n"
-    text += "├ 📋 查看详细列表\n"
-    text += "├ ➕ 添加新图片\n"
-    text += "├ 🔄 切换图片状态\n"
-    text += "├ 🗑️ 删除图片\n"
-    text += "└ 🧪 测试图片显示\n\n"
-    text += "⚡ <b>快捷命令</b>：\n"
-    text += "├ /il - 查看图片列表\n"
-    text += "├ /ia [类型] [URL] [描述] - 添加图片\n"
-    text += "├ /it [类型] [URL] - 切换状态\n"
-    text += "├ /ir [类型] [URL] - 删除图片\n"
-    text += "└ /itest [类型] - 测试显示"
+    text += "🎯 <b>图片列表</b>：\n"
+    for i, img_url in enumerate(IMAGE_LIST, 1):
+        text += f"{i}. {img_url}\n\n"
     
-    # 创建图片管理按钮
+    text += "💡 <b>功能说明</b>：\n"
+    text += "├ 每次/start时随机选择一张图片\n"
+    text += "├ 同一会话中编辑操作使用相同图片\n"
+    text += "├ 支持添加/删除图片到随机池\n"
+    text += "└ 支持清除所有用户会话缓存\n\n"
+    text += "⚡ <b>管理命令</b>：\n"
+    text += "├ /img_info - 查看图片池信息\n"
+    text += "├ /img_add [URL] - 添加图片到池\n"
+    text += "├ /img_remove [URL] - 从池中移除图片\n"
+    text += "└ /img_clear - 清除所有会话缓存"
+    
+    # 创建随机图片管理按钮
     image_manage_kb = types.InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                types.InlineKeyboardButton(text="📋 查看列表", callback_data="image_list_view"),
-                types.InlineKeyboardButton(text="🧪 测试图片", callback_data="image_test_menu"),
+                types.InlineKeyboardButton(text="➕ 添加图片", callback_data="image_add_new"),
+                types.InlineKeyboardButton(text="🗑️ 删除图片", callback_data="image_remove_menu"),
             ],
             [
-                types.InlineKeyboardButton(text="🖼️ 欢迎图片", callback_data="image_manage_welcome"),
-                types.InlineKeyboardButton(text="🛡️ 管理图片", callback_data="image_manage_admin"),
-            ],
-            [
-                types.InlineKeyboardButton(text="❌ 错误图片", callback_data="image_manage_error"),
-                types.InlineKeyboardButton(text="✅ 成功图片", callback_data="image_manage_success"),
+                types.InlineKeyboardButton(text="🧹 清除会话缓存", callback_data="image_clear_sessions"),
+                types.InlineKeyboardButton(text="🎲 测试随机图片", callback_data="image_test_random"),
             ],
             [
                 types.InlineKeyboardButton(text="⬅️ 返回管理中心", callback_data="superadmin_manage_center"),
@@ -642,6 +636,141 @@ async def cb_confirm_promote_admin(cb: types.CallbackQuery, state: FSMContext):
     
     await state.clear()
     await cb.answer()
+
+
+# ==================== 随机图片管理命令 ====================
+
+@superadmin_router.message(Command("img_info", "ii"))
+async def img_info_command(msg: types.Message):
+    """查看图片池信息"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    from app.config.image_config import get_image_info, IMAGE_LIST
+    
+    info = get_image_info()
+    
+    text = "🖼️ <b>随机图片池信息</b>\n\n"
+    text += f"📊 <b>图片总数</b>：{info['total_images']} 张\n"
+    text += f"👥 <b>活跃会话</b>：{info['active_sessions']} 个\n"
+    text += f"📝 <b>说明</b>：{info['description']}\n\n"
+    
+    text += "🎯 <b>图片列表</b>：\n"
+    for i, img_url in enumerate(IMAGE_LIST, 1):
+        text += f"{i}. {img_url}\n\n"
+    
+    await msg.reply(text, parse_mode="HTML")
+
+
+@superadmin_router.message(Command("img_add", "ia"))
+async def img_add_command(msg: types.Message):
+    """添加图片到随机池"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await msg.reply(
+            "用法：/img_add [图片URL] 或 /ia [图片URL]\n"
+            "示例：/ia https://example.com/image.jpg"
+        )
+        return
+    
+    image_url = parts[1]
+    
+    from app.config.image_config import add_image
+    
+    try:
+        success = add_image(image_url)
+        
+        if success:
+            await msg.reply(
+                f"✅ <b>图片添加成功</b>\n\n"
+                f"🎯 <b>新图片URL</b>：\n{image_url}\n\n"
+                f"⏰ <b>添加时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"💡 <b>提示</b>：图片已加入随机池，用户下次/start时可能随机到此图片",
+                parse_mode="HTML"
+            )
+        else:
+            await msg.reply("⚠️ 图片已存在于随机池中")
+        
+    except Exception as e:
+        logger.error(f"添加图片失败: {e}")
+        await msg.reply(f"❌ 添加图片失败：{str(e)}")
+
+
+@superadmin_router.message(Command("img_remove", "ir"))
+async def img_remove_command(msg: types.Message):
+    """从随机池中移除图片"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await msg.reply(
+            "用法：/img_remove [图片URL] 或 /ir [图片URL]\n"
+            "示例：/ir https://example.com/image.jpg"
+        )
+        return
+    
+    image_url = parts[1]
+    
+    from app.config.image_config import remove_image
+    
+    try:
+        success = remove_image(image_url)
+        
+        if success:
+            await msg.reply(
+                f"🗑️ <b>图片移除成功</b>\n\n"
+                f"🎯 <b>移除的图片</b>：\n{image_url}\n\n"
+                f"⏰ <b>移除时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+                f"💡 <b>提示</b>：使用该图片的用户会话已自动切换到其他图片",
+                parse_mode="HTML"
+            )
+        else:
+            await msg.reply("⚠️ 图片不存在或无法移除（至少需要保留一张图片）")
+        
+    except Exception as e:
+        logger.error(f"移除图片失败: {e}")
+        await msg.reply(f"❌ 移除图片失败：{str(e)}")
+
+
+@superadmin_router.message(Command("img_clear", "ic"))
+async def img_clear_command(msg: types.Message):
+    """清除所有用户会话图片缓存"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    from app.config.image_config import clear_all_sessions, get_image_info
+    
+    try:
+        # 获取清除前的信息
+        info_before = get_image_info()
+        sessions_before = info_before['active_sessions']
+        
+        # 清除所有会话
+        clear_all_sessions()
+        
+        await msg.reply(
+            f"🧹 <b>会话缓存清除成功</b>\n\n"
+            f"📊 <b>清除的会话数</b>：{sessions_before} 个\n"
+            f"⏰ <b>清除时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"💡 <b>提示</b>：所有用户下次/start时将重新随机选择图片",
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        logger.error(f"清除会话缓存失败: {e}")
+        await msg.reply(f"❌ 清除会话缓存失败：{str(e)}")
 
 
 # ==================== 代发消息功能 ====================
