@@ -1213,7 +1213,7 @@ async def img_add_command(msg: types.Message):
 
 @superadmin_router.message(Command("img_remove", "ir"))
 async def img_remove_command(msg: types.Message):
-    """从随机池中移除图片"""
+    """从随机池和数据库中移除图片"""
     role = await get_role(msg.from_user.id)
     if role != ROLE_SUPERADMIN:
         await msg.reply("❌ 仅超管可使用此命令")
@@ -1230,20 +1230,33 @@ async def img_remove_command(msg: types.Message):
     image_url = parts[1]
     
     from app.config.image_config import remove_image
+    from app.database.image_library import delete_image_by_url
     
     try:
-        success = remove_image(image_url)
+        # 从随机池中移除
+        pool_success = remove_image(image_url)
         
-        if success:
+        # 从数据库中删除
+        db_success = await delete_image_by_url(image_url)
+        
+        if pool_success or db_success:
+            status_text = ""
+            if pool_success and db_success:
+                status_text = "✅ 图片已从随机池和数据库中移除"
+            elif pool_success:
+                status_text = "✅ 图片已从随机池中移除（数据库中不存在）"
+            elif db_success:
+                status_text = "✅ 图片已从数据库中删除（随机池中不存在）"
+            
             await msg.reply(
-                f"🗑️ <b>图片移除成功</b>\n\n"
+                f"🗑️ <b>{status_text}</b>\n\n"
                 f"🎯 <b>移除的图片</b>：\n{image_url}\n\n"
                 f"⏰ <b>移除时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
                 f"💡 <b>提示</b>：使用该图片的用户会话已自动切换到其他图片",
                 parse_mode="HTML"
             )
         else:
-            await msg.reply("⚠️ 图片不存在或无法移除（至少需要保留一张图片）")
+            await msg.reply("⚠️ 图片不存在或无法移除（随机池至少需要保留一张图片）")
         
     except Exception as e:
         logger.error(f"移除图片失败: {e}")
