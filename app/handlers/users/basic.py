@@ -240,8 +240,9 @@ async def message(msg: types.Message, state: FSMContext):
             await handle_user_feedback_reply(msg)
             return
     
-    # 其他普通消息暂不处理
+    # 其他普通消息暂不处理，但允许继续传播给其他处理器（如回复追踪器）
     logger.debug(f"用户 {msg.from_user.id} 发送了普通消息，暂不处理")
+    # 不返回，让消息继续传播到其他路由处理器
 
 
 async def handle_user_feedback_reply(msg: types.Message):

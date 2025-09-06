@@ -38,13 +38,16 @@ async def track_user_replies(msg: types.Message):
             reply_content = reply_content[:500] + "..."
         
         # 尝试更新消息回复记录
+        logger.info(f"尝试记录用户 {msg.from_user.id} 的回复: {reply_content[:50]}...")
         success = await update_message_reply(
             target_id=msg.from_user.id,
             reply_content=reply_content
         )
         
         if success:
-            logger.info(f"用户 {msg.from_user.id} 的回复已记录: {reply_content[:50]}...")
+            logger.info(f"用户 {msg.from_user.id} 的回复已成功记录: {reply_content[:50]}...")
+        else:
+            logger.warning(f"用户 {msg.from_user.id} 的回复未找到对应的代发消息记录")
             
             # 通知所有超管有新回复
             from app.config.config import SUPERADMIN_ID
