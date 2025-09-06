@@ -5,6 +5,7 @@ from app.handlers.admins.movie_review import movie_review_router
 from app.handlers.admins.content_review import content_review_router
 from app.handlers.admins.review_note import review_note_router
 from app.handlers.admins.advanced_browse import router as advanced_browse_router
+from app.handlers.admins.image_handler import image_handler_router
 
 admin_routers = [
     admins_router,
@@ -13,5 +14,6 @@ admin_routers = [
     movie_review_router,
     content_review_router,
     review_note_router,
-    advanced_browse_router
+    advanced_browse_router,
+    image_handler_router
 ]
