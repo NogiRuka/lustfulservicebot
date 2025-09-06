@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: lustfulservicebot
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./.env:/app/.env:ro
+      - ./db:/app/db
+      - ./logs:/app/logs
+    networks:
+      - bot-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; import aiohttp; asyncio.run(aiohttp.ClientSession().get('https://api.telegram.org').close())"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 可选：添加数据库服务（如果使用PostgreSQL）
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: lustfulservicebot-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: lustfulservicebot
+  #     POSTGRES_USER: botuser
+  #     POSTGRES_PASSWORD: your_password_here
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - bot-network
+  #   ports:
+  #     - "5432:5432"
+
+  # 可选：添加Redis服务（如果需要缓存）
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: lustfulservicebot-redis
+  #   restart: unless-stopped
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - bot-network
+  #   ports:
+  #     - "6379:6379"
+
+networks:
+  bot-network:
+    driver: bridge
+
+# volumes:
+#   postgres_data:
+#   redis_data:
