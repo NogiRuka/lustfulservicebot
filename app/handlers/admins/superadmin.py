@@ -1037,16 +1037,24 @@ async def send_user_message(msg: types.Message):
     
     parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
-        await msg.edit_text(
+        usage_text = (
             "用法：/send_user [用户ID] [消息内容] 或 /su [用户ID] [消息内容]\n"
             "示例：/su 123456789 您好！这是来自管理员的消息"
         )
+        try:
+            await msg.edit_text(usage_text)
+        except Exception:
+            await msg.reply(usage_text)
         return
     
     try:
         user_id = int(parts[1])
     except ValueError:
-        await msg.edit_text("❌ 用户ID必须是数字")
+        error_text = "❌ 用户ID必须是数字"
+        try:
+            await msg.edit_text(error_text)
+        except Exception:
+            await msg.reply(error_text)
         return
     
     message_content = parts[2]
@@ -1076,16 +1084,21 @@ async def send_user_message(msg: types.Message):
             status="sent"
         )
         
-        # 编辑原始命令消息显示成功确认
-        await msg.edit_text(
+        # 尝试编辑原始命令消息，如果失败则回复
+        success_text = (
             f"✅ <b>消息发送成功</b>\n\n"
             f"📤 <b>目标用户</b>：{target_name} ({user_id})\n"
             f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n"
             f"🆔 <b>记录ID</b>：{record_id}\n\n"
             f"⏰ <b>发送时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            f"💡 <b>提示</b>：使用 /replies 查看用户回复",
-            parse_mode="HTML"
+            f"💡 <b>提示</b>：使用 /replies 查看用户回复"
         )
+        
+        try:
+            await msg.edit_text(success_text, parse_mode="HTML")
+        except Exception as edit_error:
+            # 如果编辑失败（如带图片的消息），则回复
+            await msg.reply(success_text, parse_mode="HTML")
         
     except Exception as e:
         # 记录失败的消息
@@ -1099,7 +1112,8 @@ async def send_user_message(msg: types.Message):
             status="failed"
         )
         
-        await msg.edit_text(
+        # 尝试编辑原始命令消息，如果失败则回复
+        error_text = (
             f"❌ <b>消息发送失败</b>\n\n"
             f"📤 <b>目标用户</b>：{user_id}\n"
             f"❌ <b>错误信息</b>：{str(e)}\n\n"
@@ -1107,9 +1121,14 @@ async def send_user_message(msg: types.Message):
             f"├ 用户ID不存在\n"
             f"├ 用户已屏蔽机器人\n"
             f"├ 用户未启动过机器人\n"
-            f"└ 消息格式有误",
-            parse_mode="HTML"
+            f"└ 消息格式有误"
         )
+        
+        try:
+            await msg.edit_text(error_text, parse_mode="HTML")
+        except Exception as edit_error:
+            # 如果编辑失败（如带图片的消息），则回复
+            await msg.reply(error_text, parse_mode="HTML")
 
 
 @superadmin_router.message(Command("send_channel", "sc"))
