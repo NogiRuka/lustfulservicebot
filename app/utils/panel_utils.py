@@ -442,10 +442,14 @@ async def send_admin_message_notification(bot, user_id: int, item_type: str, ite
         logger.error(f"发送管理员消息通知失败: {e}")
 
 
-# 默认的欢迎图片URL
-# DEFAULT_WELCOME_PHOTO = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/in356days_Pok_Napapon_069.jpg?raw=true"
+# 导入新的图片管理系统
+from app.config.image_config import get_welcome_image, get_admin_image, get_error_image, get_success_image
 
-DEFAULT_WELCOME_PHOTO = "https://github.com/NogiRuka/images/blob/main/bot/lustfulboy/JQVISION_ISSUE16_078.jpg?raw=true"
+# 向后兼容的默认图片
+DEFAULT_WELCOME_PHOTO = get_welcome_image()
+DEFAULT_ADMIN_PHOTO = get_admin_image()
+DEFAULT_ERROR_PHOTO = get_error_image()
+DEFAULT_SUCCESS_PHOTO = get_success_image()
 
 
 async def return_to_main_menu(cb, additional_logic_func=None):
