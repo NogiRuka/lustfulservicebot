@@ -111,10 +111,8 @@ LOG_LEVEL=INFO
 DEBUG=False
 ```
 
-#### 4.2 创建数据库
-```bash
-python create_tables.py
-```
+#### 4.2 数据库初始化
+数据库表和初始数据会在首次启动时自动创建，无需手动操作。
 
 ### 5. 系统服务配置
 
@@ -282,8 +280,7 @@ git pull  # 或上传新文件
 source venv/bin/activate
 pip install -r requirements.txt
 
-# 运行数据库迁移（如有需要）
-python create_tables.py
+# 数据库和初始数据会在启动时自动处理
 
 # 重启服务
 sudo systemctl start lustfulservicebot
@@ -308,9 +305,9 @@ python -m app.bot
 
 **数据库问题**：
 ```bash
-# 重新创建数据库
+# 删除数据库文件，重启时会自动重新创建
 rm -f db/bot.db
-python create_tables.py
+python -m app.bot
 ```
 
 **权限问题**：
