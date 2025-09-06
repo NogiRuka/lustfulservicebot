@@ -2,6 +2,7 @@ from aiogram import types, F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from loguru import logger
+from datetime import datetime
 
 from app.utils.message_utils import safe_edit_message
 from app.utils.panel_utils import DEFAULT_WELCOME_PHOTO
@@ -501,39 +502,30 @@ async def cb_superadmin_my_admins(cb: types.CallbackQuery):
 
 @superadmin_router.callback_query(F.data == "superadmin_manual_reply")
 async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
-    """人工回复"""
+    """代发消息功能"""
     role = await get_role(cb.from_user.id)
     if role != ROLE_SUPERADMIN:
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
-    # 获取待处理的反馈
-    feedbacks = await get_all_feedback_list()
-    pending_feedbacks = [f for f in feedbacks if f.status == "pending"]
-    
-    text = "🤖 <b>人工回复</b>\n\n"
-    
-    if not pending_feedbacks:
-        text += "暂无待处理的反馈。"
-    else:
-        text += f"📊 共有 {len(pending_feedbacks)} 条待处理反馈\n\n"
-        
-        for i, feedback in enumerate(pending_feedbacks[:5], 1):  # 显示前5条
-            type_emoji = {
-                "bug": "🐛",
-                "suggestion": "💡",
-                "complaint": "😤",
-                "other": "❓"
-            }.get(feedback.feedback_type, "❓")
-            
-            text += f"{i}. {type_emoji} ID:{feedback.id}\n"
-            text += f"   用户:{feedback.user_id}\n"
-            text += f"   内容:{feedback.content[:60]}{'...' if len(feedback.content) > 60 else ''}\n\n"
-        
-        if len(pending_feedbacks) > 5:
-            text += f"... 还有 {len(pending_feedbacks) - 5} 条待处理\n\n"
-        
-        text += "💡 使用 /rp [反馈ID] [回复内容] 进行回复"
+    text = "🤖 <b>代发消息</b>\n\n"
+    text += "通过机器人代替您发送消息到指定目标\n\n"
+    text += "📋 <b>可用命令</b>：\n\n"
+    text += "🔹 <b>发送给用户</b>：\n"
+    text += "   /send_user [用户ID] [消息内容]\n"
+    text += "   示例：/send_user 123456789 您好！\n\n"
+    text += "🔹 <b>发送到频道</b>：\n"
+    text += "   /send_channel [频道ID] [消息内容]\n"
+    text += "   示例：/send_channel @mychannel 公告内容\n\n"
+    text += "🔹 <b>发送到群组</b>：\n"
+    text += "   /send_group [群组ID] [消息内容]\n"
+    text += "   示例：/send_group -1001234567890 群组消息\n\n"
+    text += "💡 <b>提示</b>：\n"
+    text += "├ 用户ID：数字格式，如 123456789\n"
+    text += "├ 频道ID：@频道名 或 -100开头的数字\n"
+    text += "├ 群组ID：-100开头的数字\n"
+    text += "└ 消息支持HTML格式和Markdown格式\n\n"
+    text += "⚠️ <b>注意</b>：请谨慎使用此功能，确保消息内容合适"
     
     await safe_edit_message(
         cb.message,
@@ -585,6 +577,180 @@ async def cb_confirm_promote_admin(cb: types.CallbackQuery, state: FSMContext):
     
     await state.clear()
     await cb.answer()
+
+
+# ==================== 代发消息功能 ====================
+
+@superadmin_router.message(Command("send_user"))
+async def send_user_message(msg: types.Message):
+    """发送消息给指定用户"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await msg.reply(
+            "用法：/send_user [用户ID] [消息内容]\n"
+            "示例：/send_user 123456789 您好！这是来自管理员的消息"
+        )
+        return
+    
+    try:
+        user_id = int(parts[1])
+    except ValueError:
+        await msg.reply("❌ 用户ID必须是数字")
+        return
+    
+    message_content = parts[2]
+    
+    try:
+        # 发送消息给目标用户
+        await msg.bot.send_message(
+            chat_id=user_id,
+            text=message_content,
+            parse_mode="HTML"
+        )
+        
+        # 给超管发送成功确认
+        await msg.reply(
+            f"✅ <b>消息发送成功</b>\n\n"
+            f"📤 <b>目标用户</b>：{user_id}\n"
+            f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n\n"
+            f"⏰ <b>发送时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        await msg.reply(
+            f"❌ <b>消息发送失败</b>\n\n"
+            f"📤 <b>目标用户</b>：{user_id}\n"
+            f"❌ <b>错误信息</b>：{str(e)}\n\n"
+            f"💡 <b>可能原因</b>：\n"
+            f"├ 用户ID不存在\n"
+            f"├ 用户已屏蔽机器人\n"
+            f"└ 消息格式有误",
+            parse_mode="HTML"
+        )
+
+
+@superadmin_router.message(Command("send_channel"))
+async def send_channel_message(msg: types.Message):
+    """发送消息到指定频道"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await msg.reply(
+            "用法：/send_channel [频道ID] [消息内容]\n"
+            "示例：/send_channel @mychannel 这是频道公告\n"
+            "或：/send_channel -1001234567890 这是频道公告"
+        )
+        return
+    
+    channel_id = parts[1]
+    message_content = parts[2]
+    
+    # 处理频道ID格式
+    if channel_id.startswith('@'):
+        target_id = channel_id
+    else:
+        try:
+            target_id = int(channel_id)
+        except ValueError:
+            await msg.reply("❌ 频道ID格式错误，应为 @频道名 或数字ID")
+            return
+    
+    try:
+        # 发送消息到目标频道
+        sent_msg = await msg.bot.send_message(
+            chat_id=target_id,
+            text=message_content,
+            parse_mode="HTML"
+        )
+        
+        # 给超管发送成功确认
+        await msg.reply(
+            f"✅ <b>频道消息发送成功</b>\n\n"
+            f"📢 <b>目标频道</b>：{channel_id}\n"
+            f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n"
+            f"🔗 <b>消息链接</b>：{sent_msg.link if hasattr(sent_msg, 'link') else '无'}\n\n"
+            f"⏰ <b>发送时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        await msg.reply(
+            f"❌ <b>频道消息发送失败</b>\n\n"
+            f"📢 <b>目标频道</b>：{channel_id}\n"
+            f"❌ <b>错误信息</b>：{str(e)}\n\n"
+            f"💡 <b>可能原因</b>：\n"
+            f"├ 频道ID不存在\n"
+            f"├ 机器人不是频道管理员\n"
+            f"├ 没有发送消息权限\n"
+            f"└ 消息格式有误",
+            parse_mode="HTML"
+        )
+
+
+@superadmin_router.message(Command("send_group"))
+async def send_group_message(msg: types.Message):
+    """发送消息到指定群组"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=2)
+    if len(parts) < 3:
+        await msg.reply(
+            "用法：/send_group [群组ID] [消息内容]\n"
+            "示例：/send_group -1001234567890 这是群组通知"
+        )
+        return
+    
+    try:
+        group_id = int(parts[1])
+    except ValueError:
+        await msg.reply("❌ 群组ID必须是数字（通常以-100开头）")
+        return
+    
+    message_content = parts[2]
+    
+    try:
+        # 发送消息到目标群组
+        sent_msg = await msg.bot.send_message(
+            chat_id=group_id,
+            text=message_content,
+            parse_mode="HTML"
+        )
+        
+        # 给超管发送成功确认
+        await msg.reply(
+            f"✅ <b>群组消息发送成功</b>\n\n"
+            f"👥 <b>目标群组</b>：{group_id}\n"
+            f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n"
+            f"🆔 <b>消息ID</b>：{sent_msg.message_id}\n\n"
+            f"⏰ <b>发送时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            parse_mode="HTML"
+        )
+        
+    except Exception as e:
+        await msg.reply(
+            f"❌ <b>群组消息发送失败</b>\n\n"
+            f"👥 <b>目标群组</b>：{group_id}\n"
+            f"❌ <b>错误信息</b>：{str(e)}\n\n"
+            f"💡 <b>可能原因</b>：\n"
+            f"├ 群组ID不存在\n"
+            f"├ 机器人不在群组中\n"
+            f"├ 没有发送消息权限\n"
+            f"└ 消息格式有误",
+            parse_mode="HTML"
+        )
 
 
 # 超管命令：取消管理员

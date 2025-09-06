@@ -24,7 +24,7 @@ BTN_BACK_TO_SUPERADMIN = InlineKeyboardButton(text="⬅️ 返回上一级", cal
 BTN_FEEDBACK_BROWSE = InlineKeyboardButton(text="👀 反馈浏览", callback_data="admin_feedback_browse")
 BTN_REVIEW_CENTER = InlineKeyboardButton(text="✅ 审核处理", callback_data="admin_review_center")
 BTN_SUPERADMIN_CENTER = InlineKeyboardButton(text="🛡️ 管理中心", callback_data="superadmin_manage_center")
-BTN_MANUAL_REPLY = InlineKeyboardButton(text="🤖 人工回复", callback_data="superadmin_manual_reply")
+BTN_MANUAL_REPLY = InlineKeyboardButton(text="🤖 代发消息", callback_data="superadmin_manual_reply")
 
 
 # ==================== 菜单构建函数 ====================
