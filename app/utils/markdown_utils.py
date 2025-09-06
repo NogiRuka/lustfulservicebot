@@ -6,7 +6,6 @@ Markdown转换工具
 """
 
 import re
-from typing import str
 
 
 def markdown_to_html(text: str) -> str:
