@@ -97,7 +97,7 @@ async def view_replies_command(msg: types.Message):
     """查看用户回复"""
     role = await get_role(msg.from_user.id)
     if role != ROLE_SUPERADMIN:
-        await msg.reply("❌ 仅超管可使用此命令")
+        await msg.edit_text("❌ 仅超管可使用此命令")
         return
     
     from app.database.sent_messages import get_unread_replies, mark_reply_as_read
@@ -1037,7 +1037,7 @@ async def send_user_message(msg: types.Message):
     
     parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
-        await msg.reply(
+        await msg.edit_text(
             "用法：/send_user [用户ID] [消息内容] 或 /su [用户ID] [消息内容]\n"
             "示例：/su 123456789 您好！这是来自管理员的消息"
         )
@@ -1046,7 +1046,7 @@ async def send_user_message(msg: types.Message):
     try:
         user_id = int(parts[1])
     except ValueError:
-        await msg.reply("❌ 用户ID必须是数字")
+        await msg.edit_text("❌ 用户ID必须是数字")
         return
     
     message_content = parts[2]
@@ -1076,8 +1076,8 @@ async def send_user_message(msg: types.Message):
             status="sent"
         )
         
-        # 给超管发送成功确认
-        await msg.reply(
+        # 编辑原始命令消息显示成功确认
+        await msg.edit_text(
             f"✅ <b>消息发送成功</b>\n\n"
             f"📤 <b>目标用户</b>：{target_name} ({user_id})\n"
             f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n"
@@ -1099,7 +1099,7 @@ async def send_user_message(msg: types.Message):
             status="failed"
         )
         
-        await msg.reply(
+        await msg.edit_text(
             f"❌ <b>消息发送失败</b>\n\n"
             f"📤 <b>目标用户</b>：{user_id}\n"
             f"❌ <b>错误信息</b>：{str(e)}\n\n"
@@ -1117,12 +1117,12 @@ async def send_channel_message(msg: types.Message):
     """发送消息到指定频道"""
     role = await get_role(msg.from_user.id)
     if role != ROLE_SUPERADMIN:
-        await msg.reply("❌ 仅超管可使用此命令")
+        await msg.edit_text("❌ 仅超管可使用此命令")
         return
     
     parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
-        await msg.reply(
+        await msg.edit_text(
             "用法：/send_channel [频道ID] [消息内容] 或 /sc [频道ID] [消息内容]\n"
             "示例：/sc @mychannel 这是频道公告\n"
             "或：/sc -1001234567890 这是频道公告"
@@ -1139,7 +1139,7 @@ async def send_channel_message(msg: types.Message):
         try:
             target_id = int(channel_id)
         except ValueError:
-            await msg.reply("❌ 频道ID格式错误，应为 @频道名 或数字ID")
+            await msg.edit_text("❌ 频道ID格式错误，应为 @频道名 或数字ID")
             return
     
     try:
@@ -1150,8 +1150,8 @@ async def send_channel_message(msg: types.Message):
             parse_mode="HTML"
         )
         
-        # 给超管发送成功确认
-        await msg.reply(
+        # 编辑原始命令消息显示成功确认
+        await msg.edit_text(
             f"✅ <b>频道消息发送成功</b>\n\n"
             f"📢 <b>目标频道</b>：{channel_id}\n"
             f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n"
@@ -1161,7 +1161,7 @@ async def send_channel_message(msg: types.Message):
         )
         
     except Exception as e:
-        await msg.reply(
+        await msg.edit_text(
             f"❌ <b>频道消息发送失败</b>\n\n"
             f"📢 <b>目标频道</b>：{channel_id}\n"
             f"❌ <b>错误信息</b>：{str(e)}\n\n"
@@ -1179,12 +1179,12 @@ async def send_group_message(msg: types.Message):
     """发送消息到指定群组"""
     role = await get_role(msg.from_user.id)
     if role != ROLE_SUPERADMIN:
-        await msg.reply("❌ 仅超管可使用此命令")
+        await msg.edit_text("❌ 仅超管可使用此命令")
         return
     
     parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
-        await msg.reply(
+        await msg.edit_text(
             "用法：/send_group [群组ID] [消息内容] 或 /sg [群组ID] [消息内容]\n"
             "示例：/sg -1001234567890 这是群组通知"
         )
@@ -1193,7 +1193,7 @@ async def send_group_message(msg: types.Message):
     try:
         group_id = int(parts[1])
     except ValueError:
-        await msg.reply("❌ 群组ID必须是数字（通常以-100开头）")
+        await msg.edit_text("❌ 群组ID必须是数字（通常以-100开头）")
         return
     
     message_content = parts[2]
@@ -1206,8 +1206,8 @@ async def send_group_message(msg: types.Message):
             parse_mode="HTML"
         )
         
-        # 给超管发送成功确认
-        await msg.reply(
+        # 编辑原始命令消息显示成功确认
+        await msg.edit_text(
             f"✅ <b>群组消息发送成功</b>\n\n"
             f"👥 <b>目标群组</b>：{group_id}\n"
             f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n"
@@ -1217,7 +1217,7 @@ async def send_group_message(msg: types.Message):
         )
         
     except Exception as e:
-        await msg.reply(
+        await msg.edit_text(
             f"❌ <b>群组消息发送失败</b>\n\n"
             f"👥 <b>目标群组</b>：{group_id}\n"
             f"❌ <b>错误信息</b>：{str(e)}\n\n"
