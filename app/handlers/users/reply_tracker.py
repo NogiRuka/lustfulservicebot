@@ -4,7 +4,7 @@ from loguru import logger
 
 from app.database.sent_messages import update_message_reply
 from app.database.users import get_role
-from app.utils.roles import ROLE_SUPERADMIN
+from app.utils.roles import ROLE_SUPERADMIN, ROLE_ADMIN
 
 reply_tracker_router = Router()
 
@@ -12,22 +12,31 @@ reply_tracker_router = Router()
 @reply_tracker_router.message()
 async def track_user_replies(msg: types.Message):
     """监听用户回复并记录到代发消息系统"""
+    logger.debug(f"回复追踪器收到消息，用户: {msg.from_user.id}, 聊天类型: {msg.chat.type}")
+    
     # 只处理私聊消息
     if msg.chat.type != 'private':
+        logger.debug(f"跳过非私聊消息，聊天类型: {msg.chat.type}")
         return
     
     # 跳过命令消息
     if msg.text and msg.text.startswith('/'):
+        logger.debug(f"跳过命令消息: {msg.text[:20]}...")
         return
     
     # 跳过管理员消息
     user_role = await get_role(msg.from_user.id)
-    if user_role in ['admin', 'superadmin']:
+    logger.debug(f"用户 {msg.from_user.id} 角色: {user_role}")
+    if user_role in [ROLE_ADMIN, ROLE_SUPERADMIN]:
+        logger.debug(f"跳过管理员消息，用户角色: {user_role}")
         return
     
     # 跳过空消息
     if not msg.text and not msg.caption:
+        logger.debug("跳过空消息")
         return
+    
+    logger.info(f"开始处理用户 {msg.from_user.id} 的回复消息")
     
     try:
         # 获取消息内容
