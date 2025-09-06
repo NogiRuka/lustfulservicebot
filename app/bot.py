@@ -52,24 +52,15 @@ for router in users_routers:
     dp.include_router(router)
 
 
-async def insert_initial_data_if_needed() -> None:
-    """首次启动时插入初始数据（如开发日志）"""
-    try:
-        async with AsyncSessionLocal() as session:
-            # 检查是否已有开发日志
-            stmt = select(DevChangelog.id).limit(1)
-            result = await session.execute(stmt)
-            
-            if not result.fetchone():
-                logger.info("检测到首次启动，正在插入初始开发日志...")
-                
-                # 创建初始开发日志
-                initial_changelog = DevChangelog(
-                    version="v1.0.0",
-                    title="🎉 桜色服务助手首次发布",
-                    changelog_type="feature",
-                    created_by=SUPERADMIN_ID,
-                    content="""🌸 **桜色服务助手 v1.0.0 正式发布！**
+# ===== 初始数据配置 =====
+INITIAL_VERSION = "v1.0.0"
+INITIAL_CHANGELOG_TITLE = "🎉 桜色服务助手首次发布"
+INITIAL_CHANGELOG_TYPE = "feature"
+
+
+def _get_initial_changelog_content() -> str:
+    """获取初始开发日志内容"""
+    return """🌸 **桜色服务助手 v1.0.0 正式发布！**
 
 ## ✨ **核心功能**
 
@@ -142,12 +133,46 @@ async def insert_initial_data_if_needed() -> None:
 ---
 
 **感谢使用桜色服务助手！这是一个里程碑式的版本，标志着项目的正式发布。** 🎉✨🚀"""
-                )
-                
-                session.add(initial_changelog)
-                await session.commit()
-                
-                logger.success("✅ 初始开发日志插入成功！")
+
+
+async def _should_insert_initial_changelog(session) -> bool:
+    """检查是否需要插入初始开发日志"""
+    from sqlalchemy import exists
+    
+    stmt = select(exists().where(DevChangelog.id.isnot(None)))
+    result = await session.execute(stmt)
+    return not result.scalar()
+
+
+async def _insert_initial_changelog(session) -> None:
+    """插入初始开发日志"""
+    logger.info("检测到首次启动，正在插入初始开发日志...")
+    
+    try:
+        initial_changelog = DevChangelog(
+            version=INITIAL_VERSION,
+            title=INITIAL_CHANGELOG_TITLE,
+            changelog_type=INITIAL_CHANGELOG_TYPE,
+            created_by=SUPERADMIN_ID,
+            content=_get_initial_changelog_content()
+        )
+        
+        session.add(initial_changelog)
+        await session.commit()
+        logger.success("✅ 初始开发日志插入成功！")
+        
+    except Exception as e:
+        logger.error(f"插入开发日志失败: {e}")
+        await session.rollback()
+        raise
+
+
+async def insert_initial_data_if_needed() -> None:
+    """首次启动时插入初始数据（如开发日志）"""
+    try:
+        async with AsyncSessionLocal() as session:
+            if await _should_insert_initial_changelog(session):
+                await _insert_initial_changelog(session)
             else:
                 logger.debug("开发日志已存在，跳过初始化")
                 
