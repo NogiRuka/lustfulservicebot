@@ -512,14 +512,14 @@ async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
     text += "通过机器人代替您发送消息到指定目标\n\n"
     text += "📋 <b>可用命令</b>：\n\n"
     text += "🔹 <b>发送给用户</b>：\n"
-    text += "   /send_user [用户ID] [消息内容]\n"
-    text += "   示例：/send_user 123456789 您好！\n\n"
+    text += "   /send_user [用户ID] [消息内容] 或 /su [用户ID] [消息内容]\n"
+    text += "   示例：/su 123456789 您好！\n\n"
     text += "🔹 <b>发送到频道</b>：\n"
-    text += "   /send_channel [频道ID] [消息内容]\n"
-    text += "   示例：/send_channel @mychannel 公告内容\n\n"
+    text += "   /send_channel [频道ID] [消息内容] 或 /sc [频道ID] [消息内容]\n"
+    text += "   示例：/sc @mychannel 公告内容\n\n"
     text += "🔹 <b>发送到群组</b>：\n"
-    text += "   /send_group [群组ID] [消息内容]\n"
-    text += "   示例：/send_group -1001234567890 群组消息\n\n"
+    text += "   /send_group [群组ID] [消息内容] 或 /sg [群组ID] [消息内容]\n"
+    text += "   示例：/sg -1001234567890 群组消息\n\n"
     text += "💡 <b>提示</b>：\n"
     text += "├ 用户ID：数字格式，如 123456789\n"
     text += "├ 频道ID：@频道名 或 -100开头的数字\n"
@@ -581,7 +581,7 @@ async def cb_confirm_promote_admin(cb: types.CallbackQuery, state: FSMContext):
 
 # ==================== 代发消息功能 ====================
 
-@superadmin_router.message(Command("send_user"))
+@superadmin_router.message(Command("send_user", "su"))
 async def send_user_message(msg: types.Message):
     """发送消息给指定用户"""
     role = await get_role(msg.from_user.id)
@@ -592,8 +592,8 @@ async def send_user_message(msg: types.Message):
     parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
         await msg.reply(
-            "用法：/send_user [用户ID] [消息内容]\n"
-            "示例：/send_user 123456789 您好！这是来自管理员的消息"
+            "用法：/send_user [用户ID] [消息内容] 或 /su [用户ID] [消息内容]\n"
+            "示例：/su 123456789 您好！这是来自管理员的消息"
         )
         return
     
@@ -635,7 +635,7 @@ async def send_user_message(msg: types.Message):
         )
 
 
-@superadmin_router.message(Command("send_channel"))
+@superadmin_router.message(Command("send_channel", "sc"))
 async def send_channel_message(msg: types.Message):
     """发送消息到指定频道"""
     role = await get_role(msg.from_user.id)
@@ -646,9 +646,9 @@ async def send_channel_message(msg: types.Message):
     parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
         await msg.reply(
-            "用法：/send_channel [频道ID] [消息内容]\n"
-            "示例：/send_channel @mychannel 这是频道公告\n"
-            "或：/send_channel -1001234567890 这是频道公告"
+            "用法：/send_channel [频道ID] [消息内容] 或 /sc [频道ID] [消息内容]\n"
+            "示例：/sc @mychannel 这是频道公告\n"
+            "或：/sc -1001234567890 这是频道公告"
         )
         return
     
@@ -697,7 +697,7 @@ async def send_channel_message(msg: types.Message):
         )
 
 
-@superadmin_router.message(Command("send_group"))
+@superadmin_router.message(Command("send_group", "sg"))
 async def send_group_message(msg: types.Message):
     """发送消息到指定群组"""
     role = await get_role(msg.from_user.id)
@@ -708,8 +708,8 @@ async def send_group_message(msg: types.Message):
     parts = msg.text.split(maxsplit=2)
     if len(parts) < 3:
         await msg.reply(
-            "用法：/send_group [群组ID] [消息内容]\n"
-            "示例：/send_group -1001234567890 这是群组通知"
+            "用法：/send_group [群组ID] [消息内容] 或 /sg [群组ID] [消息内容]\n"
+            "示例：/sg -1001234567890 这是群组通知"
         )
         return
     
