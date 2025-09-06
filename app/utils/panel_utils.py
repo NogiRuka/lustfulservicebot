@@ -1,3 +1,4 @@
+from aiogram import types
 from app.config.config import BOT_NICKNAME
 from app.database.users import get_user
 
@@ -476,21 +477,42 @@ async def return_to_main_menu(cb, additional_logic_func=None):
         welcome_text = create_welcome_panel_text(title, role)
         welcome_photo = DEFAULT_WELCOME_PHOTO
         
-        # 检查当前消息是否有图片
-        if cb.message.photo:
-            # 如果有图片，编辑caption
-            await cb.message.edit_caption(
-                caption=welcome_text,
-                reply_markup=kb,
-                parse_mode="HTML"
-            )
-        else:
-            # 如果没有图片，删除当前消息并发送新的带图片消息
-            try:
-                await cb.message.delete()
-            except:
-                pass  # 忽略删除失败的错误
-            
+        # 优先使用edit_caption保持同一张图片
+        try:
+            if cb.message.photo:
+                # 如果有图片，直接编辑caption
+                await cb.message.edit_caption(
+                    caption=welcome_text,
+                    reply_markup=kb,
+                    parse_mode="HTML"
+                )
+            else:
+                # 如果没有图片，尝试编辑为带图片的消息
+                try:
+                    await cb.message.edit_media(
+                        media=types.InputMediaPhoto(
+                            media=welcome_photo,
+                            caption=welcome_text,
+                            parse_mode="HTML"
+                        ),
+                        reply_markup=kb
+                    )
+                except Exception:
+                    # 如果编辑失败，删除当前消息并发送新的带图片消息
+                    try:
+                        await cb.message.delete()
+                    except:
+                        pass  # 忽略删除失败的错误
+                    
+                    await cb.bot.send_photo(
+                        chat_id=cb.from_user.id,
+                        photo=welcome_photo,
+                        caption=welcome_text,
+                        reply_markup=kb,
+                        parse_mode="HTML"
+                    )
+        except Exception as edit_error:
+            # 如果所有编辑方式都失败，发送新消息
             await cb.bot.send_photo(
                 chat_id=cb.from_user.id,
                 photo=welcome_photo,
