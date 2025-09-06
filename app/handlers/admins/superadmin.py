@@ -92,6 +92,165 @@ async def cb_image_clear_sessions(cb: types.CallbackQuery):
         await cb.answer(f"❌ 清除失败：{str(e)}", show_alert=True)
 
 
+@superadmin_router.message(Command("replies", "r"))
+async def view_replies_command(msg: types.Message):
+    """查看用户回复"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    from app.database.sent_messages import get_unread_replies, mark_reply_as_read
+    
+    try:
+        # 获取未读回复
+        unread_replies = await get_unread_replies(msg.from_user.id)
+        
+        if not unread_replies:
+            await msg.reply(
+                "📭 <b>暂无新回复</b>\n\n"
+                "💡 当用户回复您的代发消息时，回复会显示在这里。\n\n"
+                "使用 /history [用户ID] 查看与特定用户的对话历史"
+            )
+            return
+        
+        # 显示未读回复
+        text = f"📬 <b>用户回复 ({len(unread_replies)} 条未读)</b>\n\n"
+        
+        for i, reply in enumerate(unread_replies[:5], 1):  # 最多显示5条
+            text += f"<b>{i}. {reply.target_name}</b>\n"
+            text += f"🆔 用户ID：{reply.target_id}\n"
+            text += f"📤 您的消息：{reply.message_content[:50]}{'...' if len(reply.message_content) > 50 else ''}\n"
+            text += f"💬 用户回复：{reply.reply_content[:100]}{'...' if len(reply.reply_content) > 100 else ''}\n"
+            text += f"⏰ 回复时间：{reply.replied_at.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            text += f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        
+        if len(unread_replies) > 5:
+            text += f"📝 还有 {len(unread_replies) - 5} 条回复...\n\n"
+        
+        text += "💡 <b>操作提示</b>：\n"
+        text += "├ /mark_read [记录ID] - 标记为已读\n"
+        text += "├ /history [用户ID] - 查看对话历史\n"
+        text += "└ /su [用户ID] [消息] - 回复用户"
+        
+        await msg.reply(text, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"查看回复失败: {e}")
+        await msg.reply("❌ 查看回复失败，请稍后重试")
+
+
+@superadmin_router.message(Command("history", "h"))
+async def view_history_command(msg: types.Message):
+    """查看与特定用户的对话历史"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await msg.reply(
+            "用法：/history [用户ID] 或 /h [用户ID]\n"
+            "示例：/h 123456789"
+        )
+        return
+    
+    try:
+        user_id = int(parts[1])
+    except ValueError:
+        await msg.reply("❌ 用户ID必须是数字")
+        return
+    
+    from app.database.sent_messages import get_conversation_history
+    from app.database.users import get_user
+    
+    try:
+        # 获取用户信息
+        user_info = await get_user(user_id)
+        user_name = user_info.full_name if user_info else f"用户{user_id}"
+        
+        # 获取对话历史
+        history = await get_conversation_history(msg.from_user.id, user_id, limit=10)
+        
+        if not history:
+            await msg.reply(
+                f"📭 <b>与 {user_name} 暂无对话记录</b>\n\n"
+                f"💡 使用 /su {user_id} [消息内容] 开始对话"
+            )
+            return
+        
+        text = f"💬 <b>与 {user_name} 的对话历史</b>\n\n"
+        
+        for i, record in enumerate(reversed(history), 1):  # 按时间正序显示
+            status_emoji = {
+                "sent": "📤",
+                "replied": "💬",
+                "failed": "❌"
+            }.get(record.status, "📤")
+            
+            text += f"<b>{i}. {status_emoji} {record.sent_at.strftime('%m-%d %H:%M')}</b>\n"
+            text += f"📤 您：{record.message_content[:80]}{'...' if len(record.message_content) > 80 else ''}\n"
+            
+            if record.reply_content:
+                text += f"💬 {user_name}：{record.reply_content[:80]}{'...' if len(record.reply_content) > 80 else ''}\n"
+                text += f"⏰ 回复于：{record.replied_at.strftime('%m-%d %H:%M')}\n"
+            
+            text += f"━━━━━━━━━━━━━━━━━━━━\n\n"
+        
+        text += f"💡 使用 /su {user_id} [消息] 继续对话"
+        
+        await msg.reply(text, parse_mode="HTML")
+        
+    except Exception as e:
+        logger.error(f"查看对话历史失败: {e}")
+        await msg.reply("❌ 查看对话历史失败，请稍后重试")
+
+
+@superadmin_router.message(Command("mark_read", "mr"))
+async def mark_read_command(msg: types.Message):
+    """标记回复为已读"""
+    role = await get_role(msg.from_user.id)
+    if role != ROLE_SUPERADMIN:
+        await msg.reply("❌ 仅超管可使用此命令")
+        return
+    
+    parts = msg.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await msg.reply(
+            "用法：/mark_read [记录ID] 或 /mr [记录ID]\n"
+            "示例：/mr 123"
+        )
+        return
+    
+    try:
+        record_id = int(parts[1])
+    except ValueError:
+        await msg.reply("❌ 记录ID必须是数字")
+        return
+    
+    from app.database.sent_messages import mark_reply_as_read
+    
+    try:
+        success = await mark_reply_as_read(record_id)
+        
+        if success:
+            await msg.reply(f"✅ 记录 #{record_id} 已标记为已读")
+        else:
+            await msg.reply(f"❌ 记录 #{record_id} 不存在或已经是已读状态")
+            
+    except Exception as e:
+        logger.error(f"标记已读失败: {e}")
+        await msg.reply("❌ 标记已读失败，请稍后重试")
+        
+        # 刷新界面显示
+        await cb_superadmin_image_manage(cb)
+        
+    except Exception as e:
+        logger.error(f"清除会话缓存失败: {e}")
+        await cb.answer(f"❌ 清除失败：{str(e)}", show_alert=True)
+
+
 @superadmin_router.callback_query(F.data == "image_test_random")
 async def cb_image_test_random(cb: types.CallbackQuery):
     """测试随机图片按钮处理"""
@@ -646,9 +805,9 @@ async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
         await cb.answer("❌ 仅超管可访问此功能", show_alert=True)
         return
     
-    text = "🤖 <b>代发消息</b>\n\n"
-    text += "通过机器人代替您发送消息到指定目标\n\n"
-    text += "📋 <b>可用命令</b>：\n\n"
+    text = "🤖 <b>代发消息与回复追踪</b>\n\n"
+    text += "通过机器人代替您发送消息到指定目标，并自动追踪用户回复\n\n"
+    text += "📋 <b>发送命令</b>：\n\n"
     text += "🔹 <b>发送给用户</b>：\n"
     text += "   /send_user [用户ID] [消息内容] 或 /su [用户ID] [消息内容]\n"
     text += "   示例：/su 123456789 您好！\n\n"
@@ -658,7 +817,21 @@ async def cb_superadmin_manual_reply(cb: types.CallbackQuery):
     text += "🔹 <b>发送到群组</b>：\n"
     text += "   /send_group [群组ID] [消息内容] 或 /sg [群组ID] [消息内容]\n"
     text += "   示例：/sg -1001234567890 群组消息\n\n"
-    text += "💡 <b>提示</b>：\n"
+    text += "📬 <b>回复追踪命令</b>：\n\n"
+    text += "🔹 <b>查看回复</b>：\n"
+    text += "   /replies 或 /r - 查看用户回复\n\n"
+    text += "🔹 <b>对话历史</b>：\n"
+    text += "   /history [用户ID] 或 /h [用户ID] - 查看对话记录\n"
+    text += "   示例：/h 123456789\n\n"
+    text += "🔹 <b>标记已读</b>：\n"
+    text += "   /mark_read [记录ID] 或 /mr [记录ID] - 标记回复为已读\n\n"
+    text += "💡 <b>功能特点</b>：\n"
+    text += "├ 📨 发送给用户的消息会自动提示可回复\n"
+    text += "├ 💬 用户回复会自动记录并通知管理员\n"
+    text += "├ 📋 支持查看完整对话历史\n"
+    text += "├ 🔔 新回复会实时通知所有管理员\n"
+    text += "└ 📊 支持已读/未读状态管理\n\n"
+    text += "💡 <b>使用提示</b>：\n"
     text += "├ 用户ID：数字格式，如 123456789\n"
     text += "├ 频道ID：@频道名 或 -100开头的数字\n"
     text += "├ 群组ID：-100开头的数字\n"
@@ -879,23 +1052,53 @@ async def send_user_message(msg: types.Message):
     message_content = parts[2]
     
     try:
+        # 获取用户信息用于显示
+        from app.database.users import get_user
+        user_info = await get_user(user_id)
+        target_name = user_info.full_name if user_info else f"用户{user_id}"
+        
         # 发送消息给目标用户
-        await msg.bot.send_message(
+        sent_msg = await msg.bot.send_message(
             chat_id=user_id,
-            text=message_content,
+            text=f"📨 <b>来自管理员的消息</b>\n\n{message_content}\n\n💬 您可以直接回复此消息，管理员会收到您的回复。",
             parse_mode="HTML"
+        )
+        
+        # 记录发送的消息
+        from app.database.sent_messages import create_sent_message_record
+        record_id = await create_sent_message_record(
+            admin_id=msg.from_user.id,
+            target_type="user",
+            target_id=user_id,
+            target_name=target_name,
+            message_content=message_content,
+            sent_message_id=sent_msg.message_id,
+            status="sent"
         )
         
         # 给超管发送成功确认
         await msg.reply(
             f"✅ <b>消息发送成功</b>\n\n"
-            f"📤 <b>目标用户</b>：{user_id}\n"
-            f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n\n"
-            f"⏰ <b>发送时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            f"📤 <b>目标用户</b>：{target_name} ({user_id})\n"
+            f"📝 <b>消息内容</b>：{message_content[:100]}{'...' if len(message_content) > 100 else ''}\n"
+            f"🆔 <b>记录ID</b>：{record_id}\n\n"
+            f"⏰ <b>发送时间</b>：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"💡 <b>提示</b>：使用 /replies 查看用户回复",
             parse_mode="HTML"
         )
         
     except Exception as e:
+        # 记录失败的消息
+        from app.database.sent_messages import create_sent_message_record
+        await create_sent_message_record(
+            admin_id=msg.from_user.id,
+            target_type="user",
+            target_id=user_id,
+            target_name=f"用户{user_id}",
+            message_content=message_content,
+            status="failed"
+        )
+        
         await msg.reply(
             f"❌ <b>消息发送失败</b>\n\n"
             f"📤 <b>目标用户</b>：{user_id}\n"
@@ -903,6 +1106,7 @@ async def send_user_message(msg: types.Message):
             f"💡 <b>可能原因</b>：\n"
             f"├ 用户ID不存在\n"
             f"├ 用户已屏蔽机器人\n"
+            f"├ 用户未启动过机器人\n"
             f"└ 消息格式有误",
             parse_mode="HTML"
         )

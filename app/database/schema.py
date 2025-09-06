@@ -211,3 +211,25 @@ class DevChangelog(Base):
     
     def __repr__(self):
         return f"<DevChangelog(id={self.id}, version={self.version}, title={self.title})>"
+
+
+class SentMessage(Base):
+    """代发消息追踪表"""
+
+    __tablename__ = "sent_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    admin_id = Column(BigInteger, ForeignKey('users.chat_id'), nullable=False)  # 发送消息的管理员ID
+    target_type = Column(String, nullable=False)  # 目标类型：user/channel/group
+    target_id = Column(BigInteger, nullable=False)  # 目标ID（用户ID、频道ID、群组ID）
+    target_name = Column(String, nullable=True)  # 目标名称（用于显示）
+    message_content = Column(Text, nullable=False)  # 发送的消息内容
+    sent_message_id = Column(BigInteger, nullable=True)  # 发送成功后的消息ID
+    status = Column(String, nullable=False, server_default="sent")  # sent/failed/replied
+    sent_at = Column(DateTime, default=datetime.now, nullable=False)  # 发送时间
+    reply_content = Column(Text, nullable=True)  # 用户回复内容
+    replied_at = Column(DateTime, nullable=True)  # 回复时间
+    is_read = Column(Boolean, default=False, nullable=False)  # 管理员是否已读回复
+    
+    def __repr__(self):
+        return f"<SentMessage(id={self.id}, admin_id={self.admin_id}, target_type='{self.target_type}', target_id={self.target_id})>"
