@@ -5,19 +5,18 @@ import random
 
 # 图片列表
 IMAGE_LIST = [
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2Fc1835465-3873-4e79-95c9-e2029fc67f06%2F24.jpg/size/w=1420?exp=1757176136&sig=i8CQfgOQ7lrsLa4cIfgroFBxohabcMkdHfG_rrxo8yQ&id=2666ee0b-e695-8023-a309-e9afebe5edf9&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2F2df003bf-e174-43ec-8c26-1f7a1f242bee%2FADONISJING_DESIRE_TO_ANGEL_058.jpg/size/w=1420?exp=1757176136&sig=KyOpj5TtRwQduXHPWeTXMjPWmAfwseZPViZZmcJaptI&id=2666ee0b-e695-80de-a072-d4db3aa5afb0&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2F778c0ad5-e167-4db4-ab08-5efe9bfa146f%2FBlossom_%E4%BB%B2%E5%A4%8F-PzAzjucqd-3.jpg/size/w=1420?exp=1757176136&sig=BsLsHcE_IQwKkZ2OjJD62fa4t7ZZ_qCcRkg5o7UiQkw&id=2666ee0b-e695-808f-b615-dfd75ef86df0&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2Fea8436cc-bc36-420b-9842-7152bd5e2f1c%2FJQVISION_ISSUE16_055.jpg/size/w=1420?exp=1757176136&sig=XJxgsAl5b2r_gqxJ3hoP2ugfbV7Z2bTEj6DGzvZRRfk&id=2666ee0b-e695-80f4-9d42-d363a34ac950&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2F1818038e-2f7d-49f2-b709-4246744bb0b5%2FJQVISION_ISSUE16_066.jpg/size/w=1420?exp=1757176136&sig=0ON-PPxFRKFP1QuJoTZ5TsTGoN26AROpY18qRo5N5HQ&id=2666ee0b-e695-8034-b2db-ffde76b868bb&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2F94176b70-e7ce-4a86-b7fa-81783519e519%2FJQVISION_VISIONseries_NO.09_012.jpg/size/w=1420?exp=1757176136&sig=NuMyUhcyqwRbftg37G1tuQo0FoSIXz-pCKqzbDslsPo&id=2666ee0b-e695-80ec-8060-d3f25b8b2c04&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2F3e7bb7e4-1c8f-4308-9850-86f9f99d84dc%2FJQVISION_VISIONseries_NO.13_054.jpg/size/w=1420?exp=1757176137&sig=C1OFb-1fnbWzhXwXoOD1UDBld7N5gUmCjZN7rmjiOa4&id=2666ee0b-e695-803b-b31b-f1e58a293da7&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2F10c5a31b-67b6-4116-91d4-0d448b94c170%2Fwallhaven-w8mm2r.jpg/size/w=1420?exp=1757176137&sig=avDhIfos2dRv6EFfMKgsGO1jn_2t_1zE-8Da2sb1CLk&id=2666ee0b-e695-80e1-8f7b-f85f83618eca&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2F68906fae-2204-4a67-b986-f1f7d111aa1c%2Fin356days_Pok_Napapon_069.jpg/size/w=1420?exp=1757176137&sig=ocHcULJ3LDmlSoD_ANR4E125O5JTvXEbn7WbCTwg9o4&id=2666ee0b-e695-80ac-b2be-fe377cfc0ecd&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2Fc47606cb-3abc-4e15-96a0-5660dcd45ee5%2FJQVISION_VISIONseries_NO.10_055.jpg/size/w=1420?exp=1757176137&sig=3BXWJHldGSFTsTPY6mEiwIVaP-Zz2F0G4W-7iEtlYaQ&id=2666ee0b-e695-8051-a2be-faff723c723f&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
-    "https://img.notionusercontent.com/s3/prod-files-secure%2F3d8ec1c3-18fb-4f55-b64d-e6d56db2bf1b%2F23bdf281-3f00-487d-9f8f-66b18c1dd4b7%2FJQVISION_VISIONseries_NO.15_135.jpg/size/w=1420?exp=1757176137&sig=ySEdviwIqKl0JAq5CiAAgrMIDiqdGSWo1XengULnvys&id=2666ee0b-e695-806c-b820-fede5e2ff617&table=block&userId=8fd1f12d-c366-41c6-a9de-3b5121011a15",
+    "https://images2.imgbox.com/88/3d/tnSqaLly_o.jpg",
+    "https://images2.imgbox.com/7a/8f/z6adygR2_o.jpg",
+    "https://images2.imgbox.com/a7/ab/AJ8Aqff0_o.jpg",
+    "https://images2.imgbox.com/1c/92/nWKrv42B_o.jpg",
+    "https://images2.imgbox.com/92/78/zcDgL5K4_o.jpg",
+    "https://images2.imgbox.com/55/2e/cS8HWmma_o.jpg",
+    "https://images2.imgbox.com/9e/b5/qEd5ZBKp_o.jpg",
+    "https://images2.imgbox.com/11/12/FqLukxrl_o.jpg",
+    "https://images2.imgbox.com/0a/e9/ihTpTino_o.jpg",
+    "https://images2.imgbox.com/08/e0/kygySEvA_o.jpg",
+    "https://images2.imgbox.com/f8/8f/gwJyWZC8_o.jpg",
     # "",
-
 ]
 
 # 当前会话使用的图片URL（每次/start时随机选择）
