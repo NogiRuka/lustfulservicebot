@@ -1065,10 +1065,10 @@ async def send_user_message(msg: types.Message):
         user_info = await get_user(user_id)
         target_name = user_info.full_name if user_info else f"用户{user_id}"
         
-        # 发送消息给目标用户
+        # 发送消息给目标用户（只发送纯净的消息内容）
         sent_msg = await msg.bot.send_message(
             chat_id=user_id,
-            text=f"📨 <b>来自管理员的消息</b>\n\n{message_content}\n\n💬 您可以直接回复此消息，管理员会收到您的回复。",
+            text=message_content,
             parse_mode="HTML"
         )
         
