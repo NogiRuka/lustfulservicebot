@@ -366,6 +366,9 @@ async def cb_dev_changelog_view(cb: types.CallbackQuery):
         text = "📋 <b>开发日志</b>\n\n"
         text += f"📊 共有 {len(changelogs)} 条记录\n\n"
         
+        # 创建开发日志按钮列表
+        changelog_buttons = []
+        
         for i, log in enumerate(changelogs[:10], 1):  # 显示最新10条
             type_emoji = {
                 "update": "🔄",
@@ -387,6 +390,14 @@ async def cb_dev_changelog_view(cb: types.CallbackQuery):
             text += f"├ 📝 标题：{log.title}\n"
             text += f"├ 🏷️ 类型：{type_text}\n"
             text += f"└ ⏰ 时间：<i>{humanize_time(log.created_at)}</i>\n\n"
+            
+            # 添加查看详情按钮
+            changelog_buttons.append(
+                types.InlineKeyboardButton(
+                    text=f"📖 查看 v{log.version}",
+                    callback_data=f"dev_changelog_detail_{log.id}"
+                )
+            )
         
         if len(changelogs) > 10:
             text += f"... 还有 {len(changelogs) - 10} 条记录\n\n"
@@ -398,27 +409,110 @@ async def cb_dev_changelog_view(cb: types.CallbackQuery):
             text += "└ /del_changelog [ID] - 删除日志"
     
     # 根据用户角色显示不同的按钮
+    keyboard_rows = []
+    
+    # 如果有开发日志，添加查看详情按钮（每行2个）
+    if changelogs:
+        for i in range(0, len(changelog_buttons), 2):
+            row = changelog_buttons[i:i+2]
+            keyboard_rows.append(row)
+    
+    # 添加功能按钮
     if role == ROLE_SUPERADMIN:
-        changelog_kb = types.InlineKeyboardMarkup(
+        keyboard_rows.extend([
+            [
+                types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="dev_changelog_view"),
+                types.InlineKeyboardButton(text="➕ 添加日志", callback_data="dev_changelog_add")
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回其他功能", callback_data="other_functions"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            ]
+        ])
+    else:
+        keyboard_rows.extend([
+            [
+                types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="dev_changelog_view")
+            ],
+            [
+                types.InlineKeyboardButton(text="⬅️ 返回其他功能", callback_data="other_functions"),
+                types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
+            ]
+        ])
+    
+    changelog_kb = types.InlineKeyboardMarkup(inline_keyboard=keyboard_rows)
+    
+    await safe_edit_message(
+        cb.message,
+        caption=text,
+        reply_markup=changelog_kb
+    )
+    await cb.answer()
+
+
+@superadmin_router.callback_query(F.data.startswith("dev_changelog_detail_"))
+async def cb_dev_changelog_detail(cb: types.CallbackQuery):
+    """查看开发日志详细内容"""
+    # 检查开发日志功能开关
+    if not await is_feature_enabled("dev_changelog_enabled"):
+        await cb.answer("❌ 开发日志功能已关闭", show_alert=True)
+        return
+    
+    # 提取日志ID
+    changelog_id = int(cb.data.split("_")[-1])
+    
+    # 获取日志详情
+    changelog = await get_dev_changelog_by_id(changelog_id)
+    
+    if not changelog:
+        await cb.answer("❌ 开发日志不存在", show_alert=True)
+        return
+    
+    # 构建详细内容
+    type_emoji = {
+        "update": "🔄",
+        "bugfix": "🐛",
+        "feature": "✨",
+        "hotfix": "🚨"
+    }.get(changelog.changelog_type, "📝")
+    
+    type_text = {
+        "update": "更新",
+        "bugfix": "修复",
+        "feature": "新功能",
+        "hotfix": "热修复"
+    }.get(changelog.changelog_type, "其他")
+    
+    from app.utils.time_utils import humanize_time
+    
+    text = f"{type_emoji} <b>开发日志详情</b>\n\n"
+    text += f"📋 <b>版本</b>：v{changelog.version}\n"
+    text += f"📝 <b>标题</b>：{changelog.title}\n"
+    text += f"🏷️ <b>类型</b>：{type_text}\n"
+    text += f"⏰ <b>发布时间</b>：{humanize_time(changelog.created_at)}\n\n"
+    text += f"📄 <b>详细内容</b>：\n\n{changelog.content}"
+    
+    # 创建返回按钮
+    role = await get_role(cb.from_user.id)
+    
+    if role == ROLE_SUPERADMIN:
+        detail_kb = types.InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="dev_changelog_view"),
-                    types.InlineKeyboardButton(text="➕ 添加日志", callback_data="dev_changelog_add")
+                    types.InlineKeyboardButton(text="✏️ 编辑", callback_data=f"dev_changelog_edit_{changelog.id}"),
+                    types.InlineKeyboardButton(text="🗑️ 删除", callback_data=f"dev_changelog_delete_{changelog.id}")
                 ],
                 [
-                    types.InlineKeyboardButton(text="⬅️ 返回其他功能", callback_data="other_functions"),
+                    types.InlineKeyboardButton(text="⬅️ 返回日志列表", callback_data="dev_changelog_view"),
                     types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
                 ]
             ]
         )
     else:
-        changelog_kb = types.InlineKeyboardMarkup(
+        detail_kb = types.InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    types.InlineKeyboardButton(text="🔄 刷新列表", callback_data="dev_changelog_view")
-                ],
-                [
-                    types.InlineKeyboardButton(text="⬅️ 返回其他功能", callback_data="other_functions"),
+                    types.InlineKeyboardButton(text="⬅️ 返回日志列表", callback_data="dev_changelog_view"),
                     types.InlineKeyboardButton(text="🔙 返回主菜单", callback_data="back_to_main")
                 ]
             ]
@@ -427,7 +521,7 @@ async def cb_dev_changelog_view(cb: types.CallbackQuery):
     await safe_edit_message(
         cb.message,
         caption=text,
-        reply_markup=changelog_kb
+        reply_markup=detail_kb
     )
     await cb.answer()
 
