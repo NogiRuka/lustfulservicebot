@@ -386,7 +386,9 @@ async def cb_dev_changelog_view(cb: types.CallbackQuery):
             
             from app.utils.time_utils import humanize_time
             
-            text += f"┌─ {i}. {type_emoji} <b>v{log.version}</b>\n"
+            # 处理版本号显示，避免重复的v
+            version_display = log.version if log.version.startswith('v') else f"v{log.version}"
+            text += f"┌─ {i}. {type_emoji} <b>{version_display}</b>\n"
             text += f"├ 📝 标题：{log.title}\n"
             text += f"├ 🏷️ 类型：{type_text}\n"
             text += f"└ ⏰ 时间：<i>{humanize_time(log.created_at)}</i>\n\n"
@@ -394,7 +396,7 @@ async def cb_dev_changelog_view(cb: types.CallbackQuery):
             # 添加查看详情按钮
             changelog_buttons.append(
                 types.InlineKeyboardButton(
-                    text=f"📖 查看 v{log.version}",
+                    text=f"📖 查看 {version_display}",
                     callback_data=f"dev_changelog_detail_{log.id}"
                 )
             )
@@ -485,8 +487,11 @@ async def cb_dev_changelog_detail(cb: types.CallbackQuery):
     
     from app.utils.time_utils import humanize_time
     
+    # 处理版本号显示，避免重复的v
+    version_display = changelog.version if changelog.version.startswith('v') else f"v{changelog.version}"
+    
     text = f"{type_emoji} <b>开发日志详情</b>\n\n"
-    text += f"📋 <b>版本</b>：v{changelog.version}\n"
+    text += f"📋 <b>版本</b>：{version_display}\n"
     text += f"📝 <b>标题</b>：{changelog.title}\n"
     text += f"🏷️ <b>类型</b>：{type_text}\n"
     text += f"⏰ <b>发布时间</b>：{humanize_time(changelog.created_at)}\n\n"
